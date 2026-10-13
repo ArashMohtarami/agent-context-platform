@@ -1,0 +1,10 @@
+# Development/test additions. Application dependencies are pinned separately.
+-r requirements.lock
+iniconfig==2.3.0
+mypy==1.17.1
+mypy-extensions==1.1.0
+pathspec==1.1.1
+pluggy==1.6.0
+pytest==8.4.1
+pytest-asyncio==1.1.0
+ruff==0.12.8

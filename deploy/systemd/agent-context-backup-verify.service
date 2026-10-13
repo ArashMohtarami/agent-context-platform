@@ -1,0 +1,38 @@
+[Unit]
+# Prove the newest backup actually restores.
+#
+# Separate from taking one, and scheduled less often, because it restores the
+# archive into a throwaway database: it costs time and disk proportional to the
+# data, which is worth paying weekly and not nightly.
+#
+# This is the check that makes the backups real. A backup that has never been
+# restored is not known to be a backup.
+Description=Agent Context Platform backup restore check
+Documentation=file:///opt/agent-context-platform/docs/backup.md
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# The account that owns the checkout and is in the `docker` group. Change it
+# to match your deployment, or override it with `systemctl edit`.
+User=agent-context
+WorkingDirectory=/opt/agent-context-platform
+ExecStart=/usr/bin/docker compose exec -T context-api \
+    python -m app.cli.contextctl backups verify --restore
+
+TimeoutStartSec=7200
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/agent-context-platform/backups
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

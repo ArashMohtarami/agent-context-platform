@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="The complete offline field guide to Agent Context Platform: setup, Codex, Claude Code, Gemini CLI, multiple projects, research, memory and creator workflows.">
+  <meta name="color-scheme" content="light dark">
+  <title>Agent Context — The complete field guide</title>
+  <link rel="icon" href="{{FAVICON}}" type="image/svg+xml">
+  <style>{{CSS}}</style>
+</head>
+<body>
+{{ICONS}}
+<a class="skip-link" href="#main">Skip to the guide</a>
+<div id="reading-progress" aria-hidden="true"></div>
+<button id="menu-overlay" type="button" aria-label="Close navigation" tabindex="-1" hidden></button>
+<aside class="sidebar" id="sidebar" aria-label="Guide navigation">
+  <a class="brand" href="#top">{{BRAND_LOGO}}<span>AGENT CONTEXT<small>THE COMPLETE FIELD GUIDE</small></span></a>
+  <button id="search-open" class="search-button" type="button"><span>{{ICON:search}} Search the guide</span><kbd>/</kbd></button>
+  <div class="nav-caption">YOUR FIELD GUIDE <span>{{CHAPTERS}} CHAPTERS</span></div>
+  <nav aria-label="Chapters">{{NAV}}</nav>
+  <div class="sidebar-footer">
+    <div class="reading-summary"><span>Chapters marked read</span><strong id="read-count">0 / {{CHAPTERS}}</strong></div>
+    <div class="sidebar-progress" aria-hidden="true"><span id="read-progress"></span></div>
+    <span class="status-dot"></span> Works entirely offline<br><small>Public documentation snapshot</small>
+  </div>
+</aside>
+<div class="page">
+  <header class="topbar">
+    <button id="menu-button" class="icon-button" aria-controls="sidebar" aria-expanded="false" type="button">{{ICON:menu}} <span>Contents</span></button>
+    <a class="breadcrumb" href="#top">{{ICON:book}} Field guide <span>/</span> <span id="current-breadcrumb">Overview</span></a>
+    <div class="topbar-actions">
+      <button id="focus-button" type="button" aria-pressed="false" title="Hide navigation for focused reading">{{ICON:focus}}<span class="control-label">Focus view</span></button>
+      <button id="motion-button" type="button" aria-pressed="false">{{ICON:pause}}<span class="control-label">Pause motion</span></button>
+      <button id="theme-button" type="button" aria-label="Switch color theme">{{ICON:moon}}<span class="control-label">Dark mode</span></button>
+      <button id="print-button" type="button" aria-label="Print the guide or save as PDF">{{ICON:printer}}<span class="control-label">Print / PDF</span></button>
+    </div>
+  </header>
+  <div class="reading-toolbar" id="reading-toolbar" hidden>
+    <span id="reading-position"><span class="position-label">Chapter </span><span id="reading-chapter-number">01</span> / {{CHAPTERS}}</span>
+    <div class="chapter-progress" aria-hidden="true"><span id="chapter-progress"></span></div>
+    <details class="mobile-toc" id="mobile-toc"><summary>{{ICON:list}}<span>Sections</span></summary><div class="mobile-toc-panel"><span class="chapter-label">ON THIS PAGE</span><strong id="mobile-toc-title"></strong><nav id="mobile-chapter-toc" aria-label="Current chapter sections"></nav></div></details>
+    <button id="mark-read" type="button" aria-pressed="false">{{ICON:check}}<span class="control-label">Mark chapter read</span></button>
+  </div>
+  <main id="main">
+    <div id="top" class="hero">
+      <div class="eyebrow"><span class="status-dot"></span> THE KNOWLEDGE LAYER FOR YOUR AGENTS <span class="edition-pill">SELF-HOSTED</span></div>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <h1>Every agent.<br>Every project.<br><em>One context.</em></h1>
+          <p class="hero-description">Build once. Keep what you learn. Give Codex, Claude Code, and Gemini CLI the project knowledge they need to pick up where you left off.</p>
+          <div class="hero-buttons"><a href="#16-from-zero-to-a-project-and-reviewed-content" class="primary-button">Build your first project {{ICON:arrow-up-right}}</a><a href="#02-start-the-platform" class="secondary-button">Explore setup {{ICON:arrow-right}}</a></div>
+          <div class="hero-stats"><span><strong>{{SKILLS}}</strong> reusable skills</span><span><strong>{{TOOLS}}</strong> MCP tools</span><span><strong>{{SOURCES}}</strong> source documents</span></div>
+        </div>
+        <div class="hero-diagram" id="context-demo" aria-label="Illustrated context flow through an MCP gateway and Context API">
+          <div class="diagram-label"><span><i class="demo-status-dot"></i> CONTEXT IN MOTION</span><span class="demo-label">ILLUSTRATION</span></div>
+          <div class="agent-orbit" role="group" aria-label="Choose a sample agent">
+            <button type="button" class="agent-node codex selected" data-demo-agent="Codex" aria-pressed="true">{{ICON:terminal}}Codex</button>
+            <button type="button" class="agent-node claude" data-demo-agent="Claude Code" aria-pressed="false">{{ICON:code}}Claude Code</button>
+            <button type="button" class="agent-node gemini" data-demo-agent="Gemini CLI" aria-pressed="false">{{ICON:sparkle}}Gemini CLI</button>
+          </div>
+          <div class="flow-tracks" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div class="gateway-node" data-demo-node="gateway"><span class="gateway-icon">{{ICON:grid}}</span><div>MCP gateway<small>AUTHENTICATION · SCOPED TOOLS</small></div><code>/mcp</code></div>
+          <div class="diagram-connector" aria-hidden="true">{{ICON:arrow-down}}</div>
+          <div class="platform-nodes"><div class="platform-node" data-demo-node="api"><span>{{ICON:layers}}</span><strong>Context API</strong><small>Resolve · retrieve · save</small></div><div class="platform-node" data-demo-node="store"><span>{{ICON:database}}</span><strong>Durable knowledge</strong><small>Skills · context · memory</small></div></div>
+          <div class="demo-event"><div><span id="demo-step-label">01 / CONNECT</span><span class="demo-project">payment-service</span></div><p id="demo-description">Codex connects with its own credential and project grant.</p><code id="demo-call">Authorization: Bearer &lt;YOUR_CODEX_TOKEN&gt;</code></div>
+          <div class="demo-controls"><button id="demo-play" type="button" aria-pressed="false">{{ICON:play}}<span class="control-label">Play flow</span></button><div id="demo-steps" role="group" aria-label="Choose a flow step"><button type="button" data-demo-step="0" aria-label="Step 1: Connect" aria-current="step">1</button><button type="button" data-demo-step="1" aria-label="Step 2: Resolve project">2</button><button type="button" data-demo-step="2" aria-label="Step 3: Retrieve knowledge">3</button><button type="button" data-demo-step="3" aria-label="Step 4: Hand off">4</button></div><button id="demo-next" type="button" aria-label="Next context flow step"><span class="control-label">Next</span>{{ICON:arrow-right}}</button></div>
+          <p class="diagram-note">Sample flow. No requests are sent.</p>
+        </div>
+      </div>
+    </div>
+    <noscript><p class="callout">The complete guide and references work without JavaScript. Enable JavaScript for the configurator, simulations, search filters, and copy buttons.</p></noscript>
+    <div class="resume-card" id="resume-card" hidden><div><span class="chapter-label">PICK UP WHERE YOU LEFT OFF</span><a id="resume-link" href="#top">Continue reading</a></div><button id="resume-dismiss" type="button" aria-label="Dismiss reading reminder">{{ICON:close}}</button></div>
+    <section class="start-here" aria-labelledby="start-heading">
+      <div class="section-heading"><div><span class="chapter-label">A GOOD PLACE TO BEGIN</span><h2 id="start-heading">What would you like to do?</h2></div><p>Choose a path. Keep the whole guide at hand.</p></div>
+      <div class="path-grid">
+        <a class="path-card" href="#16-from-zero-to-a-project-and-reviewed-content"><span class="path-icon">{{ICON:cube}}</span><span class="path-number">01 / BUILD</span><h3>Start a project</h3><p>From a clean checkout to an agent handoff and reviewed content.</p><span class="path-link">Follow the full recipe {{ICON:arrow-right}}</span></a>
+        <a class="path-card" href="#04-connect-your-agents"><span class="path-icon">{{ICON:terminal}}</span><span class="path-number">02 / CONNECT</span><h3>Bring your agent</h3><p>Generate settings for Codex, Claude Code, Gemini CLI, or a custom client.</p><span class="path-link">Configure a connection {{ICON:arrow-right}}</span></a>
+        <a class="path-card" href="#skill-catalog"><span class="path-icon">{{ICON:layers}}</span><span class="path-number">03 / DISCOVER</span><h3>Find a skill</h3><p>Explore {{SKILLS}} skills, from async Django and FastAPI to technical writing.</p><span class="path-link">Open the skill library {{ICON:arrow-right}}</span></a>
+        <a class="path-card" href="#10-create-content-from-reviewed-knowledge"><span class="path-icon">{{ICON:file}}</span><span class="path-number">04 / CREATE</span><h3>Share what you learn</h3><p>Turn verified project lessons into drafts, reviews, and exportable content.</p><span class="path-link">Explore creator workflows {{ICON:arrow-right}}</span></a>
+      </div>
+    </section>
+    <div class="intro-strip"><span>YOUR WORKSPACE COMPANION</span><p>Read in order or jump to what you need. Examples are copyable. Progress stays in this browser.</p><a href="#01-understand-the-platform">Begin chapter 01 {{ICON:arrow-down}}</a></div>
+    {{BODY}}
+    <footer class="page-footer">{{BRAND_LOGO}}<p>Agent Context Platform · The complete field guide<br><small>Built from this repository. No external assets, tracking, model calls, or live platform requests.</small></p><a href="#top">Back to top ↑</a></footer>
+  </main>
+  <aside class="reader-rail" id="reader-rail" aria-label="On this page" hidden><span class="chapter-label">ON THIS PAGE</span><strong id="toc-title"></strong><nav id="chapter-toc" aria-label="Current chapter sections"></nav><div class="rail-note">{{ICON:compass}}<p>Press <kbd>/</kbd> or <kbd>Ctrl K</kbd> to find a chapter, skill, or source.</p></div><a href="#top" class="rail-top">Back to overview ↑</a></aside>
+</div>
+<dialog id="search-dialog" aria-labelledby="search-title"><form method="dialog"><div class="dialog-top"><div><span class="chapter-label">THE WHOLE GUIDE, WITHIN REACH</span><h2 id="search-title">Find your next step</h2></div><button aria-label="Close search" type="submit">{{ICON:close}}</button></div></form><label for="guide-search">Search chapters, skills and embedded documentation</label><input id="guide-search" type="search" maxlength="500" placeholder="Try “Django”, “Gemini”, or “research”…" autocomplete="off" aria-controls="search-results"><div class="search-meta"><span id="search-count" role="status">Suggested starting points</span><span><kbd>↑</kbd> <kbd>↓</kbd> navigate · <kbd>↵</kbd> open</span></div><div id="search-results"></div><div class="search-footer"><span>Local search · no network needed</span><span><kbd>esc</kbd> to close</span></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script type="application/json" id="guide-data">{{DATA}}</script>
+<script>{{JS}}</script>
+</body>
+</html>

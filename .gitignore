@@ -1,0 +1,35 @@
+.env*
+!.env.example
+.venv/
+examples/django-async/demo.sqlite3
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+*.egg-info/
+.coverage
+htmlcov/
+secrets/
+# Every document the deployment holds, in one file per backup.
+backups/
+.docker-wheels/*
+!.docker-wheels/.gitkeep
+# Private planning, local client configuration, and build/release artifacts.
+.private/
+/.codex/
+/.agents/
+/.aws/
+/agent-context-platform-plan.md
+/agent-context-platform-v[1-9]*.md
+/my-doc.md
+/docs/acceptance-report.md
+/docs/v*-readiness-report.md
+/docs/v*-security-review.md
+/docs/mvp-user-guide.md
+/docs/open-source-release.md
+/docs/repository-content-launch.md
+/dist/
+/build/
+*.tar.gz
+*.zip

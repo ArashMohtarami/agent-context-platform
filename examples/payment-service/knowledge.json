@@ -1,0 +1,82 @@
+{
+  "project": {
+    "project_id": "payment-service",
+    "name": "Payment Service",
+    "description": "Card and wallet payment orchestration for the storefront.",
+    "repository": "git@example.invalid:sampleco/payment-service.git",
+    "environment": "production",
+    "tags": ["payments", "backend"]
+  },
+  "context": [
+    {
+      "external_id": "payment-service-architecture",
+      "type": "architecture",
+      "title": "Payment service architecture",
+      "importance": 0.9,
+      "tags": ["architecture", "payments"],
+      "content": "payment-service is a FastAPI service owning the payment lifecycle: authorize, capture, refund, and void. It writes to PostgreSQL for transactional state and publishes domain events to the outbox table, which a relay drains to Kafka. It never calls the storefront back directly.\n\nPublic endpoints are POST /api/v1/payments, POST /api/v1/payments/{payment_id}/capture, POST /api/v1/payments/{payment_id}/refund, and GET /api/v1/payments/{payment_id}. Every write endpoint requires an Idempotency-Key header.\n\nDownstream it talks to exactly three systems: Keycloak for token verification, the Stripe-compatible provider gateway for money movement, and wallet-service for stored balance. A refund touches all three and the ledger, which is why refunds are the most failure-prone path in the service."
+    },
+    {
+      "external_id": "payment-service-keycloak",
+      "type": "integration",
+      "title": "Keycloak integration and required scopes",
+      "importance": 0.85,
+      "tags": ["security", "keycloak", "auth"],
+      "content": "Keycloak issues OAuth2 access tokens for every caller. payment-service verifies RS256 signatures against the realm JWKS at https://auth.example.invalid/realms/storefront/protocol/openid-connect/certs, cached for one hour, and refuses a token whose `azp` is not a registered storefront client.\n\nScopes are per operation, not per service: payments:read for GET, payments:write for authorize and capture, and payments:refund for refunds. payments:refund is deliberately separate from payments:write, because refunds move money outward and are granted to fewer clients.\n\nA missing or insufficient scope returns 403 with the error code INSUFFICIENT_SCOPE and never a 404, so a caller can tell authorization apart from a missing payment. Token verification failures return 401 with INVALID_TOKEN."
+    },
+    {
+      "external_id": "payment-service-provider",
+      "type": "integration",
+      "title": "Payment provider behavior, including refunds",
+      "importance": 0.9,
+      "tags": ["provider", "payments", "refunds"],
+      "content": "The provider gateway is Stripe-compatible and asynchronous. A refund is created with POST /v1/refunds carrying the original charge id, and it is accepted in state `pending` — the money has not moved when the call returns. The terminal state arrives by webhook as refund.succeeded or refund.failed, typically within seconds but occasionally after hours.\n\npayment-service therefore treats a refund as a two-phase operation: record the intent, then reconcile on the webhook. Nothing may report a refund as complete before refund.succeeded arrives.\n\nThe provider rejects a refund larger than the captured amount minus refunds already succeeded, with charge_already_refunded. It also rejects refunds against an uncaptured authorization; those must be voided instead, which is a different endpoint and leaves no ledger entry.\n\nProvider calls time out at 10 seconds and are retried at most twice with jittered backoff. A retried refund carries the same idempotency key, so the provider collapses duplicates rather than refunding twice."
+    },
+    {
+      "external_id": "payment-service-wallet",
+      "type": "business_rule",
+      "title": "Wallet behavior on payment and refund",
+      "importance": 0.85,
+      "tags": ["wallet", "payments", "refunds"],
+      "content": "wallet-service holds stored balance and is the only writer of it. payment-service calls POST /api/v1/wallets/{wallet_id}/credit and POST /api/v1/wallets/{wallet_id}/debit, both requiring the wallet:write scope; reading a balance requires wallet:read.\n\nWhen a payment was funded wholly or partly from wallet balance, a refund must return the wallet portion to the wallet and the card portion to the card. Splitting is recorded on the original payment as funding_breakdown, so a refund never has to guess. Refunding the full amount to the card when part of it came from the wallet is the single most common bug in this area.\n\nWallet balances are eventually consistent: a credit is visible to GET within a second but is not transactional with the payment. A refund therefore credits the wallet only after the provider reports refund.succeeded for the card portion, so a failed card refund cannot leave the customer credited twice.\n\nWallet credits are themselves idempotent on the wallet_transaction_id that payment-service supplies."
+    },
+    {
+      "external_id": "payment-service-ledger",
+      "type": "business_rule",
+      "title": "Ledger rules",
+      "importance": 0.95,
+      "tags": ["ledger", "accounting", "refunds"],
+      "content": "The ledger is append-only and double-entry. Nothing is ever updated or deleted; a correction is a new compensating pair of entries referencing the original by correlation_id.\n\nEvery money movement writes a balanced pair: an authorization writes nothing, a capture debits customer_receivable and credits revenue, and a refund debits revenue and credits customer_receivable. The sum of every entry for one payment must be zero at rest; a reconciliation job asserts this nightly and pages on a non-zero sum.\n\nA refund entry is written when the provider reports refund.succeeded, never when the refund is requested. Writing it at request time was the cause of the 2026-03 reconciliation incident, because failed refunds left revenue understated.\n\nPartial refunds are supported and may repeat until the sum of refunded amounts equals the captured amount. The ledger, not the provider, is the authority on how much has already been refunded, because the provider's view lags behind the webhook."
+    },
+    {
+      "external_id": "payment-service-idempotency",
+      "type": "architecture_decision",
+      "title": "Idempotency rules",
+      "importance": 0.95,
+      "tags": ["idempotency", "payments", "refunds"],
+      "content": "Every mutating endpoint requires an Idempotency-Key header carrying a UUID4. PaymentIdempotencyService stores the key with a hash of the request body and the eventual response for 24 hours in the payment_idempotency table.\n\nA repeated key with an identical body returns the stored response verbatim, including its original status code. A repeated key with a different body is a client error and returns 409 with IDEMPOTENCY_KEY_REUSED; it never performs the second operation.\n\nA key is claimed inside the same PostgreSQL transaction that writes the payment row, so two concurrent requests with one key cannot both proceed — the loser blocks and then reads the winner's stored response.\n\nRefunds use the same mechanism, and the key is also forwarded to the provider so a retry cannot refund twice at either layer. A refund whose key is still in flight returns 409 with IDEMPOTENCY_KEY_IN_FLIGHT rather than queueing."
+    }
+  ],
+  "memory": [
+    {
+      "external_id": "payment-service-refund-review",
+      "project_id": "payment-service",
+      "type": "convention",
+      "summary": "Refund changes need a second reviewer",
+      "importance": 0.8,
+      "confidence": 0.9,
+      "tags": ["process", "refunds"],
+      "content": "Any change to the refund path in payment-service requires review from someone on the payments team, not just any approver. This was agreed after the 2026-03 reconciliation incident."
+    },
+    {
+      "external_id": "payment-service-no-provider-in-tests",
+      "project_id": "payment-service",
+      "type": "convention",
+      "summary": "Never call the real provider from tests",
+      "importance": 0.75,
+      "confidence": 0.95,
+      "tags": ["testing", "provider"],
+      "content": "Tests must use the recorded provider fixtures under tests/fixtures/provider. The sandbox account is shared with another team and its state is not reproducible."
+    }
+  ]
+}

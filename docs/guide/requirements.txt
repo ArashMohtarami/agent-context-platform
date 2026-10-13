@@ -1,0 +1,2 @@
+# Documentation build only; no application/runtime dependency is added.
+markdown-it-py==4.2.0

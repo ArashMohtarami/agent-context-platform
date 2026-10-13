@@ -1,0 +1,395 @@
+name: agent-context-platform
+
+# Hardening is applied per service rather than once, because the two kinds of
+# container here can take different amounts of it.
+#
+# The images built from this repository run as an unprivileged user from their
+# first instruction, write nothing outside a volume and /tmp, and bind a port
+# above 1024 — so they take a read-only root filesystem and no capabilities at
+# all. The official MongoDB images do not: their entrypoints start as root to
+# chown the data directory and then drop privileges, which needs CHOWN, SETUID
+# and SETGID. Dropping those stops `mongod` before it opens the database, so
+# they keep their capabilities and take `no-new-privileges` alone.
+
+services:
+  mongodb:
+    # WiredTiger sizes its cache from the cgroup limit, so this is also how
+    # much of the working set MongoDB will try to keep in memory.
+    mem_limit: ${MONGODB_MEM_LIMIT:-2g}
+    mem_reservation: ${MONGODB_MEM_RESERVATION:-512m}
+    cpus: ${MONGODB_CPUS:-2.0}
+    pids_limit: 512
+    stop_grace_period: 30s
+    image: mongo:8.3.9-noble@sha256:1cd50aca58bb5f84ca6bb32b69a75ad67b23867fc8454bd1ff288822e4599219
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: ["/usr/local/bin/mongodb-entrypoint.sh"]
+    command:
+      - mongod
+      - --replSet
+      - ${MONGODB_REPLICA_SET:-rs0}
+      - --bind_ip_all
+      - --auth
+      - --keyFile
+      - /run/mongodb-internal/keyfile
+      - --setParameter
+      - searchIndexManagementHostAndPort=mongot.agent_context:27028
+      - --setParameter
+      - mongotHost=mongot.agent_context:27028
+      - --setParameter
+      - searchTLSMode=disabled
+      - --setParameter
+      - useGrpcForSearch=true
+      - --setParameter
+      - skipAuthenticationToSearchIndexManagementServer=false
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:?Set MONGODB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongodb-root-password
+      MONGO_INITDB_DATABASE: admin
+      MONGODB_DATABASE: ${MONGODB_DATABASE:?Set MONGODB_DATABASE}
+      MONGODB_REPLICA_SET: ${MONGODB_REPLICA_SET:-rs0}
+    expose:
+      - "27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/mongodb-entrypoint.sh:/usr/local/bin/mongodb-entrypoint.sh:ro
+      - ./scripts/mongodb-healthcheck.sh:/usr/local/bin/mongodb-healthcheck.sh:ro
+    secrets:
+      - source: mongodb_root_password
+        target: mongodb-root-password
+      - source: mongodb_keyfile
+        target: mongodb-keyfile
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/mongodb-healthcheck.sh"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    networks:
+      - agent_context
+
+  mongodb-init:
+    mem_limit: ${MONGODB_INIT_MEM_LIMIT:-256m}
+    pids_limit: 128
+    image: mongo:8.3.9-noble@sha256:1cd50aca58bb5f84ca6bb32b69a75ad67b23867fc8454bd1ff288822e4599219
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      mongodb:
+        condition: service_started
+    environment:
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: "27017"
+      MONGODB_REPLICA_SET: ${MONGODB_REPLICA_SET:-rs0}
+      MONGODB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:?Set MONGODB_ROOT_USERNAME}
+      MONGODB_APP_USERNAME: ${MONGODB_APP_USERNAME:?Set MONGODB_APP_USERNAME}
+      MONGOT_SYNC_USERNAME: ${MONGOT_SYNC_USERNAME:?Set MONGOT_SYNC_USERNAME}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:?Set MONGODB_DATABASE}
+      MONGODB_ROOT_PASSWORD_FILE: /run/secrets/mongodb-root-password
+      MONGODB_APP_PASSWORD_FILE: /run/secrets/mongodb-app-password
+      MONGOT_SYNC_PASSWORD_FILE: /run/secrets/mongot-sync-password
+    entrypoint: ["/bin/bash", "/scripts/init-mongodb.sh"]
+    volumes:
+      - ./scripts:/scripts:ro
+    secrets:
+      - source: mongodb_root_password
+        target: mongodb-root-password
+      - source: mongodb_app_password
+        target: mongodb-app-password
+      - source: mongot_sync_password
+        target: mongot-sync-password
+    networks:
+      - agent_context
+
+  mongot:
+    # The largest allocation in the deployment, and the one to raise first.
+    # Search and vector indexes are held in memory: an empty dataset already
+    # costs ~720 MB of JVM baseline, and every indexed vector adds to it.
+    mem_limit: ${MONGOT_MEM_LIMIT:-2g}
+    mem_reservation: ${MONGOT_MEM_RESERVATION:-1g}
+    cpus: ${MONGOT_CPUS:-2.0}
+    pids_limit: 512
+    stop_grace_period: 30s
+    image: mongodb/mongodb-community-search:1.70.4@sha256:63ebc805c6b55d027e345b5224d8713009f21911aedafb50b6c28c1cd9583e4f
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      mongodb-init:
+        condition: service_completed_successfully
+    entrypoint: ["/bin/bash", "/usr/local/bin/mongot-entrypoint.sh"]
+    environment:
+      MONGOT_SYNC_USERNAME: ${MONGOT_SYNC_USERNAME:?Set MONGOT_SYNC_USERNAME}
+      MONGOT_LOG_LEVEL: ${MONGOT_LOG_LEVEL:-INFO}
+    expose:
+      - "27028"
+      - "8080"
+      - "9946"
+    volumes:
+      - mongot_data:/data/mongot
+      - ./docker/mongot/mongot.yml.template:/etc/mongot/mongot.yml.template:ro
+      - ./scripts/mongot-entrypoint.sh:/usr/local/bin/mongot-entrypoint.sh:ro
+      - ./scripts/mongot-healthcheck.sh:/usr/local/bin/mongot-healthcheck.sh:ro
+    secrets:
+      - source: mongot_sync_password
+        target: mongot-sync-password
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/mongot-healthcheck.sh"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+    networks:
+      - agent_context
+
+  context-api:
+    # Python, PyTorch, and one resident copy of the embedding model. One
+    # worker serves the whole process, so this is not multiplied.
+    mem_limit: ${API_MEM_LIMIT:-2g}
+    mem_reservation: ${API_MEM_RESERVATION:-512m}
+    cpus: ${API_CPUS:-2.0}
+    pids_limit: 256
+    # Longer than the server's own graceful-shutdown timeout, so the process
+    # finishes what it is holding rather than being killed mid-request.
+    stop_grace_period: 30s
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    # Nothing is written outside the model cache and /tmp, and the process
+    # needs no capability to bind 8000, so it is given neither.
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      mongodb-init:
+        condition: service_completed_successfully
+      mongot:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_NAME: ${APP_NAME:-Agent Context Platform}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:?Set MONGODB_DATABASE}
+      MONGODB_USERNAME: ${MONGODB_APP_USERNAME:?Set MONGODB_APP_USERNAME}
+      MONGODB_PASSWORD_FILE: /run/secrets/mongodb-app-password
+      MONGODB_REPLICA_SET: ${MONGODB_REPLICA_SET:-rs0}
+      MONGODB_APP_NAME: ${MONGODB_APP_NAME:-agent-context-platform}
+      # On unless a deployment says otherwise: an unset variable must never be
+      # what opens the platform. Issue keys with `contextctl keys create`.
+      API_AUTH_ENABLED: ${API_AUTH_ENABLED:-true}
+      AUDIT_LOG_ENABLED: ${AUDIT_LOG_ENABLED:-true}
+      API_MAX_REQUEST_BYTES: ${API_MAX_REQUEST_BYTES:-1048576}
+      MCP_REMOTE_ALLOW_LOOPBACK_HTTP: ${MCP_REMOTE_ALLOW_LOOPBACK_HTTP:-true}
+      MCP_REMOTE_MAX_SESSIONS: ${MCP_REMOTE_MAX_SESSIONS:-100}
+      API_PROXY_HEADERS: ${API_PROXY_HEADERS:-false}
+      API_FORWARDED_ALLOW_IPS: ${API_FORWARDED_ALLOW_IPS:-}
+      # The embedded remote MCP gateway uses the same per-client controls as
+      # stdio MCP. A single process is deliberate for this self-hosted mode.
+      MCP_REQUESTS_PER_MINUTE: ${MCP_REQUESTS_PER_MINUTE:-120}
+      MCP_CONCURRENT_CALLS: ${MCP_CONCURRENT_CALLS:-8}
+      MCP_WRITES_PER_MINUTE: ${MCP_WRITES_PER_MINUTE:-30}
+      MCP_RESEARCH_INGESTIONS_PER_HOUR: ${MCP_RESEARCH_INGESTIONS_PER_HOUR:-10}
+      MCP_LONG_RUNNING_JOBS_PER_CLIENT: ${MCP_LONG_RUNNING_JOBS_PER_CLIENT:-2}
+      MCP_FAST_TIMEOUT_SECONDS: ${MCP_FAST_TIMEOUT_SECONDS:-10}
+      MCP_STANDARD_TIMEOUT_SECONDS: ${MCP_STANDARD_TIMEOUT_SECONDS:-30}
+      MCP_LONG_RUNNING_TIMEOUT_SECONDS: ${MCP_LONG_RUNNING_TIMEOUT_SECONDS:-120}
+      MCP_IDEMPOTENCY_RETENTION_SECONDS: ${MCP_IDEMPOTENCY_RETENTION_SECONDS:-86400}
+      # Counters and latency summaries at /metrics, for a scraper holding
+      # `system:read`. Nothing is pushed anywhere; a collector reads this port
+      # or nothing collects at all.
+      METRICS_ENABLED: ${METRICS_ENABLED:-true}
+      # MongoDB is the only primary state, so this is what must survive a lost
+      # disk. Search indexes are rebuilt; the vectors are inside the documents.
+      BACKUP_DIRECTORY: ${BACKUP_DIRECTORY:-/backups}
+      BACKUP_RETAIN_DAILY: ${BACKUP_RETAIN_DAILY:-7}
+      BACKUP_RETAIN_WEEKLY: ${BACKUP_RETAIN_WEEKLY:-4}
+      BACKUP_RETAIN_MONTHLY: ${BACKUP_RETAIN_MONTHLY:-3}
+      SKILLS_DIRECTORY: ${SKILLS_DIRECTORY:-skills}
+      SKILL_MAX_FILE_BYTES: ${SKILL_MAX_FILE_BYTES:-1000000}
+      SKILL_CHUNK_MIN_TOKENS: ${SKILL_CHUNK_MIN_TOKENS:-500}
+      SKILL_CHUNK_TARGET_TOKENS: ${SKILL_CHUNK_TARGET_TOKENS:-650}
+      SKILL_CHUNK_MAX_TOKENS: ${SKILL_CHUNK_MAX_TOKENS:-800}
+      SKILL_CHUNK_OVERLAP_TOKENS: ${SKILL_CHUNK_OVERLAP_TOKENS:-75}
+      EMBEDDING_ENABLED: ${EMBEDDING_ENABLED:-true}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-384}
+      EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
+      EMBEDDING_BATCH_SIZE: ${EMBEDDING_BATCH_SIZE:-32}
+      EMBEDDING_NORMALIZE: ${EMBEDDING_NORMALIZE:-true}
+      EMBEDDING_ALLOW_DOWNLOADS: ${EMBEDDING_ALLOW_DOWNLOADS:-true}
+      VECTOR_SEARCH_CANDIDATE_MULTIPLIER: ${VECTOR_SEARCH_CANDIDATE_MULTIPLIER:-10}
+      VECTOR_SEARCH_MAX_CANDIDATES: ${VECTOR_SEARCH_MAX_CANDIDATES:-1000}
+      RETRIEVAL_WEIGHT_VECTOR: ${RETRIEVAL_WEIGHT_VECTOR:-0.45}
+      RETRIEVAL_WEIGHT_LEXICAL: ${RETRIEVAL_WEIGHT_LEXICAL:-0.25}
+      RETRIEVAL_WEIGHT_IMPORTANCE: ${RETRIEVAL_WEIGHT_IMPORTANCE:-0.15}
+      RETRIEVAL_WEIGHT_RECENCY: ${RETRIEVAL_WEIGHT_RECENCY:-0.10}
+      RETRIEVAL_WEIGHT_SOURCE_PRIORITY: ${RETRIEVAL_WEIGHT_SOURCE_PRIORITY:-0.05}
+      RETRIEVAL_RECENCY_HALF_LIFE_DAYS: ${RETRIEVAL_RECENCY_HALF_LIFE_DAYS:-90}
+      RETRIEVAL_DUPLICATE_OVERLAP: ${RETRIEVAL_DUPLICATE_OVERLAP:-0.85}
+      RETRIEVAL_TOKEN_BUDGET: ${RETRIEVAL_TOKEN_BUDGET:-4000}
+      RETRIEVAL_MAX_TOKEN_BUDGET: ${RETRIEVAL_MAX_TOKEN_BUDGET:-16000}
+      RESEARCH_RETRIEVAL_TOKEN_BUDGET: ${RESEARCH_RETRIEVAL_TOKEN_BUDGET:-8000}
+      RESEARCH_RETRIEVAL_MAX_TOKEN_BUDGET: ${RESEARCH_RETRIEVAL_MAX_TOKEN_BUDGET:-16000}
+      RETRIEVAL_LOG_ENABLED: ${RETRIEVAL_LOG_ENABLED:-false}
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    volumes:
+      - embedding_models:/var/cache/embeddings
+      # A host path rather than a named volume, so an operator can copy the
+      # backups off the machine without going through Docker. Not published,
+      # not served, and not inside anything that is.
+      - ${BACKUP_HOST_DIRECTORY:-./backups}:/backups
+    secrets:
+      - source: mongodb_app_password
+        target: mongodb-app-password
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      # The first start loads, and may download, the local embedding model.
+      start_period: 180s
+    networks:
+      - agent_context
+      - api_public
+
+  # Started by a client, not by `up`: an MCP server reads one conversation
+  # from its own stdin. `docker compose run --rm -T mcp` is how an agent spawns
+  # one, which is also what the Codex configuration will do.
+  mcp:
+    # It holds no model and no database connection: one HTTP client and a
+    # protocol loop.
+    mem_limit: ${MCP_MEM_LIMIT:-512m}
+    cpus: ${MCP_CPUS:-1.0}
+    pids_limit: 128
+    profiles: ["mcp"]
+    build:
+      context: .
+      target: mcp
+    # The component an agent talks to directly gets the least of anything: no
+    # writable filesystem, no capabilities, no database credentials, no port.
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      context-api:
+        condition: service_started
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # No MONGODB_* variables and no secrets: the MCP process reaches the
+      # platform through the API, on the private network, and nowhere else.
+      MCP_API_BASE_URL: ${MCP_API_BASE_URL:-http://context-api:8000}
+      MCP_SERVER_NAME: ${MCP_SERVER_NAME:-agent-context-platform}
+      MCP_REQUEST_TIMEOUT_SECONDS: ${MCP_REQUEST_TIMEOUT_SECONDS:-120}
+      MCP_REQUESTS_PER_MINUTE: ${MCP_REQUESTS_PER_MINUTE:-120}
+      MCP_CONCURRENT_CALLS: ${MCP_CONCURRENT_CALLS:-8}
+      MCP_WRITES_PER_MINUTE: ${MCP_WRITES_PER_MINUTE:-30}
+      MCP_RESEARCH_INGESTIONS_PER_HOUR: ${MCP_RESEARCH_INGESTIONS_PER_HOUR:-10}
+      MCP_LONG_RUNNING_JOBS_PER_CLIENT: ${MCP_LONG_RUNNING_JOBS_PER_CLIENT:-2}
+      MCP_FAST_TIMEOUT_SECONDS: ${MCP_FAST_TIMEOUT_SECONDS:-10}
+      MCP_STANDARD_TIMEOUT_SECONDS: ${MCP_STANDARD_TIMEOUT_SECONDS:-30}
+      MCP_LONG_RUNNING_TIMEOUT_SECONDS: ${MCP_LONG_RUNNING_TIMEOUT_SECONDS:-120}
+      MCP_IDEMPOTENCY_RETENTION_SECONDS: ${MCP_IDEMPOTENCY_RETENTION_SECONDS:-86400}
+      MCP_SCOPES: ${MCP_SCOPES:-}
+      MCP_PROJECT_IDS: ${MCP_PROJECT_IDS:-}
+      MCP_PROFILE_IDS: ${MCP_PROFILE_IDS:-}
+      # The key this server presents to the Context API. A file rather than a
+      # value, so it is not readable through /proc or `docker inspect`.
+      MCP_API_TOKEN_FILE: ${MCP_API_TOKEN_FILE:-}
+    stdin_open: true
+    tty: false
+    networks:
+      - agent_context
+
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+      target: test
+    # Not read-only: pytest writes its cache into the working directory. The
+    # rest applies, so the suite runs under the constraints it is asserting.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      mongodb-init:
+        condition: service_completed_successfully
+      mongot:
+        condition: service_healthy
+    environment:
+      RUN_MONGODB_INTEGRATION: "1"
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:?Set MONGODB_DATABASE}
+      MONGODB_USERNAME: ${MONGODB_APP_USERNAME:?Set MONGODB_APP_USERNAME}
+      MONGODB_PASSWORD_FILE: /run/secrets/mongodb-app-password
+      MONGODB_REPLICA_SET: ${MONGODB_REPLICA_SET:-rs0}
+      MONGODB_APP_NAME: agent-context-platform-tests
+      SKILLS_DIRECTORY: ${SKILLS_DIRECTORY:-skills}
+      SKILL_MAX_FILE_BYTES: ${SKILL_MAX_FILE_BYTES:-1000000}
+      SKILL_CHUNK_MIN_TOKENS: ${SKILL_CHUNK_MIN_TOKENS:-500}
+      SKILL_CHUNK_TARGET_TOKENS: ${SKILL_CHUNK_TARGET_TOKENS:-650}
+      SKILL_CHUNK_MAX_TOKENS: ${SKILL_CHUNK_MAX_TOKENS:-800}
+      SKILL_CHUNK_OVERLAP_TOKENS: ${SKILL_CHUNK_OVERLAP_TOKENS:-75}
+      # Model-loading checks are opt-in because they need the model on disk.
+      RUN_EMBEDDING_MODEL_TESTS: ${RUN_EMBEDDING_MODEL_TESTS:-0}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-384}
+      EMBEDDING_DEVICE: ${EMBEDDING_DEVICE:-cpu}
+    volumes:
+      - embedding_models:/var/cache/embeddings
+    secrets:
+      - source: mongodb_app_password
+        target: mongodb-app-password
+    networks:
+      - agent_context
+
+volumes:
+  mongodb_data:
+    name: agent_context_mongodb_data
+  mongot_data:
+    name: agent_context_mongot_data
+  embedding_models:
+    name: agent_context_embedding_models
+
+secrets:
+  mongodb_root_password:
+    file: ${MONGODB_ROOT_PASSWORD_SECRET:-./secrets/mongodb-root-password}
+  mongodb_app_password:
+    file: ${MONGODB_APP_PASSWORD_SECRET:-./secrets/mongodb-app-password}
+  mongodb_keyfile:
+    file: ${MONGODB_KEYFILE_SECRET:-./secrets/mongodb-keyfile}
+  mongot_sync_password:
+    file: ${MONGOT_SYNC_PASSWORD_SECRET:-./secrets/mongot-sync-password}
+
+networks:
+  agent_context:
+    name: agent_context
+    internal: true
+  api_public:
+    name: agent_context_api_public

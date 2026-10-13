@@ -1,0 +1,34 @@
+# Opt-in Codex MCP configuration template.
+# Copy to .codex/config.toml only after configuring your local deployment.
+#
+# Codex reads project-scoped configuration from `.codex/config.toml`, and only
+# for a project you have trusted. To reach the platform from *other* projects —
+# which is the point of it — copy the block below into `~/.codex/config.toml`
+# and make `command` an absolute path. See docs/codex.md.
+#
+# One `mcp_servers` table per server (snake_case), and `command` is what
+# selects the stdio transport.
+
+[mcp_servers.agent-context]
+# The launcher resolves the repository root from its own location and picks the
+# project's virtual environment, so this works whatever directory Codex starts
+# it from and whichever Python is on PATH. Use an absolute path here in a
+# user-level config, where the working directory is not this repository.
+command = "./scripts/codex-mcp-server.sh"
+
+# The MCP server holds no database credentials. It reaches the platform through
+# the Context API, so this address is all it needs to start.
+env = { MCP_API_BASE_URL = "http://127.0.0.1:8000", LOG_LEVEL = "INFO" }
+
+# The server itself starts in well under a second — it loads no model and opens
+# no database connection. The default of 10 seconds is ample for this command;
+# raise it only for the containerised launcher in docs/codex.md, which has to
+# create a container first.
+startup_timeout_sec = 30
+
+# One tool call is one round trip to the Context API. 60 is the default.
+tool_timeout_sec = 60
+
+# Say so rather than quietly answering without project knowledge: if this
+# server cannot start, the session should fail visibly.
+required = true

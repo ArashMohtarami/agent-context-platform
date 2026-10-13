@@ -1,0 +1,688 @@
+[
+  {
+    "id": "api-contracts",
+    "name": "API Contracts and Compatibility",
+    "version": "1.0.0",
+    "description": "Design and evolve REST or tool API contracts with explicit validation, authorization, retry semantics, pagination, errors and compatibility. Use when clients and services need a stable shared boundary.",
+    "category": "architecture",
+    "trust_level": "trusted",
+    "tags": [
+      "api",
+      "contracts",
+      "pagination",
+      "idempotency",
+      "compatibility"
+    ],
+    "source_path": "skills/architecture/api-contracts.md",
+    "content_hash": "04f991c58ff1c6a766a6bbf165df66f2d4c2f51dd02e2ea8e0af60742ec627d2",
+    "chunks": 1
+  },
+  {
+    "id": "architecture-decisions",
+    "name": "Evidence-Based Architecture Decisions",
+    "version": "1.0.0",
+    "description": "Evaluate and record architecture decisions with constraints, invariants, alternatives, evidence and rollout/reversal criteria. Use for meaningful design choices rather than routine implementation detail.",
+    "category": "architecture",
+    "trust_level": "trusted",
+    "tags": [
+      "architecture",
+      "adr",
+      "tradeoffs",
+      "boundaries"
+    ],
+    "source_path": "skills/architecture/decisions.md",
+    "content_hash": "c7e3414fc60e56a271cde66198868833f0ed31d9cdc80f8fd0ebc11ea7a5c6e3",
+    "chunks": 1
+  },
+  {
+    "id": "content-ideation",
+    "name": "Technical Content Ideation",
+    "version": "1.1.0",
+    "description": "Frame evidence-backed technical content ideas from engineering lessons, architecture decisions, implementation tradeoffs, and useful questions.",
+    "category": "content",
+    "trust_level": "trusted",
+    "tags": [
+      "content",
+      "ideation",
+      "engineering-lessons",
+      "architecture"
+    ],
+    "source_path": "skills/content/content-ideation.md",
+    "content_hash": "38be19d5a0655817b83f5b914d3ffbd3116883a9dcc062622fc088cf9f5fd33d",
+    "chunks": 1
+  },
+  {
+    "id": "content-repurposing",
+    "name": "Technical Content Repurposing",
+    "version": "1.1.0",
+    "description": "Adapt one verified technical idea for LinkedIn, Medium, and GitHub while preserving provenance, factual limits, and platform-specific purpose.",
+    "category": "content",
+    "trust_level": "trusted",
+    "tags": [
+      "content",
+      "repurposing",
+      "linkedin",
+      "medium",
+      "github"
+    ],
+    "source_path": "skills/content/content-repurposing.md",
+    "content_hash": "0321b9a0cca8010a46fe702253a5507f33621b55cc1ab82f61939269cbb0344c",
+    "chunks": 1
+  },
+  {
+    "id": "content-review",
+    "name": "Technical Content Review",
+    "version": "1.1.0",
+    "description": "Review technical content for factual grounding, source provenance, privacy, clarity, platform fit, and explicit approval before publication.",
+    "category": "content",
+    "trust_level": "trusted",
+    "tags": [
+      "content",
+      "review",
+      "provenance",
+      "publishing-safety"
+    ],
+    "source_path": "skills/content/content-review.md",
+    "content_hash": "f7df2feaad1bd61826f21e1b303676be290729faedf86c81d8b16ebf21462805",
+    "chunks": 1
+  },
+  {
+    "id": "content-editing",
+    "name": "Technical Content Editing",
+    "version": "1.1.0",
+    "description": "Edit technical writing for evidence, clarity, structure, accessible language, and platform fit while preserving factual limits.",
+    "category": "content",
+    "trust_level": "trusted",
+    "tags": [
+      "content",
+      "editing",
+      "technical-writing",
+      "review"
+    ],
+    "source_path": "skills/content/editing.md",
+    "content_hash": "27edf5b69cfb24652d4abdc3bb53beeb3090855ec339c0aa10feb76ebfb57509",
+    "chunks": 1
+  },
+  {
+    "id": "github-writing",
+    "name": "GitHub Technical Documentation Writing",
+    "version": "1.1.0",
+    "description": "Write GitHub architecture documentation, READMEs, ADRs, examples, reproducible installation commands, troubleshooting, and API usage guides.",
+    "category": "content",
+    "trust_level": "trusted",
+    "tags": [
+      "content",
+      "github",
+      "documentation",
+      "architecture"
+    ],
+    "source_path": "skills/content/github-writing.md",
+    "content_hash": "73e2e371979c1235b0261e68e10a944f954c2b85081266e1ad8117c4d825a0cf",
+    "chunks": 1
+  },
+  {
+    "id": "content-hooks",
+    "name": "Technical Content Hooks",
+    "version": "1.1.0",
+    "description": "Create honest technical openings for LinkedIn posts, Medium articles, documentation, and engineering lessons without hype or engagement bait.",
+    "category": "content",
+    "trust_level": "trusted",
+    "tags": [
+      "content",
+      "hooks",
+      "technical-writing",
+      "linkedin"
+    ],
+    "source_path": "skills/content/hooks.md",
+    "content_hash": "38fc675587ae30fd2cd333f4dc37b4057f7333a4ed80c18b049ce9c1a8f5eaa5",
+    "chunks": 1
+  },
+  {
+    "id": "linkedin-writing",
+    "name": "LinkedIn Technical Writing",
+    "version": "1.1.0",
+    "description": "Write a LinkedIn post about an engineering lesson, technical insight, architecture decision, career lesson, or concise mini tutorial.",
+    "category": "content",
+    "trust_level": "trusted",
+    "tags": [
+      "content",
+      "linkedin",
+      "technical-writing",
+      "engineering-lessons"
+    ],
+    "source_path": "skills/content/linkedin-writing.md",
+    "content_hash": "5d0c7674256b7651c65970e2f7a68702eb7ed3efdd5f2167b0e3a12f63e6ccea",
+    "chunks": 1
+  },
+  {
+    "id": "medium-writing",
+    "name": "Medium Technical Article Writing",
+    "version": "1.1.0",
+    "description": "Create a Medium architecture article or long-form technical explanation with first-principles reasoning, implementation detail, and tradeoffs.",
+    "category": "content",
+    "trust_level": "trusted",
+    "tags": [
+      "content",
+      "medium",
+      "technical-writing",
+      "architecture"
+    ],
+    "source_path": "skills/content/medium-writing.md",
+    "content_hash": "68fc8c0ea4a9281321e02e74b018681d0a6ac10208c54f7781e7d1674ae045c7",
+    "chunks": 1
+  },
+  {
+    "id": "technical-explanation",
+    "name": "Technical Explanation",
+    "version": "1.1.0",
+    "description": "Explain an engineering concept from first principles with definitions, mechanisms, examples, invariants, tradeoffs, and practical application.",
+    "category": "content",
+    "trust_level": "trusted",
+    "tags": [
+      "content",
+      "technical-explanation",
+      "architecture",
+      "technical-writing"
+    ],
+    "source_path": "skills/content/technical-explanation.md",
+    "content_hash": "1cb29e7df89a67692c0682884a413d393589403c80fd4761d971e6786efde271",
+    "chunks": 1
+  },
+  {
+    "id": "technical-storytelling",
+    "name": "Technical Storytelling",
+    "version": "1.1.0",
+    "description": "Turn a verified engineering experience into a technical story with setup, tension, explanation, resolution, and a useful lesson.",
+    "category": "content",
+    "trust_level": "trusted",
+    "tags": [
+      "content",
+      "storytelling",
+      "engineering-lessons",
+      "technical-writing"
+    ],
+    "source_path": "skills/content/technical-storytelling.md",
+    "content_hash": "30f8b07350e960a62499ad2cea5239be755390862da8e7d9d8cdf9db537645f0",
+    "chunks": 1
+  },
+  {
+    "id": "django-async",
+    "name": "Async Django Engineering",
+    "version": "1.0.0",
+    "description": "Implement and diagnose Django async views, async ORM evaluation, ASGI middleware boundaries, cancellation, and safe synchronous transaction bridges. Use when concurrency or async-safety is part of the task.",
+    "category": "django",
+    "trust_level": "trusted",
+    "tags": [
+      "django",
+      "async",
+      "asgi",
+      "orm",
+      "sync-to-async"
+    ],
+    "source_path": "skills/django/async-django.md",
+    "content_hash": "26733c5bb34d8c5c10e708e4a4985b7b9af5f34a32b5dcd68a1de6e4f4979fbb",
+    "chunks": 1
+  },
+  {
+    "id": "django-background-jobs",
+    "name": "Django Durable Background Jobs",
+    "version": "1.0.0",
+    "description": "Design Django background work with commit-safe scheduling, durable operation identity, retries, outbox delivery, and worker lifecycle. Use for queued tasks and reliable side effects, not request-local asyncio concurrency.",
+    "category": "django",
+    "trust_level": "trusted",
+    "tags": [
+      "django",
+      "tasks",
+      "jobs",
+      "outbox",
+      "idempotency"
+    ],
+    "source_path": "skills/django/background-jobs.md",
+    "content_hash": "cbcc220fb7e42e4f60b99e73ca357e1019c4c32ef09f989cece62f2e62d9916c",
+    "chunks": 1
+  },
+  {
+    "id": "django-orm-transactions",
+    "name": "Django ORM and Transaction Design",
+    "version": "1.0.0",
+    "description": "Design Django queries, database constraints, atomic state transitions, efficient relationship loading, and safe schema/data migrations. Use for ORM correctness, N+1 problems, races, or migration reviews.",
+    "category": "django",
+    "trust_level": "trusted",
+    "tags": [
+      "django",
+      "orm",
+      "transactions",
+      "query-performance",
+      "migrations"
+    ],
+    "source_path": "skills/django/orm-transactions.md",
+    "content_hash": "498ebce0e45557a4fb6f64d6c69644c0efbbbf0154dc1b369825df23ff26087b",
+    "chunks": 1
+  },
+  {
+    "id": "django-production",
+    "name": "Production Django Engineering",
+    "version": "1.0.0",
+    "description": "Build and review Django applications with explicit domain boundaries, authorized queries, validated input, migration discipline, and production settings. Use for synchronous Django features and service design.",
+    "category": "django",
+    "trust_level": "trusted",
+    "tags": [
+      "django",
+      "models",
+      "views",
+      "security",
+      "deployment"
+    ],
+    "source_path": "skills/django/production-django.md",
+    "content_hash": "0fa3175c40a7f595b4ab874e1f4dee127b1fa56265be5ad50b0dc326d69414c2",
+    "chunks": 1
+  },
+  {
+    "id": "django-rest-framework",
+    "name": "Django REST Framework Contracts",
+    "version": "1.0.0",
+    "description": "Build Django REST Framework APIs with explicit serializers, authorized querysets, object permissions, bounded pagination, schema contracts, and error behavior. Use for DRF views and viewsets.",
+    "category": "django",
+    "trust_level": "trusted",
+    "tags": [
+      "django",
+      "drf",
+      "api",
+      "authorization",
+      "serializers"
+    ],
+    "source_path": "skills/django/rest-framework.md",
+    "content_hash": "c2dab7aea88f652295b462654ee913b422af65ba5e179b219d4fde77d2a4f883",
+    "chunks": 1
+  },
+  {
+    "id": "django-testing",
+    "name": "Django Behavioral and Async Testing",
+    "version": "1.0.0",
+    "description": "Test Django and async Django behavior with appropriate test classes, AsyncClient, real permission/CSRF boundaries, query budgets, commit hooks, and production-engine integration checks.",
+    "category": "django",
+    "trust_level": "trusted",
+    "tags": [
+      "django",
+      "testing",
+      "async",
+      "csrf",
+      "transactions"
+    ],
+    "source_path": "skills/django/testing.md",
+    "content_hash": "eb0ecc5ba771097c2b914a199b6ba3d4ae7951af105d1efaf2bcf58972ef31ed",
+    "chunks": 1
+  },
+  {
+    "id": "docker-production",
+    "name": "Production Docker and Compose",
+    "version": "1.0.0",
+    "description": "Build reproducible containers and operate Compose services with explicit secrets, network boundaries, readiness, persistent state and recovery. Use for Dockerfile, build and deployment changes.",
+    "category": "operations",
+    "trust_level": "trusted",
+    "tags": [
+      "docker",
+      "compose",
+      "containers",
+      "secrets",
+      "deployment"
+    ],
+    "source_path": "skills/docker/production-docker.md",
+    "content_hash": "7bf1548cefb1dc069a7cfc8c6e9f65f6d9ca0af48afe10690bd96e9422a9dd38",
+    "chunks": 1
+  },
+  {
+    "id": "code-review",
+    "name": "Risk-Focused Code Review",
+    "version": "1.0.0",
+    "description": "Review a change for concrete correctness, authorization, concurrency, migration and operational regressions using evidence from code and tests. Use for requested reviews and high-risk implementation checks.",
+    "category": "engineering",
+    "trust_level": "trusted",
+    "tags": [
+      "review",
+      "correctness",
+      "security",
+      "regression"
+    ],
+    "source_path": "skills/engineering/code-review.md",
+    "content_hash": "b4df89d3b0bd57007ff868e7f4947f5e4d5fa21634698977dfd25a0687a0056c",
+    "chunks": 1
+  },
+  {
+    "id": "data-pipeline-reliability",
+    "name": "Reliable Data Pipelines",
+    "version": "1.0.0",
+    "description": "Build and review repeatable ingestion and transformation pipelines with explicit schema, deduplication, checkpoints, late-data policy and recovery. Use for batch imports, ETL and analytics jobs.",
+    "category": "engineering",
+    "trust_level": "trusted",
+    "tags": [
+      "data",
+      "etl",
+      "idempotency",
+      "checkpoints",
+      "schema"
+    ],
+    "source_path": "skills/engineering/data-pipelines.md",
+    "content_hash": "5d90a418c29b63d07b216dc601dad453dd7f085024c6ae32ae4cf191296a2306",
+    "chunks": 1
+  },
+  {
+    "id": "systematic-debugging",
+    "name": "Systematic Debugging and Incident Diagnosis",
+    "version": "1.0.0",
+    "description": "Diagnose failures through a minimal reproduction, bounded hypotheses, boundary evidence and verified repairs. Use for incorrect behavior, intermittent failures and performance regressions.",
+    "category": "engineering",
+    "trust_level": "trusted",
+    "tags": [
+      "debugging",
+      "reproduction",
+      "observability",
+      "root-cause"
+    ],
+    "source_path": "skills/engineering/debugging.md",
+    "content_hash": "5b1f3bc9fbce9550f13e0027f0edde01ac22a077ad74491df6deb192c7d3a592",
+    "chunks": 1
+  },
+  {
+    "id": "fastapi-async-lifecycle",
+    "name": "FastAPI Async Lifespan and Work Budgets",
+    "version": "1.0.0",
+    "description": "Design FastAPI lifespan-owned clients, nonblocking request paths, bounded concurrency, cancellation and durable-work boundaries. Use for resource lifecycle and async performance/correctness changes.",
+    "category": "backend",
+    "trust_level": "trusted",
+    "tags": [
+      "fastapi",
+      "async",
+      "lifespan",
+      "timeouts",
+      "background-tasks"
+    ],
+    "source_path": "skills/fastapi/async-lifecycle.md",
+    "content_hash": "628b0c9ab5e96c52561dcc9772043511e41d496c3c062ab8ab9ba41b045710d5",
+    "chunks": 1
+  },
+  {
+    "id": "fastapi-authorization",
+    "name": "FastAPI Authentication and Resource Authorization",
+    "version": "1.0.0",
+    "description": "Implement FastAPI identity verification, dependency-based scope checks and per-resource authorization without trusting client headers or UI filters. Use for authentication, grants, and protected API flows.",
+    "category": "backend",
+    "trust_level": "trusted",
+    "tags": [
+      "fastapi",
+      "security",
+      "authorization",
+      "scopes",
+      "tokens"
+    ],
+    "source_path": "skills/fastapi/authorization.md",
+    "content_hash": "a220add5d8adee18b13df99181e713830f8bfd137b5a71fce02c4ec73ed7d1c7",
+    "chunks": 1
+  },
+  {
+    "id": "fastapi-production",
+    "name": "FastAPI Production Engineering",
+    "version": "1.1.0",
+    "description": "Production service boundaries, lifecycle management, and API validation for FastAPI.",
+    "category": "backend",
+    "trust_level": "trusted",
+    "tags": [
+      "python",
+      "fastapi",
+      "api"
+    ],
+    "source_path": "skills/fastapi/production-fastapi.md",
+    "content_hash": "5d4f0274931897130a143da102a0b7c01a1a1c8c6072b0d5ade48853013647cb",
+    "chunks": 1
+  },
+  {
+    "id": "fastapi-testing",
+    "name": "FastAPI Boundary and Lifespan Testing",
+    "version": "1.0.0",
+    "description": "Test FastAPI validation, authorization, serialization, lifecycle, retries and failures at the real HTTP boundary using controlled adapters and appropriate integration infrastructure.",
+    "category": "backend",
+    "trust_level": "trusted",
+    "tags": [
+      "fastapi",
+      "testing",
+      "httpx",
+      "lifespan",
+      "integration"
+    ],
+    "source_path": "skills/fastapi/testing.md",
+    "content_hash": "b9e4dd0d25a9e7ce006a30541ed498214ac725f04baddf4b3d1495ea6d8d3ccd",
+    "chunks": 1
+  },
+  {
+    "id": "react-accessibility",
+    "name": "React State and Accessible Interaction",
+    "version": "1.0.0",
+    "description": "Build React interactions with clear state ownership, accessible forms, focus/error behavior and correct effect cleanup. Use for functional UI work and interaction regressions.",
+    "category": "frontend",
+    "trust_level": "trusted",
+    "tags": [
+      "react",
+      "accessibility",
+      "forms",
+      "state",
+      "effects"
+    ],
+    "source_path": "skills/frontend/react-accessibility.md",
+    "content_hash": "682c4b2d62b1fe6c9560c095f93085225e54c6bd2ab46afe3d4adb1838262e55",
+    "chunks": 1
+  },
+  {
+    "id": "typescript-contracts",
+    "name": "TypeScript Runtime and API Contracts",
+    "version": "1.0.0",
+    "description": "Design TypeScript client contracts with runtime validation, discriminated states, null semantics and compatible API changes. Use for typed frontend/data boundaries rather than cosmetic UI edits.",
+    "category": "frontend",
+    "trust_level": "trusted",
+    "tags": [
+      "typescript",
+      "types",
+      "validation",
+      "api",
+      "frontend"
+    ],
+    "source_path": "skills/frontend/typescript-contracts.md",
+    "content_hash": "786a327724eea0622a8ffc7439389f9639ff8c0c51de6676b6dd2b78135ff14c",
+    "chunks": 1
+  },
+  {
+    "id": "mongodb-data-modeling",
+    "name": "MongoDB Data Integrity and Query Design",
+    "version": "1.0.0",
+    "description": "Design MongoDB documents, validation, indexes, atomic updates and transactions around real ownership and query workloads. Use for persistence correctness, schema evolution and query performance.",
+    "category": "database",
+    "trust_level": "trusted",
+    "tags": [
+      "mongodb",
+      "schema",
+      "indexes",
+      "transactions",
+      "concurrency"
+    ],
+    "source_path": "skills/mongodb/data-modeling.md",
+    "content_hash": "ba96cc63c12b6fe399de515f1550f61add0af75a75026a743a0e395cff4b60da",
+    "chunks": 1
+  },
+  {
+    "id": "retrieval-evaluation",
+    "name": "Hybrid Retrieval Evaluation",
+    "version": "1.0.0",
+    "description": "Evaluate and tune lexical/vector/hybrid retrieval using representative queries, authorized candidate sets, deduplication, context budgets and failure-mode evidence. Use for search quality and ranking changes.",
+    "category": "database",
+    "trust_level": "trusted",
+    "tags": [
+      "search",
+      "retrieval",
+      "lexical",
+      "vector",
+      "evaluation"
+    ],
+    "source_path": "skills/mongodb/retrieval-evaluation.md",
+    "content_hash": "78749f67da7f52dfe05618e763875578be38438ccd2a3e74a7d033cc5be8c5a9",
+    "chunks": 1
+  },
+  {
+    "id": "backup-recovery",
+    "name": "Verified Backup and Recovery",
+    "version": "1.0.0",
+    "description": "Create and verify backup/recovery procedures that preserve durable state, isolate restore tests and rebuild derived indexes. Use for backup changes and explicitly intended recovery.",
+    "category": "operations",
+    "trust_level": "trusted",
+    "tags": [
+      "backup",
+      "restore",
+      "recovery",
+      "retention",
+      "disaster-recovery"
+    ],
+    "source_path": "skills/operations/backup-recovery.md",
+    "content_hash": "6553abd3f4004d1b79cef53c4647f0923b1fd09aacf5247131d29a47dc517882",
+    "chunks": 1
+  },
+  {
+    "id": "service-observability",
+    "name": "Service Observability and Capacity",
+    "version": "1.0.0",
+    "description": "Instrument service behavior with bounded safe logs, useful metrics, correlation and capacity evidence. Use for operability, diagnosis and performance work.",
+    "category": "operations",
+    "trust_level": "trusted",
+    "tags": [
+      "observability",
+      "metrics",
+      "logging",
+      "tracing",
+      "capacity"
+    ],
+    "source_path": "skills/operations/observability.md",
+    "content_hash": "0852dd4bb29a99d136977ccd562376c70d3cdc6c5d99fba5cc6ab2f3f402b1c6",
+    "chunks": 1
+  },
+  {
+    "id": "agent-context-workflow",
+    "name": "Agent Context Retrieval and Handoff",
+    "version": "1.0.0",
+    "description": "Use this platform with explicit project resolution, bounded skill/context retrieval, intentional durable writes, revision checks and cross-agent handoff. Use for Codex, Claude, Gemini or custom MCP workflows.",
+    "category": "platform",
+    "trust_level": "trusted",
+    "tags": [
+      "agent-context",
+      "mcp",
+      "skills",
+      "memory",
+      "project-isolation"
+    ],
+    "source_path": "skills/platform/agent-context-workflow.md",
+    "content_hash": "1c1ad0f9be695550fcd1b7593e0fd8639ec06c53fb258e462268a632de213f23",
+    "chunks": 1
+  },
+  {
+    "id": "research-evidence",
+    "name": "Research Evidence and Controlled Learning",
+    "version": "1.0.0",
+    "description": "Build evidence-linked research claims and reviewed knowledge candidates without confusing retrieval relevance with truth or automatically promoting generated content. Use for research and controlled learning workflows.",
+    "category": "platform",
+    "trust_level": "trusted",
+    "tags": [
+      "research",
+      "citations",
+      "provenance",
+      "review",
+      "promotion"
+    ],
+    "source_path": "skills/platform/research-evidence.md",
+    "content_hash": "73b0157e182212160d5a3b7aaf7ac3d034055b835e19c7a4a0efb6a336d4137b",
+    "chunks": 1
+  },
+  {
+    "id": "postgresql-migrations",
+    "name": "PostgreSQL Schema Evolution",
+    "version": "1.0.0",
+    "description": "Plan PostgreSQL schema/index changes around lock behavior, rolling compatibility, bounded backfills and recovery. Use for migrations and persistence changes that can affect live availability.",
+    "category": "database",
+    "trust_level": "trusted",
+    "tags": [
+      "postgresql",
+      "migrations",
+      "locks",
+      "backfill",
+      "indexes"
+    ],
+    "source_path": "skills/postgresql/migrations.md",
+    "content_hash": "c6829da394380a4b9ea3f6823ac77c5ef1b1b97757f6b0f8a7dae2a8094779ef",
+    "chunks": 1
+  },
+  {
+    "id": "python-async-concurrency",
+    "name": "Python Structured Async Concurrency",
+    "version": "1.0.0",
+    "description": "Design Python async I/O with owned tasks and clients, bounded concurrency, deadlines, cancellation cleanup, and blocking-work boundaries. Use for concurrency correctness and event-loop performance.",
+    "category": "python",
+    "trust_level": "trusted",
+    "tags": [
+      "python",
+      "async",
+      "cancellation",
+      "timeouts",
+      "backpressure"
+    ],
+    "source_path": "skills/python/async-concurrency.md",
+    "content_hash": "10e0551973b31752756fdd0cd31ab7204ac4fde4698c1474601c6f8ec754853e",
+    "chunks": 1
+  },
+  {
+    "id": "strict-python-engineering",
+    "name": "Strict Python Engineering",
+    "version": "1.1.0",
+    "description": "Typed, testable Python practices for production services.",
+    "category": "python",
+    "trust_level": "trusted",
+    "tags": [
+      "python",
+      "typing",
+      "testing"
+    ],
+    "source_path": "skills/python/strict-python.md",
+    "content_hash": "0c7a9f9c280b086495bc68f24b9401d62bd26d9d68fc04ce8b7f70821116a0af",
+    "chunks": 1
+  },
+  {
+    "id": "python-testing",
+    "name": "Python Behavioral Testing",
+    "version": "1.0.0",
+    "description": "Choose and implement Python tests that prove behavior, failure handling, boundary contracts, and isolation. Use for regressions, service changes and test reliability; match test depth to change risk.",
+    "category": "python",
+    "trust_level": "trusted",
+    "tags": [
+      "python",
+      "pytest",
+      "testing",
+      "integration",
+      "fixtures"
+    ],
+    "source_path": "skills/python/testing.md",
+    "content_hash": "08de8e060fda8fc261117fc6435aa44d88c5fddda7f0f9b6f250cb85553699ce",
+    "chunks": 1
+  },
+  {
+    "id": "application-security",
+    "name": "Application Security Boundaries",
+    "version": "1.0.0",
+    "description": "Implement and review application trust boundaries, resource authorization, secret handling and untrusted input controls. Use for authentication/authorization changes, ingestion and concrete security-sensitive flows.",
+    "category": "security",
+    "trust_level": "trusted",
+    "tags": [
+      "security",
+      "authorization",
+      "csrf",
+      "ssrf",
+      "secrets"
+    ],
+    "source_path": "skills/security/application-security.md",
+    "content_hash": "07d7993072c319a385e453352d7bcb5e532f9f211648d34fe388c73c86bae740",
+    "chunks": 1
+  }
+]

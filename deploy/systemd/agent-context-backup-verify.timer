@@ -1,0 +1,15 @@
+[Unit]
+Description=Weekly Agent Context Platform restore check
+Documentation=file:///opt/agent-context-platform/docs/backup.md
+
+[Timer]
+# Weekly, on a quiet morning. Restoring into a throwaway database costs time
+# and disk proportional to the data, which is why this is not nightly — but a
+# backup nobody has restored is not yet known to be one, so it is not never.
+OnCalendar=Sun 04:00
+RandomizedDelaySec=1h
+Persistent=true
+Unit=agent-context-backup-verify.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  public-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EMBEDDING_ALLOW_DOWNLOADS: "false"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.lock
+            requirements-dev.lock
+            docs/guide/requirements.txt
+      - name: Install pinned CPU dependencies and documentation builder
+        run: |
+          python -m pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-dev.lock -r docs/guide/requirements.txt
+          python -m pip install --no-deps -e .
+      - name: Unit tests
+        run: python -m pytest tests/unit -q
+      - name: Python checks
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
+          python -m mypy app
+      - name: Build reviewed static documentation
+        run: python website/build.py
+      - name: Check public release inventory
+        run: python scripts/prepare_open_source_release.py --check

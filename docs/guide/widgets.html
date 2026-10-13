@@ -1,0 +1,106 @@
+<!-- START config -->
+<div class="widget" id="configurator">
+  <div class="widget-header"><h3>Build your connection recipe</h3><span class="badge">LOCAL PREVIEW ONLY</span></div>
+  <div class="widget-body">
+    <div class="tabs" role="tablist" aria-label="Agent client">
+      <button type="button" role="tab" aria-selected="true" data-agent="codex" id="tab-codex" aria-controls="config-panel">{{ICON:terminal}}<span>Codex</span></button>
+      <button type="button" role="tab" aria-selected="false" data-agent="claude_code" id="tab-claude_code" aria-controls="config-panel" tabindex="-1">{{ICON:code}}<span>Claude Code</span></button>
+      <button type="button" role="tab" aria-selected="false" data-agent="gemini_cli" id="tab-gemini_cli" aria-controls="config-panel" tabindex="-1">{{ICON:sparkle}}<span>Gemini CLI</span></button>
+      <button type="button" role="tab" aria-selected="false" data-agent="custom" id="tab-custom" aria-controls="config-panel" tabindex="-1">{{ICON:grid}}<span>Custom</span></button>
+    </div>
+    <div id="config-panel" role="tabpanel" aria-labelledby="tab-codex">
+      <div class="form-grid">
+        <div><label for="config-project">Project ID (one project in this recipe)</label><input id="config-project" value="payment-service" spellcheck="false"></div>
+        <div><label for="config-owner">Owner ID</label><input id="config-owner" value="your-owner-id" spellcheck="false"></div>
+        <div><label for="config-url">Full Streamable HTTP endpoint</label><input id="config-url" value="http://127.0.0.1:8000/mcp" spellcheck="false"></div>
+        <div><label for="config-access">Granted work</label><select id="config-access"><option value="coding">Coding + research proposals</option><option value="readonly">Read-only retrieval</option><option value="creator">Content planning + drafts</option></select></div>
+        <div><label for="config-location">Client configuration scope</label><select id="config-location"><option value="user">Personal / all repositories</option><option value="project">This repository</option></select></div>
+        <div><label for="config-checkout">Absolute platform checkout (Codex stdio)</label><input id="config-checkout" value="/absolute/path/to/agent-context-platform" spellcheck="false"></div>
+      </div>
+      <p class="config-note">This form generates text in your browser. It never issues tokens, edits settings, connects to the platform, or executes commands. The endpoint may use HTTP only for same-machine loopback development.</p>
+      <p class="field-error" id="config-error" role="status" hidden></p>
+      <div id="config-output" class="config-output" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+<!-- END config -->
+
+<!-- START starter -->
+<div class="widget" id="project-starter">
+  <div class="widget-header"><h3>Fill once, reuse for every project</h3><span class="badge">COPYABLE RECIPE</span></div>
+  <div class="widget-body">
+    <div class="form-grid">
+      <div><label for="starter-mode">Starting point</label><select id="starter-mode"><option value="new">New Notes API</option><option value="existing">Existing repository</option></select></div>
+      <div><label for="starter-framework">Existing project framework</label><select id="starter-framework"><option value="fastapi">FastAPI</option><option value="django">Django / async Django</option><option value="other">Another framework</option></select></div>
+      <div><label for="starter-platform-dir">Absolute platform checkout</label><input id="starter-platform-dir" value="/home/you/projects/agent" spellcheck="false"></div>
+      <div><label for="starter-work-dir">Absolute working project folder</label><input id="starter-work-dir" value="/home/you/projects/notes-api" spellcheck="false"></div>
+      <div><label for="starter-project">Stable project ID</label><input id="starter-project" value="notes-api" spellcheck="false"></div>
+      <div><label for="starter-name">Project display name</label><input id="starter-name" value="My Notes API"></div>
+      <div><label for="starter-repository">Repository URL (metadata; does not create a remote)</label><input id="starter-repository" value="https://github.com/your-account/notes-api" spellcheck="false"></div>
+      <div><label for="starter-owner">Owner ID</label><input id="starter-owner" value="your-owner-id" spellcheck="false"></div>
+      <div><label for="starter-profile">Writing profile ID</label><input id="starter-profile" value="your-writing-profile" spellcheck="false"></div>
+      <div><label for="starter-content">Unique content ID for this lesson</label><input id="starter-content" value="notes-api-retry-lesson" spellcheck="false"></div>
+      <div><label for="starter-title">Content title</label><input id="starter-title" value="One retry, one note"></div>
+      <div><label for="starter-destination">Content destination</label><select id="starter-destination"><option value="linkedin">LinkedIn post</option><option value="medium">Medium article</option><option value="github">GitHub Markdown</option></select></div>
+    </div>
+    <p class="config-note">Linux/macOS Bash recipe. Replace the example names and paths with your own, then follow steps 1–12 below. IDs use 1–80 lowercase letters, digits and hyphens. The form creates text only; no commands, credentials or network calls run here.</p>
+    <p id="starter-error" class="field-error" role="status" hidden></p>
+    <div id="starter-output" class="config-output"></div>
+    <noscript><p>Use the placeholder block in step 1 and the static client configurations below. JavaScript only personalizes the recipe.</p></noscript>
+  </div>
+</div>
+<!-- END starter -->
+
+<!-- START workflow -->
+<div class="widget" id="workflow-simulator">
+  <div class="widget-header"><h3>Watch a task become shared knowledge</h3><span class="badge">ILLUSTRATED WALKTHROUGH</span></div>
+  <div class="widget-body">
+    <div class="sim-controls">
+      <div><label for="sim-agent">Agent doing the work</label><select id="sim-agent"><option>Codex</option><option>Claude Code</option><option>Gemini CLI</option></select></div>
+      <div><label for="sim-project">Project</label><select id="sim-project"><option value="payment-service">Payment service</option><option value="storefront-web">Storefront web</option><option value="analytics-pipeline">Analytics pipeline</option></select></div>
+      <button id="sim-play" type="button" aria-pressed="false">Play walkthrough</button><button id="sim-next" type="button">Next step →</button>
+    </div>
+    <div class="sim-track" aria-label="Workflow stages"><div class="sim-stage current"><span>{{ICON:compass}}</span>Resolve project</div><div class="sim-stage"><span>{{ICON:search}}</span>Retrieve context</div><div class="sim-stage"><span>{{ICON:code}}</span>Implement + verify</div><div class="sim-stage"><span>{{ICON:database}}</span>Save knowledge</div><div class="sim-stage"><span>{{ICON:arrow-right}}</span>Hand off</div></div>
+    <div class="sim-detail"><div><h4 id="sim-title"></h4><p id="sim-description"></p><div class="step-dots" aria-label="Choose a walkthrough step"><button aria-label="Step 1: Resolve project" aria-current="step" data-step="0" type="button"></button><button aria-label="Step 2: Retrieve context" data-step="1" type="button"></button><button aria-label="Step 3: Implement and verify" data-step="2" type="button"></button><button aria-label="Step 4: Save knowledge" data-step="3" type="button"></button><button aria-label="Step 5: Hand off" data-step="4" type="button"></button></div></div><pre><code id="sim-code"></code></pre></div>
+    <p class="sim-caption">Illustrative data only. Tool calls are shown, never run. Verification happens in the agent's own workspace; this platform stores and retrieves knowledge.</p>
+  </div>
+</div>
+<!-- END workflow -->
+
+<!-- START memory -->
+<div class="widget" id="memory-simulator">
+  <div class="widget-header"><h3>Who can see a memory?</h3><span class="badge">SCOPE EXPLORER</span></div>
+  <div class="widget-body">
+    <p class="muted">The sample records below were written by Codex for payment-service. Assume every viewer has memory:read and both projects in its grant.</p>
+    <div class="sim-controls"><div><label for="memory-agent">Viewer</label><select id="memory-agent"><option value="codex">Codex</option><option value="claude">Claude Code</option><option value="gemini">Gemini CLI</option></select></div><div><label for="memory-project">Query project</label><select id="memory-project"><option value="payment-service">payment-service</option><option value="storefront-web">storefront-web</option><option value="">No project / global query</option></select></div></div>
+    <div class="visibility-cards"><div class="visibility-card" data-scope="global"><h4>Global</h4><p>Prefer explicit examples in technical explanations.</p><span class="visibility-status"></span></div><div class="visibility-card" data-scope="project"><h4>Project</h4><p>Refund ledger entries are append-only.</p><span class="visibility-status"></span></div><div class="visibility-card" data-scope="agent"><h4>Agent</h4><p>Codex operational preference for its own workflow.</p><span class="visibility-status"></span></div><div class="visibility-card" data-scope="project_agent"><h4>Project + agent</h4><p>Codex's temporary payment-service follow-up note.</p><span class="visibility-status"></span></div></div>
+    <p class="sim-caption">This shows eligibility before text relevance and explicit scope filters. Global knowledge remains available under a project-restricted credential; project restriction does not make global data private.</p>
+  </div>
+</div>
+<!-- END memory -->
+
+<!-- START checklist -->
+<div class="widget"><div class="widget-header"><h3>First successful handoff</h3><span class="badge" id="checklist-count">0 / 7</span></div><div class="widget-body checklist" id="onboarding-checklist">
+  <label><input type="checkbox" data-check="ready">Readiness returns HTTP 200 and skills are imported.</label>
+  <label><input type="checkbox" data-check="project">The project exists and its binding resolves exactly.</label>
+  <label><input type="checkbox" data-check="identity">Each agent has its own client identity and credential.</label>
+  <label><input type="checkbox" data-check="capabilities">Each agent discovers tools and checks its effective capabilities.</label>
+  <label><input type="checkbox" data-check="write">One agent saves a project context item with an external_id.</label>
+  <label><input type="checkbox" data-check="handoff">A fresh session in another agent retrieves that same item.</label>
+  <label><input type="checkbox" data-check="isolation">A different-project query excludes it, and peer agents cannot read private agent memory.</label>
+  <div class="checklist-progress" aria-hidden="true"><span></span></div><p class="sim-caption">Checklist progress is stored only in this browser. Clear it with <button type="button" id="checklist-reset">Reset checklist</button>.</p>
+</div></div>
+<!-- END checklist -->
+<!-- START skill_bundles -->
+<div class="widget" id="skill-bundle-explorer">
+  <div class="widget-header"><h3>A small skill set for a complete task</h3><span class="badge">TASK BUNDLES</span></div>
+  <div class="widget-body">
+    <p class="muted">Choose a task to see recommended guidance and copyable MCP calls. The calls are examples; this page never connects to the platform.</p>
+    <label for="skill-bundle">Task and sample project</label>
+    <select id="skill-bundle"><option value="django">Async Django · orders-django</option><option value="fastapi">FastAPI service · payment-service</option><option value="content">Technical content · payment-service</option><option value="frontend">Accessible React · storefront-web</option><option value="data">Data import · analytics-pipeline</option></select>
+    <div id="bundle-cards" class="bundle-cards"></div>
+    <pre><code id="bundle-code">Enable JavaScript to generate calls. Start with django-async, django-orm-transactions and django-testing for async Django work.</code></pre>
+    <p class="config-note">Verify the sample project exists and your token grants it. Retrieve reusable skills, inspect the real code, test the change, then save a reviewed project decision.</p>
+  </div>
+</div>
+<!-- END skill_bundles -->

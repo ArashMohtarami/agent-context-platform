@@ -1,0 +1,2 @@
+# Install in a separate example environment; platform dependencies stay unchanged.
+Django>=5.2,<5.3

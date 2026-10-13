@@ -1,0 +1,197 @@
+[
+  {
+    "path": "README.md",
+    "sha256": "0e86e094301efbcfa3462a47f5271885017d0128173b477b4960cba80c5ed6a9",
+    "lines": 168
+  },
+  {
+    "path": "docs/architecture.md",
+    "sha256": "a37e51725d81dc45eb6f453062528a617e8ec6d5fc87b6af32ae1d9ef91b229f",
+    "lines": 108
+  },
+  {
+    "path": "docs/backup.md",
+    "sha256": "3b09a5c9543b836b3bbca925617d8a782a02cfc3927b4e7eb4a93ba2e2cf420f",
+    "lines": 409
+  },
+  {
+    "path": "docs/cli.md",
+    "sha256": "e09e2ccdcfcd94f200d1014e97b5a2c03336c53fa2b59d4e568a4023760b3058",
+    "lines": 452
+  },
+  {
+    "path": "docs/client-onboarding.md",
+    "sha256": "a1812488ec4367ad1b9e1bd8f1bd66a6bb8f0dd55e1422b2d4737d554f9f642b",
+    "lines": 106
+  },
+  {
+    "path": "docs/client-profiles.md",
+    "sha256": "c4840e9191f0165deed4ed5326efa9470f8d4a43521348c55ae9993df486fc04",
+    "lines": 77
+  },
+  {
+    "path": "docs/codex.md",
+    "sha256": "a0910f6676e0cc7e930ba69ea0eb50a2a90d60837f0068b3ece9e3874f84f578",
+    "lines": 292
+  },
+  {
+    "path": "docs/content-discovery.md",
+    "sha256": "cf9b61f840f0bd98e9d514322ddd31a5917ab9f004d26b36c93b5654a89025d3",
+    "lines": 88
+  },
+  {
+    "path": "docs/content-export.md",
+    "sha256": "89a5def605cd1d8ccbfb503898f11f4b0c39911bce62c403a53ecacb5d81e5ac",
+    "lines": 69
+  },
+  {
+    "path": "docs/content-metrics.md",
+    "sha256": "5c929b7364f059458603895931bd9a4be0fea6ae1825696950b2159b3fd42dd3",
+    "lines": 58
+  },
+  {
+    "path": "docs/content-planning.md",
+    "sha256": "2a6e7bbe3dabe68f708a279e92155efb3f4a92a1b4fa9e037aa02361b5f56ce9",
+    "lines": 73
+  },
+  {
+    "path": "docs/content-publication-safety.md",
+    "sha256": "3cee17a8d8127cb02101698b219347a56b3df0b6bdf73e918562f0cef4e2f25b",
+    "lines": 97
+  },
+  {
+    "path": "docs/content-publishing.md",
+    "sha256": "e11d1357eebd298a65d87e1b615f6ecc89dc00706b249ff96d0d6434d93de5b8",
+    "lines": 113
+  },
+  {
+    "path": "docs/content-retrieval.md",
+    "sha256": "0b4160c847e8a01f8e97e028cf759095306368768a40c53d998521f2d81a67c0",
+    "lines": 114
+  },
+  {
+    "path": "docs/content-schema.md",
+    "sha256": "b886b4ed2c250e15e932c465e66302fab9a195f0832c77678e9fddb3b54cbd57",
+    "lines": 122
+  },
+  {
+    "path": "docs/content-skills.md",
+    "sha256": "4418d8ff3a489b6382ebf23dc683b6a48a0a1c9f6028855bbac91c354c1e64fc",
+    "lines": 84
+  },
+  {
+    "path": "docs/content-storage.md",
+    "sha256": "18ebcb4d569e15a952a8f5d8a8685269cd8dca24130f14575fab9b40d337c01d",
+    "lines": 80
+  },
+  {
+    "path": "docs/creator.md",
+    "sha256": "706fd5ed7619bb127c3d7725ebc70498f2181f2b12fae5dc5f7712d89c023a0e",
+    "lines": 111
+  },
+  {
+    "path": "docs/database.md",
+    "sha256": "888a84fcf148d7edd844c98d85d38e453ff7c47e0b3ad35c877dbd973f41bdd1",
+    "lines": 131
+  },
+  {
+    "path": "docs/deployment.md",
+    "sha256": "0afd21a459b6d3412ed15d729a5662b8759f7d418cb34a33751ba1399f69d4e0",
+    "lines": 177
+  },
+  {
+    "path": "docs/embeddings.md",
+    "sha256": "b24a337a30884a8a1e3ea1351396f0b92a3c682b2d05987c9883093d5c92f700",
+    "lines": 169
+  },
+  {
+    "path": "docs/mcp.md",
+    "sha256": "15ebe99b2578ed56468c2c41b1cb80fecefa520e5841e60170241c7958942852",
+    "lines": 380
+  },
+  {
+    "path": "docs/memory.md",
+    "sha256": "133133d70e5bd7a6cbd3fbb3e597682fe29da306949747117b1295930c519016",
+    "lines": 204
+  },
+  {
+    "path": "docs/mongodb-tutorial.md",
+    "sha256": "2af813f259e9236cbb6a3e3eed8c8d4acae841300acde231851837e59172774a",
+    "lines": 1124
+  },
+  {
+    "path": "docs/mongot.md",
+    "sha256": "66a7dd0c2a15a531aa4ce8789260be055aba093ca7459f8b4041da2b419d5953",
+    "lines": 126
+  },
+  {
+    "path": "docs/observability.md",
+    "sha256": "d595469b18efcab6927ef07503c678fd1ccf12d26ee51a287f124a4efcc764b4",
+    "lines": 354
+  },
+  {
+    "path": "docs/onboarding.md",
+    "sha256": "cfc675c09c620b3e38f84142c659d111e87fe7469f71cd52d8371aa2a30d0fe5",
+    "lines": 1386
+  },
+  {
+    "path": "docs/production-readiness.md",
+    "sha256": "a71e2bbc924eb27b8a83044440b1f16cd7e9e078b065efe5a1b7b618edfb7917",
+    "lines": 96
+  },
+  {
+    "path": "docs/projects.md",
+    "sha256": "6313bc81c4b9c4e3fad97598100b306adb3b38341119e61d9322466e2a4c52cd",
+    "lines": 196
+  },
+  {
+    "path": "docs/research.md",
+    "sha256": "1d2fc58f56b0e29a8258a5ccababf2deee8b984e7884f32cec2535197b6b0373",
+    "lines": 177
+  },
+  {
+    "path": "docs/retrieval.md",
+    "sha256": "ba9f62ac89959cd3a5a8e832ce7029ca850ddc8ca3e4ffe93cdcbb59f782ef38",
+    "lines": 504
+  },
+  {
+    "path": "docs/search.md",
+    "sha256": "23673871fef3348ccc3048e365e8a86c6064fe0a9390c1048d82cb7407318080",
+    "lines": 234
+  },
+  {
+    "path": "docs/security.md",
+    "sha256": "559a72e402dba8ebff4ed8a54f32489b668723fe1b7bfe97a0a933e0094d1bbd",
+    "lines": 395
+  },
+  {
+    "path": "docs/skill-catalog.md",
+    "sha256": "475627ba56b13f24c9bccf2bb3341bfd71efa246730c376e7145a495bfc9aa4d",
+    "lines": 151
+  },
+  {
+    "path": "docs/skills.md",
+    "sha256": "2b5894eb15064afae902563034802260c829c6a3361344aece0e402c78b3085e",
+    "lines": 181
+  },
+  {
+    "path": "docs/third-party-notices.md",
+    "sha256": "6129f7e6aca4bfe9cf5c809524ee54169f9a0479fba9f161931ceb2724c839d9",
+    "lines": 66
+  },
+  {
+    "path": "docs/website.md",
+    "sha256": "bcb7093de85b02dcd2e3aad4495b99b9fb25582ea431d3dd977a61aa639668a3",
+    "lines": 117
+  },
+  {
+    "path": "docs/clients/claude-code.md",
+    "sha256": "98e04fd65aa0e7c1ac8465cb2d31576ee9ec75d05d7565d26644d43d332f8a45",
+    "lines": 254
+  },
+  {
+    "path": "docs/clients/gemini-cli.md",
+    "sha256": "847d04e434dda9ec2f8c2da36d50699cdb68ede1dfa9a9f68f08eaaffbcd0dd1",
+    "lines": 394
+  }
+]

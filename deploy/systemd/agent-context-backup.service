@@ -1,0 +1,39 @@
+[Unit]
+# One backup of the Agent Context Platform database.
+#
+# Install with deploy/systemd/README.md. Runs as the account that owns the
+# checkout and can reach Docker, because the backup runs inside the platform.
+Description=Agent Context Platform backup
+Documentation=file:///opt/agent-context-platform/docs/backup.md
+# Backing up while the stack is coming up would dump a database that is not
+# serving yet; not a failure, but a wasted slot in the retained set.
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# The account that owns the checkout and is in the `docker` group. Change it
+# to match your deployment, or override it with `systemctl edit`.
+User=agent-context
+WorkingDirectory=/opt/agent-context-platform
+ExecStart=/opt/agent-context-platform/scripts/backup.sh
+
+# A backup that hangs must not hold the timer forever; the CLI has its own
+# per-tool timeout, and this is the outer bound.
+TimeoutStartSec=7200
+
+# It needs the checkout, the Docker socket, and the backup directory, and
+# nothing else on the host.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/agent-context-platform/backups
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+include LICENSE README.md
+exclude agent-context-platform-*.md my-doc.md
+exclude docs/mvp-user-guide.md docs/open-source-release.md docs/repository-content-launch.md
+prune .private
+prune .codex
+prune secrets
+prune backups
+prune dist
+prune build
+global-exclude .env .env.local .env.production *.py[cod]

@@ -1,0 +1,20 @@
+[Unit]
+Description=Daily Agent Context Platform backup
+Documentation=file:///opt/agent-context-platform/docs/backup.md
+
+[Timer]
+# Daily, which is the minimum the strategy assumes: the retention policy keeps
+# seven daily backups, and that only means a week of history if one is taken
+# each day.
+OnCalendar=daily
+# Spread the start so a host running several timers does not begin them all at
+# midnight, and so the time a backup lands is not perfectly predictable.
+RandomizedDelaySec=30m
+# Take the backup that was missed while the host was off, rather than skipping
+# to tomorrow. A laptop or an intermittently powered server would otherwise
+# quietly never back up.
+Persistent=true
+Unit=agent-context-backup.service
+
+[Install]
+WantedBy=timers.target

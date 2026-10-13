@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-context-platform"
+# Read from `app.__version__`, so the version a build declares is the one the
+# running process reports at `/metrics` and in its readiness answer.
+dynamic = ["version"]
+description = "Self-hosted knowledge, memory, research, and content platform for MCP agents"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.116.1",
+    # The MCP server calls the Context API over HTTP rather than the database,
+    # so httpx is a runtime dependency of the MCP process, not only a test one.
+    "httpx==0.28.1",
+    # Pinned to the 1.x line: 2.x requires Starlette 1.6, which FastAPI 0.116.1
+    # does not support, and brings a second HTTP stack alongside httpx.
+    "mcp==1.19.0",
+    "pydantic-settings==2.10.1",
+    "pymongo==4.14.1",
+    "PyYAML==6.0.2",
+    "sentence-transformers==6.0.1",
+    "uvicorn[standard]==0.35.0",
+]
+
+[project.scripts]
+contextctl = "app.cli.contextctl:run"
+
+[project.optional-dependencies]
+dev = [
+    "mypy==1.17.1",
+    "pytest==8.4.1",
+    "pytest-asyncio==1.1.0",
+    "ruff==0.12.8",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "app.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+# Unit and integration coverage intentionally use matching descriptive
+# basenames for the same feature. Importlib collection keeps their module
+# identities path-based so a full V1–V4 suite can collect both safely.
+addopts = "-ra --strict-config --strict-markers --import-mode=importlib"
+asyncio_mode = "auto"
+pythonpath = [".", "tests"]
+testpaths = ["tests"]
+markers = [
+    "integration: requires the Docker Compose MongoDB deployment",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "S", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S105", "S106"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["app"]
+pretty = true
+show_error_codes = true
