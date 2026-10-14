@@ -680,7 +680,7 @@ def _repository_document_title(source_title: str, path: str) -> str:
 def _updated_job(job: IngestionJobDocument, **changes: object) -> IngestionJobDocument:
     raw = job.model_dump(by_alias=True, mode="python")
     raw.update(changes)
-    return IngestionJobDocument.model_validate(raw)
+    return IngestionJobDocument.model_validate(raw, context={"from_storage": True})
 
 
 __all__ = [

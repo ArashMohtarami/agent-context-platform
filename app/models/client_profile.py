@@ -11,7 +11,6 @@ from app.models.common import (
     Metadata,
     MongoDocumentModel,
     ShortText,
-    deterministic_object_id,
     populate_deterministic_id,
     validate_identifier,
 )
@@ -213,6 +212,6 @@ class ClientProfileDocument(MongoDocumentModel):
 
     @model_validator(mode="after")
     def validate_id(self) -> "ClientProfileDocument":
-        if self.id != deterministic_object_id("client-profile", self.profile_id):
+        if self.id != self.identity_id("client-profile", self.profile_id):
             raise ValueError("_id does not match profile_id")
         return self

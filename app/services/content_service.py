@@ -331,7 +331,7 @@ class ContentService:
         _validate_status_change(current.status, changes.get("status"))
         payload = current.model_dump(by_alias=True, mode="python")
         payload.update(changes)
-        updated = ContentIdeaDocument.model_validate(payload)
+        updated = ContentIdeaDocument.model_validate(payload, context={"from_storage": True})
         updated = await self._embedded_idea(updated)
         return await self._ideas(profile_id).update(updated, expected_revision=expected_revision)
 
@@ -514,7 +514,7 @@ class ContentService:
         _validate_status_change(current.status, changes.get("status"))
         payload = current.model_dump(by_alias=True, mode="python")
         payload.update(changes)
-        updated = ContentItemDocument.model_validate(payload)
+        updated = ContentItemDocument.model_validate(payload, context={"from_storage": True})
         updated = await self._embedded_item(updated)
         return await self._items(profile_id).update(updated, expected_revision=expected_revision)
 
@@ -550,7 +550,9 @@ class ContentService:
                 "publication_idempotency_key": idempotency_key,
             }
         )
-        updated = await self._embedded_item(ContentItemDocument.model_validate(payload))
+        updated = await self._embedded_item(
+            ContentItemDocument.model_validate(payload, context={"from_storage": True})
+        )
         return await self._items(profile_id).update(updated, expected_revision=expected_revision)
 
     async def create_version(
@@ -633,7 +635,7 @@ class ContentService:
                 "publication_idempotency_key": None,
             }
         )
-        updated = ContentItemDocument.model_validate(payload)
+        updated = ContentItemDocument.model_validate(payload, context={"from_storage": True})
         updated = await self._embedded_item(updated)
         version = ContentVersionDocument(
             profile_id=current.profile_id,
@@ -690,7 +692,7 @@ class ContentService:
             embedding_dimensions=vector.dimensions,
             embedding_generated_at=utc_now(),
         )
-        return cast(TDocument, model_type.model_validate(payload))
+        return cast(TDocument, model_type.model_validate(payload, context={"from_storage": True}))
 
     @staticmethod
     def _without_embedding(
@@ -704,7 +706,7 @@ class ContentService:
             embedding_dimensions=None,
             embedding_generated_at=None,
         )
-        return ContentItemDocument.model_validate(payload)
+        return ContentItemDocument.model_validate(payload, context={"from_storage": True})
 
     async def list_versions(
         self,

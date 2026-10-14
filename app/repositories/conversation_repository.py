@@ -8,13 +8,20 @@ from app.models.common import Page, validate_identifier
 from app.models.conversation import ConversationDocument
 from app.repositories.base import DEFAULT_PAGE_SIZE, MongoRepository
 from app.repositories.errors import ProjectIsolationError
+from app.security.tenant import TenantContext
 
 
 class MongoConversationRepository(MongoRepository[ConversationDocument]):
     """Keep every conversation operation within one project."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], project_id: str) -> None:
-        super().__init__(database, "conversations", ConversationDocument)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(database, "conversations", ConversationDocument, tenant=tenant)
         self.project_id = validate_identifier(project_id)
 
     def _require_scope(self, document: ConversationDocument) -> None:

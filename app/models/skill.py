@@ -9,7 +9,6 @@ from app.models.common import (
     MongoDocumentModel,
     ShortText,
     Tags,
-    deterministic_object_id,
     populate_deterministic_id,
 )
 
@@ -72,7 +71,7 @@ class SkillDocument(MongoDocumentModel):
     @model_validator(mode="after")
     def validate_id(self) -> "SkillDocument":
         """Prevent a natural key from diverging from its stable `_id`."""
-        expected = deterministic_object_id("skill", self.skill_id, self.version)
+        expected = self.identity_id("skill", self.skill_id, self.version)
         if self.id != expected:
             raise ValueError("_id does not match skill_id and version")
         return self

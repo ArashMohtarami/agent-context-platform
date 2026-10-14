@@ -27,7 +27,6 @@ from app.models.common import (
     MongoDocumentModel,
     ShortText,
     Tags,
-    deterministic_object_id,
     normalize_mongo_timestamp,
     populate_deterministic_id,
 )
@@ -297,7 +296,7 @@ class ResearchProjectDocument(ResearchTaggedDocument):
 
     @model_validator(mode="after")
     def validate_identity_and_scope(self) -> "ResearchProjectDocument":
-        if self.id != deterministic_object_id("research_project", self.research_project_id):
+        if self.id != self.identity_id("research_project", self.research_project_id):
             raise ValueError("_id does not match research_project_id")
         if set(self.related_project_ids) != set(self.authorization.project_ids):
             raise ValueError("authorization project_ids must match related_project_ids")
@@ -334,7 +333,7 @@ class ResearchSourceDocument(ResearchTaggedDocument):
 
     @model_validator(mode="after")
     def validate_identity_and_validity(self) -> "ResearchSourceDocument":
-        if self.id != deterministic_object_id("research_source", self.source_id):
+        if self.id != self.identity_id("research_source", self.source_id):
             raise ValueError("_id does not match source_id")
         if (
             self.valid_from is not None
@@ -372,7 +371,7 @@ class SourceSnapshotDocument(ResearchScopedDocument):
 
     @model_validator(mode="after")
     def validate_id(self) -> "SourceSnapshotDocument":
-        if self.id != deterministic_object_id("source_snapshot", self.source_id, self.snapshot_id):
+        if self.id != self.identity_id("source_snapshot", self.source_id, self.snapshot_id):
             raise ValueError("_id does not match source_id and snapshot_id")
         return self
 
@@ -403,7 +402,7 @@ class ResearchDocumentDocument(ResearchTaggedDocument):
 
     @model_validator(mode="after")
     def validate_retention_and_id(self) -> "ResearchDocumentDocument":
-        expected = deterministic_object_id(
+        expected = self.identity_id(
             "research_document", self.source_id, self.snapshot_id, self.document_id
         )
         if self.id != expected:
@@ -447,7 +446,7 @@ class ResearchChunkDocument(EmbeddingFields, ResearchTaggedDocument):
 
     @model_validator(mode="after")
     def validate_id(self) -> "ResearchChunkDocument":
-        if self.id != deterministic_object_id("research_chunk", self.document_id, self.chunk_id):
+        if self.id != self.identity_id("research_chunk", self.document_id, self.chunk_id):
             raise ValueError("_id does not match document_id and chunk_id")
         return self
 
@@ -481,9 +480,7 @@ class ResearchNoteDocument(EmbeddingFields, ResearchTaggedDocument):
 
     @model_validator(mode="after")
     def validate_id(self) -> "ResearchNoteDocument":
-        if self.id != deterministic_object_id(
-            "research_note", self.research_project_id, self.note_id
-        ):
+        if self.id != self.identity_id("research_note", self.research_project_id, self.note_id):
             raise ValueError("_id does not match research_project_id and note_id")
         return self
 
@@ -515,9 +512,7 @@ class ResearchClaimDocument(EmbeddingFields, ResearchTaggedDocument):
 
     @model_validator(mode="after")
     def validate_claim(self) -> "ResearchClaimDocument":
-        if self.id != deterministic_object_id(
-            "research_claim", self.research_project_id, self.claim_id
-        ):
+        if self.id != self.identity_id("research_claim", self.research_project_id, self.claim_id):
             raise ValueError("_id does not match research_project_id and claim_id")
         overlap = set(self.supporting_citation_ids) & set(self.contradicting_citation_ids)
         if overlap:
@@ -548,7 +543,7 @@ class ResearchCitationDocument(ResearchScopedDocument):
 
     @model_validator(mode="after")
     def validate_id(self) -> "ResearchCitationDocument":
-        if self.id != deterministic_object_id("research_citation", self.claim_id, self.citation_id):
+        if self.id != self.identity_id("research_citation", self.claim_id, self.citation_id):
             raise ValueError("_id does not match claim_id and citation_id")
         return self
 
@@ -655,9 +650,7 @@ class ResearchBriefDocument(EmbeddingFields, ResearchTaggedDocument):
 
     @model_validator(mode="after")
     def validate_brief(self) -> "ResearchBriefDocument":
-        if self.id != deterministic_object_id(
-            "research_brief", self.research_project_id, self.brief_id
-        ):
+        if self.id != self.identity_id("research_brief", self.research_project_id, self.brief_id):
             raise ValueError("_id does not match research_project_id and brief_id")
         overlap = set(self.evidence_citation_ids) & set(self.contradicting_citation_ids)
         if overlap:
@@ -730,7 +723,7 @@ class KnowledgeCandidateDocument(EmbeddingFields, ResearchTaggedDocument):
 
     @model_validator(mode="after")
     def validate_candidate(self) -> "KnowledgeCandidateDocument":
-        if self.id != deterministic_object_id(
+        if self.id != self.identity_id(
             "knowledge_candidate", self.research_project_id, self.candidate_id
         ):
             raise ValueError("_id does not match research_project_id and candidate_id")
@@ -807,7 +800,7 @@ class SkillUpdateProposalDocument(ResearchScopedDocument):
 
     @model_validator(mode="after")
     def validate_proposal(self) -> "SkillUpdateProposalDocument":
-        if self.id != deterministic_object_id(
+        if self.id != self.identity_id(
             "skill_update_proposal", self.research_project_id, self.proposal_id
         ):
             raise ValueError("_id does not match research_project_id and proposal_id")
@@ -842,7 +835,7 @@ class PromotionEventDocument(ResearchScopedDocument):
 
     @model_validator(mode="after")
     def validate_id(self) -> "PromotionEventDocument":
-        if self.id != deterministic_object_id("promotion_event", self.candidate_id, self.event_id):
+        if self.id != self.identity_id("promotion_event", self.candidate_id, self.event_id):
             raise ValueError("_id does not match candidate_id and event_id")
         return self
 
@@ -872,7 +865,7 @@ class IngestionJobDocument(ResearchScopedDocument):
 
     @model_validator(mode="after")
     def validate_job(self) -> "IngestionJobDocument":
-        if self.id != deterministic_object_id("ingestion_job", self.job_id):
+        if self.id != self.identity_id("ingestion_job", self.job_id):
             raise ValueError("_id does not match job_id")
         if self.completed_at is not None and self.started_at is None:
             raise ValueError("completed_at requires started_at")

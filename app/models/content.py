@@ -27,7 +27,7 @@ from app.models.common import (
     Metadata,
     ShortText,
     TaggedDocument,
-    deterministic_object_id,
+    document_object_id,
     normalize_mongo_timestamp,
     populate_deterministic_id,
 )
@@ -256,7 +256,7 @@ class CreatorProfileDocument(ContentDocument):
 
     @model_validator(mode="after")
     def validate_id(self) -> "CreatorProfileDocument":
-        if self.id != deterministic_object_id("creator_profile", self.profile_id):
+        if self.id != self.identity_id("creator_profile", self.profile_id):
             raise ValueError("_id does not match profile_id")
         return self
 
@@ -282,7 +282,7 @@ class ContentPillarDocument(ContentDocument):
 
     @model_validator(mode="after")
     def validate_id(self) -> "ContentPillarDocument":
-        if self.id != deterministic_object_id("content_pillar", self.profile_id, self.pillar_id):
+        if self.id != self.identity_id("content_pillar", self.profile_id, self.pillar_id):
             raise ValueError("_id does not match profile_id and pillar_id")
         return self
 
@@ -316,7 +316,7 @@ class ContentIdeaDocument(EmbeddingFields, ContentDocument):
 
     @model_validator(mode="after")
     def validate_id(self) -> "ContentIdeaDocument":
-        if self.id != deterministic_object_id("content_idea", self.profile_id, self.idea_id):
+        if self.id != self.identity_id("content_idea", self.profile_id, self.idea_id):
             raise ValueError("_id does not match profile_id and idea_id")
         return self
 
@@ -403,7 +403,7 @@ class ContentBriefDocument(EmbeddingFields, ContentDocument):
 
     @model_validator(mode="after")
     def validate_id(self) -> "ContentBriefDocument":
-        if self.id != deterministic_object_id("content_brief", self.profile_id, self.brief_id):
+        if self.id != self.identity_id("content_brief", self.profile_id, self.brief_id):
             raise ValueError("_id does not match profile_id and brief_id")
         return self
 
@@ -463,7 +463,7 @@ class ContentItemDocument(EmbeddingFields, ContentDocument):
 
     @model_validator(mode="after")
     def validate_id(self) -> "ContentItemDocument":
-        if self.id != deterministic_object_id("content_item", self.profile_id, self.content_id):
+        if self.id != self.identity_id("content_item", self.profile_id, self.content_id):
             raise ValueError("_id does not match profile_id and content_id")
         return self
 
@@ -493,14 +493,14 @@ class ContentVersionDocument(ContentDocument):
         if isinstance(version, bool) or not isinstance(version, int) or version < 1:
             return value
         populated = dict(value)
-        populated["_id"] = deterministic_object_id(
-            "content_version", profile_id, content_id, str(version)
+        populated["_id"] = document_object_id(
+            value, "content_version", profile_id, content_id, str(version)
         )
         return populated
 
     @model_validator(mode="after")
     def validate_id(self) -> "ContentVersionDocument":
-        expected = deterministic_object_id(
+        expected = self.identity_id(
             "content_version", self.profile_id, self.content_id, str(self.version)
         )
         if self.id != expected:
@@ -531,7 +531,7 @@ class ContentLinkDocument(ContentDocument):
 
     @model_validator(mode="after")
     def validate_id(self) -> "ContentLinkDocument":
-        if self.id != deterministic_object_id("content_link", self.profile_id, self.link_id):
+        if self.id != self.identity_id("content_link", self.profile_id, self.link_id):
             raise ValueError("_id does not match profile_id and link_id")
         return self
 
@@ -587,7 +587,7 @@ class ContentMetricDocument(ContentDocument):
 
     @model_validator(mode="after")
     def validate_id(self) -> "ContentMetricDocument":
-        if self.id != deterministic_object_id("content_metric", self.profile_id, self.metric_id):
+        if self.id != self.identity_id("content_metric", self.profile_id, self.metric_id):
             raise ValueError("_id does not match profile_id and metric_id")
         return self
 
@@ -619,7 +619,7 @@ class ContentCampaignDocument(ContentDocument):
 
     @model_validator(mode="after")
     def validate_id(self) -> "ContentCampaignDocument":
-        expected = deterministic_object_id("content_campaign", self.profile_id, self.campaign_id)
+        expected = self.identity_id("content_campaign", self.profile_id, self.campaign_id)
         if self.id != expected:
             raise ValueError("_id does not match profile_id and campaign_id")
         return self

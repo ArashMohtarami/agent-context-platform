@@ -15,7 +15,7 @@ from app.db.text_indexes import (
     version_filter_clauses,
 )
 from app.db.vector_indexes import SKILL_CHUNK_VECTOR_INDEX, VECTOR_PATH
-from app.models.common import InvalidCursorError, Page, deterministic_object_id
+from app.models.common import InvalidCursorError, Page
 from app.models.skill_chunk import SkillChunkDocument
 from app.repositories.base import (
     DEFAULT_PAGE_SIZE,
@@ -24,6 +24,7 @@ from app.repositories.base import (
     SearchMethod,
 )
 from app.repositories.vectors import validated_vector
+from app.security.tenant import TenantContext
 from app.skills.types import SkillChunkMatch, SkillVersionKey
 
 DEFAULT_SEARCH_LIMIT = 10
@@ -35,8 +36,10 @@ MAX_NUM_CANDIDATES = 10_000
 class MongoSkillChunkRepository(MongoRepository[SkillChunkDocument]):
     """Persist deterministic chunks and run vector queries over their embeddings."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument]) -> None:
-        super().__init__(database, "skill_chunks", SkillChunkDocument)
+    def __init__(
+        self, database: AsyncDatabase[MongoDocument], *, tenant: TenantContext | None = None
+    ) -> None:
+        super().__init__(database, "skill_chunks", SkillChunkDocument, tenant=tenant)
 
     async def create(self, document: SkillChunkDocument) -> SkillChunkDocument:
         return await self._create(document)
@@ -47,13 +50,9 @@ class MongoSkillChunkRepository(MongoRepository[SkillChunkDocument]):
         skill_version: str,
         chunk_id: str,
     ) -> SkillChunkDocument | None:
-        document_id = deterministic_object_id(
-            "skill_chunk",
-            skill_id,
-            skill_version,
-            chunk_id,
+        return await self._get(
+            self._identity_filter("skill_chunk", skill_id, skill_version, chunk_id)
         )
-        return await self._get({"_id": document_id})
 
     async def list_for_version(
         self,
@@ -174,11 +173,8 @@ class MongoSkillChunkRepository(MongoRepository[SkillChunkDocument]):
         *,
         expected_revision: int,
     ) -> bool:
-        document_id: ObjectId = deterministic_object_id(
-            "skill_chunk",
-            skill_id,
-            skill_version,
-            chunk_id,
+        document_id: ObjectId = await self._identity_record_id(
+            "skill_chunk", skill_id, skill_version, chunk_id
         )
         return await self._delete(document_id, expected_revision=expected_revision)
 

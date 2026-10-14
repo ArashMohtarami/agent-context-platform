@@ -14,13 +14,16 @@ from app.db.client_types import MongoDocument
 from app.models.api_key import ApiKeyDocument, KeyStatus
 from app.models.common import Page
 from app.repositories.base import DEFAULT_PAGE_SIZE, MongoRepository
+from app.security.tenant import TenantContext
 
 
 class MongoApiKeyRepository(MongoRepository[ApiKeyDocument]):
     """Read and write issued keys, without ever handling a secret."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument]) -> None:
-        super().__init__(database, "api_keys", ApiKeyDocument)
+    def __init__(
+        self, database: AsyncDatabase[MongoDocument], *, tenant: TenantContext | None = None
+    ) -> None:
+        super().__init__(database, "api_keys", ApiKeyDocument, tenant=tenant)
 
     async def create(self, document: ApiKeyDocument) -> ApiKeyDocument:
         """Store one newly issued key."""

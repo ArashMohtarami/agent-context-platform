@@ -171,6 +171,8 @@ class McpSettings(BaseSettings):
 class Settings(McpSettings):
     """The full platform configuration, loaded by the API and the tooling."""
 
+    v6_tenant_foundation: bool = False
+
     app_env: str = "development"
     app_name: str = "Agent Context Platform"
 

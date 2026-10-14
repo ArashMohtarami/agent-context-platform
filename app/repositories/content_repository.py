@@ -31,7 +31,6 @@ from app.models.common import (
     MongoObjectId,
     Page,
     decode_page_cursor,
-    deterministic_object_id,
     encode_page_cursor,
     utc_now,
     validate_identifier,
@@ -63,6 +62,7 @@ from app.repositories.errors import (
     ProjectIsolationError,
 )
 from app.repositories.vectors import validated_vector
+from app.security.tenant import TenantContext
 
 DEFAULT_SEARCH_LIMIT = 10
 MAX_SEARCH_LIMIT = 50
@@ -121,8 +121,10 @@ class _ProfileRepository[TDocument: MongoDocumentModel](MongoRepository[TDocumen
         collection_name: str,
         model_type: type[TDocument],
         profile_id: str,
+        *,
+        tenant: TenantContext | None = None,
     ) -> None:
-        super().__init__(database, collection_name, model_type)
+        super().__init__(database, collection_name, model_type, tenant=tenant)
         self._database = database
         self.profile_id = validate_identifier(profile_id)
 
@@ -265,15 +267,17 @@ class _ContentSearchRepository[TDocument: MongoDocumentModel](_ProfileRepository
 class MongoCreatorProfileRepository(MongoRepository[CreatorProfileDocument]):
     """Persist globally listed creator profiles by deterministic profile ID."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument]) -> None:
-        super().__init__(database, "creator_profiles", CreatorProfileDocument)
+    def __init__(
+        self, database: AsyncDatabase[MongoDocument], *, tenant: TenantContext | None = None
+    ) -> None:
+        super().__init__(database, "creator_profiles", CreatorProfileDocument, tenant=tenant)
 
     async def create(self, document: CreatorProfileDocument) -> CreatorProfileDocument:
         return await self._create(document)
 
     async def get(self, profile_id: str) -> CreatorProfileDocument | None:
         identifier = validate_identifier(profile_id)
-        return await self._get({"_id": deterministic_object_id("creator_profile", identifier)})
+        return await self._get(self._identity_filter("creator_profile", identifier))
 
     async def list(
         self,
@@ -296,16 +300,27 @@ class MongoCreatorProfileRepository(MongoRepository[CreatorProfileDocument]):
 class MongoContentPillarRepository(_ProfileRepository[ContentPillarDocument]):
     """Persist one profile's thematic pillars without cross-profile reads."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], profile_id: str) -> None:
-        super().__init__(database, "content_pillars", ContentPillarDocument, profile_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        profile_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(
+            database, "content_pillars", ContentPillarDocument, profile_id, tenant=tenant
+        )
 
     async def create(self, document: ContentPillarDocument) -> ContentPillarDocument:
         return await self._create_for_profile(document)
 
     async def get(self, pillar_id: str) -> ContentPillarDocument | None:
         identifier = validate_identifier(pillar_id)
-        return await self._get_for_profile(
-            deterministic_object_id("content_pillar", self.profile_id, identifier)
+        return await self._get(
+            {
+                **self._identity_filter("content_pillar", self.profile_id, identifier),
+                "profile_id": self.profile_id,
+            }
         )
 
     async def list(
@@ -322,8 +337,14 @@ class MongoContentPillarRepository(_ProfileRepository[ContentPillarDocument]):
 class MongoContentIdeaRepository(_ContentSearchRepository[ContentIdeaDocument]):
     """Persist one profile's ideas with revision-guarded changes."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], profile_id: str) -> None:
-        super().__init__(database, "content_ideas", ContentIdeaDocument, profile_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        profile_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(database, "content_ideas", ContentIdeaDocument, profile_id, tenant=tenant)
         self._search_kind = "idea"
 
     async def create(self, document: ContentIdeaDocument) -> ContentIdeaDocument:
@@ -331,8 +352,11 @@ class MongoContentIdeaRepository(_ContentSearchRepository[ContentIdeaDocument]):
 
     async def get(self, idea_id: str) -> ContentIdeaDocument | None:
         identifier = validate_identifier(idea_id)
-        return await self._get_for_profile(
-            deterministic_object_id("content_idea", self.profile_id, identifier)
+        return await self._get(
+            {
+                **self._identity_filter("content_idea", self.profile_id, identifier),
+                "profile_id": self.profile_id,
+            }
         )
 
     async def list(
@@ -363,8 +387,16 @@ class MongoContentIdeaRepository(_ContentSearchRepository[ContentIdeaDocument]):
 class MongoContentBriefRepository(_ContentSearchRepository[ContentBriefDocument]):
     """Persist profile-scoped content briefs and their source references."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], profile_id: str) -> None:
-        super().__init__(database, "content_briefs", ContentBriefDocument, profile_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        profile_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(
+            database, "content_briefs", ContentBriefDocument, profile_id, tenant=tenant
+        )
         self._search_kind = "brief"
 
     async def create(self, document: ContentBriefDocument) -> ContentBriefDocument:
@@ -372,8 +404,11 @@ class MongoContentBriefRepository(_ContentSearchRepository[ContentBriefDocument]
 
     async def get(self, brief_id: str) -> ContentBriefDocument | None:
         identifier = validate_identifier(brief_id)
-        return await self._get_for_profile(
-            deterministic_object_id("content_brief", self.profile_id, identifier)
+        return await self._get(
+            {
+                **self._identity_filter("content_brief", self.profile_id, identifier),
+                "profile_id": self.profile_id,
+            }
         )
 
     async def list(
@@ -390,8 +425,14 @@ class MongoContentBriefRepository(_ContentSearchRepository[ContentBriefDocument]
 class MongoContentItemRepository(_ContentSearchRepository[ContentItemDocument]):
     """Persist current content copies; append-only history is stored separately."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], profile_id: str) -> None:
-        super().__init__(database, "content_items", ContentItemDocument, profile_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        profile_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(database, "content_items", ContentItemDocument, profile_id, tenant=tenant)
         self._versions = database["content_versions"]
         self._search_kind = "item"
 
@@ -400,8 +441,11 @@ class MongoContentItemRepository(_ContentSearchRepository[ContentItemDocument]):
 
     async def get(self, content_id: str) -> ContentItemDocument | None:
         identifier = validate_identifier(content_id)
-        return await self._get_for_profile(
-            deterministic_object_id("content_item", self.profile_id, identifier)
+        return await self._get(
+            {
+                **self._identity_filter("content_item", self.profile_id, identifier),
+                "profile_id": self.profile_id,
+            }
         )
 
     async def list(
@@ -439,6 +483,8 @@ class MongoContentItemRepository(_ContentSearchRepository[ContentItemDocument]):
         version: ContentVersionDocument,
     ) -> ContentItemDocument:
         """Create a current copy and its first immutable snapshot atomically."""
+        if document.identity_version == 1 or version.identity_version == 1:
+            raise ValueError("only adoption may insert legacy tenant identities")
         self._require_profile(document)
         if version.profile_id != self.profile_id:
             raise ProjectIsolationError("content belongs to a different creator profile")
@@ -504,7 +550,15 @@ class MongoContentItemRepository(_ContentSearchRepository[ContentItemDocument]):
             version.model_dump(by_alias=True, mode="python")
         )
         changes = cast(MongoDocument, validated_item.model_dump(by_alias=True, mode="python"))
-        for immutable_field in ("_id", "created_at", "updated_at", "revision"):
+        for immutable_field in (
+            "_id",
+            "created_at",
+            "updated_at",
+            "revision",
+            "org_id",
+            "identity_version",
+            "legacy_adoption_id",
+        ):
             changes.pop(immutable_field, None)
         changes["updated_at"] = utc_now()
         version_payload = cast(
@@ -514,11 +568,21 @@ class MongoContentItemRepository(_ContentSearchRepository[ContentItemDocument]):
         async def transaction(session: AsyncClientSession) -> ContentItemDocument:
             await self._versions.insert_one(version_payload, session=session)
             raw = await self._collection.find_one_and_update(
-                {
-                    "_id": validated_item.id,
-                    "profile_id": self.profile_id,
-                    "revision": expected_revision,
-                },
+                self._owned_filter(
+                    {
+                        "_id": validated_item.id,
+                        "profile_id": self.profile_id,
+                        "revision": expected_revision,
+                        **(
+                            {
+                                "identity_version": validated_item.identity_version,
+                                "legacy_adoption_id": validated_item.legacy_adoption_id,
+                            }
+                            if validated_item.org_id
+                            else {}
+                        ),
+                    }
+                ),
                 {"$set": changes, "$inc": {"revision": 1}},
                 session=session,
                 return_document=True,
@@ -537,8 +601,16 @@ class MongoContentItemRepository(_ContentSearchRepository[ContentItemDocument]):
 class MongoContentVersionRepository(_ProfileRepository[ContentVersionDocument]):
     """Append and page immutable content-version snapshots."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], profile_id: str) -> None:
-        super().__init__(database, "content_versions", ContentVersionDocument, profile_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        profile_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(
+            database, "content_versions", ContentVersionDocument, profile_id, tenant=tenant
+        )
 
     async def create(self, document: ContentVersionDocument) -> ContentVersionDocument:
         return await self._create_for_profile(document)
@@ -547,10 +619,13 @@ class MongoContentVersionRepository(_ProfileRepository[ContentVersionDocument]):
         content_identifier = validate_identifier(content_id)
         if isinstance(version, bool) or version < 1:
             raise ValueError("version must be a positive integer")
-        return await self._get_for_profile(
-            deterministic_object_id(
-                "content_version", self.profile_id, content_identifier, str(version)
-            )
+        return await self._get(
+            {
+                **self._identity_filter(
+                    "content_version", self.profile_id, content_identifier, str(version)
+                ),
+                "profile_id": self.profile_id,
+            }
         )
 
     async def list(
@@ -569,16 +644,25 @@ class MongoContentVersionRepository(_ProfileRepository[ContentVersionDocument]):
 class MongoContentLinkRepository(_ProfileRepository[ContentLinkDocument]):
     """Persist profile-scoped source provenance links."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], profile_id: str) -> None:
-        super().__init__(database, "content_links", ContentLinkDocument, profile_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        profile_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(database, "content_links", ContentLinkDocument, profile_id, tenant=tenant)
 
     async def create(self, document: ContentLinkDocument) -> ContentLinkDocument:
         return await self._create_for_profile(document)
 
     async def get(self, link_id: str) -> ContentLinkDocument | None:
         identifier = validate_identifier(link_id)
-        return await self._get_for_profile(
-            deterministic_object_id("content_link", self.profile_id, identifier)
+        return await self._get(
+            {
+                **self._identity_filter("content_link", self.profile_id, identifier),
+                "profile_id": self.profile_id,
+            }
         )
 
     async def list(
@@ -595,16 +679,27 @@ class MongoContentLinkRepository(_ProfileRepository[ContentLinkDocument]):
 class MongoContentMetricRepository(_ProfileRepository[ContentMetricDocument]):
     """Persist immutable observations for later, explicitly requested analysis."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], profile_id: str) -> None:
-        super().__init__(database, "content_metrics", ContentMetricDocument, profile_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        profile_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(
+            database, "content_metrics", ContentMetricDocument, profile_id, tenant=tenant
+        )
 
     async def create(self, document: ContentMetricDocument) -> ContentMetricDocument:
         return await self._create_for_profile(document)
 
     async def get(self, metric_id: str) -> ContentMetricDocument | None:
         identifier = validate_identifier(metric_id)
-        return await self._get_for_profile(
-            deterministic_object_id("content_metric", self.profile_id, identifier)
+        return await self._get(
+            {
+                **self._identity_filter("content_metric", self.profile_id, identifier),
+                "profile_id": self.profile_id,
+            }
         )
 
     async def list(
@@ -674,16 +769,27 @@ class MongoContentMetricRepository(_ProfileRepository[ContentMetricDocument]):
 class MongoContentCampaignRepository(_ProfileRepository[ContentCampaignDocument]):
     """Persist profile-owned content campaign metadata."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], profile_id: str) -> None:
-        super().__init__(database, "content_campaigns", ContentCampaignDocument, profile_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        profile_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(
+            database, "content_campaigns", ContentCampaignDocument, profile_id, tenant=tenant
+        )
 
     async def create(self, document: ContentCampaignDocument) -> ContentCampaignDocument:
         return await self._create_for_profile(document)
 
     async def get(self, campaign_id: str) -> ContentCampaignDocument | None:
         identifier = validate_identifier(campaign_id)
-        return await self._get_for_profile(
-            deterministic_object_id("content_campaign", self.profile_id, identifier)
+        return await self._get(
+            {
+                **self._identity_filter("content_campaign", self.profile_id, identifier),
+                "profile_id": self.profile_id,
+            }
         )
 
     async def list(

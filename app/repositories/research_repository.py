@@ -29,7 +29,7 @@ from app.db.research_search import (
     record_vector_filter,
 )
 from app.db.vector_indexes import VECTOR_PATH
-from app.models.common import MongoDocumentModel, Page, deterministic_object_id, validate_identifier
+from app.models.common import MongoDocumentModel, Page, validate_identifier
 from app.models.research import (
     CandidateState,
     ClaimState,
@@ -58,6 +58,7 @@ from app.models.research import (
 from app.repositories.base import DEFAULT_PAGE_SIZE, SCORE_FIELD, MongoRepository, SearchMethod
 from app.repositories.errors import ProjectIsolationError
 from app.repositories.vectors import validated_vector
+from app.security.tenant import TenantContext
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,15 +123,17 @@ class ResearchProjectScopedRepository[TDocument: MongoDocumentModel](Protocol):
 class MongoResearchProjectRepository(MongoRepository[ResearchProjectDocument]):
     """Persist research-project boundaries by stable public identifier."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument]) -> None:
-        super().__init__(database, "research_projects", ResearchProjectDocument)
+    def __init__(
+        self, database: AsyncDatabase[MongoDocument], *, tenant: TenantContext | None = None
+    ) -> None:
+        super().__init__(database, "research_projects", ResearchProjectDocument, tenant=tenant)
 
     async def create(self, document: ResearchProjectDocument) -> ResearchProjectDocument:
         return await self._create(document)
 
     async def get(self, research_project_id: str) -> ResearchProjectDocument | None:
         identifier = validate_identifier(research_project_id)
-        return await self._get({"_id": deterministic_object_id("research_project", identifier)})
+        return await self._get(self._identity_filter("research_project", identifier))
 
     async def list(
         self,
@@ -170,8 +173,10 @@ class _MongoResearchProjectScopedRepository[TDocument: MongoDocumentModel](
         collection_name: str,
         model_type: type[TDocument],
         research_project_id: str,
+        *,
+        tenant: TenantContext | None = None,
     ) -> None:
-        super().__init__(database, collection_name, model_type)
+        super().__init__(database, collection_name, model_type, tenant=tenant)
         self.research_project_id = validate_identifier(research_project_id)
 
     def _require_scope(self, document: TDocument) -> None:
@@ -209,8 +214,10 @@ class _MongoResearchProjectScopedRepository[TDocument: MongoDocumentModel](
 class MongoResearchSourceCatalogRepository(MongoRepository[ResearchSourceDocument]):
     """Look up a source identity before the service applies its stored project scope."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument]) -> None:
-        super().__init__(database, "research_sources", ResearchSourceDocument)
+    def __init__(
+        self, database: AsyncDatabase[MongoDocument], *, tenant: TenantContext | None = None
+    ) -> None:
+        super().__init__(database, "research_sources", ResearchSourceDocument, tenant=tenant)
 
     async def get(self, source_id: str) -> ResearchSourceDocument | None:
         return await self._get({"source_id": validate_identifier(source_id)})
@@ -219,8 +226,16 @@ class MongoResearchSourceCatalogRepository(MongoRepository[ResearchSourceDocumen
 class MongoResearchSourceRepository(_MongoResearchProjectScopedRepository[ResearchSourceDocument]):
     """Store registered sources without performing a network or file operation."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], research_project_id: str) -> None:
-        super().__init__(database, "research_sources", ResearchSourceDocument, research_project_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        research_project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(
+            database, "research_sources", ResearchSourceDocument, research_project_id, tenant=tenant
+        )
 
     async def create(self, document: ResearchSourceDocument) -> ResearchSourceDocument:
         return await self._create_scoped(document)
@@ -304,8 +319,16 @@ class MongoResearchSourceRepository(_MongoResearchProjectScopedRepository[Resear
 class MongoSourceSnapshotRepository(_MongoResearchProjectScopedRepository[SourceSnapshotDocument]):
     """Persist source versions, including commit/ETag metadata, without fetching."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], research_project_id: str) -> None:
-        super().__init__(database, "source_snapshots", SourceSnapshotDocument, research_project_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        research_project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(
+            database, "source_snapshots", SourceSnapshotDocument, research_project_id, tenant=tenant
+        )
 
     async def create(self, document: SourceSnapshotDocument) -> SourceSnapshotDocument:
         return await self._create_scoped(document)
@@ -389,9 +412,19 @@ class MongoResearchDocumentRepository(
 ):
     """Persist normalized retained document material and its storage policy."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], research_project_id: str) -> None:
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        research_project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
         super().__init__(
-            database, "research_documents", ResearchDocumentDocument, research_project_id
+            database,
+            "research_documents",
+            ResearchDocumentDocument,
+            research_project_id,
+            tenant=tenant,
         )
 
     async def create(self, document: ResearchDocumentDocument) -> ResearchDocumentDocument:
@@ -432,8 +465,16 @@ class MongoResearchDocumentRepository(
 class MongoResearchChunkRepository(_MongoResearchProjectScopedRepository[ResearchChunkDocument]):
     """Store citable chunks and optional local-model embeddings; never create them here."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], research_project_id: str) -> None:
-        super().__init__(database, "research_chunks", ResearchChunkDocument, research_project_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        research_project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(
+            database, "research_chunks", ResearchChunkDocument, research_project_id, tenant=tenant
+        )
 
     async def create(self, document: ResearchChunkDocument) -> ResearchChunkDocument:
         return await self._create_scoped(document)
@@ -558,8 +599,16 @@ class MongoResearchChunkRepository(_MongoResearchProjectScopedRepository[Researc
 class MongoResearchNoteRepository(_MongoResearchProjectScopedRepository[ResearchNoteDocument]):
     """Persist working notes without interpreting them as facts."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], research_project_id: str) -> None:
-        super().__init__(database, "research_notes", ResearchNoteDocument, research_project_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        research_project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(
+            database, "research_notes", ResearchNoteDocument, research_project_id, tenant=tenant
+        )
 
     async def create(self, document: ResearchNoteDocument) -> ResearchNoteDocument:
         return await self._create_scoped(document)
@@ -643,8 +692,16 @@ class MongoResearchNoteRepository(_MongoResearchProjectScopedRepository[Research
 class MongoResearchClaimRepository(_MongoResearchProjectScopedRepository[ResearchClaimDocument]):
     """Persist explicit claim state; no repository derives support or confidence."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], research_project_id: str) -> None:
-        super().__init__(database, "research_claims", ResearchClaimDocument, research_project_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        research_project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(
+            database, "research_claims", ResearchClaimDocument, research_project_id, tenant=tenant
+        )
 
     async def create(self, document: ResearchClaimDocument) -> ResearchClaimDocument:
         return await self._create_scoped(document)
@@ -730,9 +787,19 @@ class MongoResearchCitationRepository(
 ):
     """Persist citable source-version evidence relations without claim evaluation."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], research_project_id: str) -> None:
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        research_project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
         super().__init__(
-            database, "research_citations", ResearchCitationDocument, research_project_id
+            database,
+            "research_citations",
+            ResearchCitationDocument,
+            research_project_id,
+            tenant=tenant,
         )
 
     async def create(self, document: ResearchCitationDocument) -> ResearchCitationDocument:
@@ -775,8 +842,16 @@ class MongoResearchCitationRepository(
 class MongoResearchBriefRepository(_MongoResearchProjectScopedRepository[ResearchBriefDocument]):
     """Persist structured briefs with evidence and uncertainty fields intact."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], research_project_id: str) -> None:
-        super().__init__(database, "research_briefs", ResearchBriefDocument, research_project_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        research_project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(
+            database, "research_briefs", ResearchBriefDocument, research_project_id, tenant=tenant
+        )
 
     async def create(self, document: ResearchBriefDocument) -> ResearchBriefDocument:
         return await self._create_scoped(document)
@@ -810,9 +885,19 @@ class MongoKnowledgeCandidateRepository(
 ):
     """Persist review-gated proposals without a promotion operation."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], research_project_id: str) -> None:
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        research_project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
         super().__init__(
-            database, "knowledge_candidates", KnowledgeCandidateDocument, research_project_id
+            database,
+            "knowledge_candidates",
+            KnowledgeCandidateDocument,
+            research_project_id,
+            tenant=tenant,
         )
 
     async def create(self, document: KnowledgeCandidateDocument) -> KnowledgeCandidateDocument:
@@ -852,12 +937,19 @@ class MongoSkillUpdateProposalRepository(
 ):
     """Persist review-only generated patches without access to V1 skill writes or Git."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], research_project_id: str) -> None:
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        research_project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
         super().__init__(
             database,
             "skill_update_proposals",
             SkillUpdateProposalDocument,
             research_project_id,
+            tenant=tenant,
         )
 
     async def create(self, document: SkillUpdateProposalDocument) -> SkillUpdateProposalDocument:
@@ -895,8 +987,16 @@ class MongoSkillUpdateProposalRepository(
 class MongoPromotionEventRepository(_MongoResearchProjectScopedRepository[PromotionEventDocument]):
     """Append-only persistence adapter for decisions made elsewhere."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], research_project_id: str) -> None:
-        super().__init__(database, "promotion_events", PromotionEventDocument, research_project_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        research_project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(
+            database, "promotion_events", PromotionEventDocument, research_project_id, tenant=tenant
+        )
 
     async def create(self, document: PromotionEventDocument) -> PromotionEventDocument:
         return await self._create_scoped(document)
@@ -930,8 +1030,16 @@ class MongoPromotionEventRepository(_MongoResearchProjectScopedRepository[Promot
 class MongoIngestionJobRepository(_MongoResearchProjectScopedRepository[IngestionJobDocument]):
     """Persist job lifecycle metadata without a queue, worker, or source execution."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], research_project_id: str) -> None:
-        super().__init__(database, "ingestion_jobs", IngestionJobDocument, research_project_id)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        research_project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(
+            database, "ingestion_jobs", IngestionJobDocument, research_project_id, tenant=tenant
+        )
 
     async def create(self, document: IngestionJobDocument) -> IngestionJobDocument:
         return await self._create_scoped(document)

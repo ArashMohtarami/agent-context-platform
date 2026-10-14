@@ -8,6 +8,7 @@ from app.models.common import Page, validate_identifier
 from app.models.retrieval_log import RetrievalLogDocument, RetrievalMethod
 from app.repositories.base import DEFAULT_PAGE_SIZE, MongoRepository
 from app.repositories.errors import ProjectIsolationError
+from app.security.tenant import TenantContext
 
 
 class MongoRetrievalLogRepository(MongoRepository[RetrievalLogDocument]):
@@ -18,8 +19,9 @@ class MongoRetrievalLogRepository(MongoRepository[RetrievalLogDocument]):
         database: AsyncDatabase[MongoDocument],
         *,
         project_id: str | None,
+        tenant: TenantContext | None = None,
     ) -> None:
-        super().__init__(database, "retrieval_logs", RetrievalLogDocument)
+        super().__init__(database, "retrieval_logs", RetrievalLogDocument, tenant=tenant)
         self.project_id = validate_identifier(project_id) if project_id is not None else None
 
     def _require_scope(self, document: RetrievalLogDocument) -> None:

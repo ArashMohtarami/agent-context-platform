@@ -336,7 +336,9 @@ class KnowledgeCandidateService:
                 "review_notes": reason,
             }
         )
-        reviewed = KnowledgeCandidateDocument.model_validate(payload)
+        reviewed = KnowledgeCandidateDocument.model_validate(
+            payload, context={"from_storage": True}
+        )
         updated = await self._candidates(research_project_id).update(
             reviewed,
             expected_revision=expected_revision,
@@ -482,7 +484,9 @@ class KnowledgeCandidateService:
         promoted_at = max(self._clock(), candidate.updated_at)
         payload = candidate.model_dump(by_alias=True, mode="python")
         payload.update({"status": CandidateState.PROMOTED, "updated_at": promoted_at})
-        promoted = KnowledgeCandidateDocument.model_validate(payload)
+        promoted = KnowledgeCandidateDocument.model_validate(
+            payload, context={"from_storage": True}
+        )
         updated = await self._candidates(research_project_id).update(
             promoted,
             expected_revision=expected_revision,

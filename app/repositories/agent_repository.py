@@ -21,21 +21,24 @@ from app.models.agent import (
     ProjectBindingDocument,
     ProjectBindingType,
 )
-from app.models.common import Page, deterministic_object_id
+from app.models.common import Page
 from app.repositories.base import DEFAULT_PAGE_SIZE, MongoRepository
+from app.security.tenant import TenantContext
 
 
 class MongoAgentClientRepository(MongoRepository[AgentClientDocument]):
     """Persist registered agent identities independently of their credentials."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument]) -> None:
-        super().__init__(database, "agent_clients", AgentClientDocument)
+    def __init__(
+        self, database: AsyncDatabase[MongoDocument], *, tenant: TenantContext | None = None
+    ) -> None:
+        super().__init__(database, "agent_clients", AgentClientDocument, tenant=tenant)
 
     async def create(self, document: AgentClientDocument) -> AgentClientDocument:
         return await self._create(document)
 
     async def get(self, client_id: str) -> AgentClientDocument | None:
-        return await self._get({"_id": deterministic_object_id("agent-client", client_id)})
+        return await self._get(self._identity_filter("agent-client", client_id))
 
     async def list(
         self,
@@ -66,8 +69,10 @@ class MongoAgentClientRepository(MongoRepository[AgentClientDocument]):
 class MongoAgentSessionRepository(MongoRepository[AgentSessionDocument]):
     """Persist lightweight session metadata without retaining conversations."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument]) -> None:
-        super().__init__(database, "agent_sessions", AgentSessionDocument)
+    def __init__(
+        self, database: AsyncDatabase[MongoDocument], *, tenant: TenantContext | None = None
+    ) -> None:
+        super().__init__(database, "agent_sessions", AgentSessionDocument, tenant=tenant)
 
     async def create(self, document: AgentSessionDocument) -> AgentSessionDocument:
         return await self._create(document)
@@ -121,14 +126,16 @@ class MongoAgentSessionRepository(MongoRepository[AgentSessionDocument]):
 class MongoProjectBindingRepository(MongoRepository[ProjectBindingDocument]):
     """Persist explicit, conflict-free repository-to-project mappings."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument]) -> None:
-        super().__init__(database, "project_bindings", ProjectBindingDocument)
+    def __init__(
+        self, database: AsyncDatabase[MongoDocument], *, tenant: TenantContext | None = None
+    ) -> None:
+        super().__init__(database, "project_bindings", ProjectBindingDocument, tenant=tenant)
 
     async def create(self, document: ProjectBindingDocument) -> ProjectBindingDocument:
         return await self._create(document)
 
     async def get(self, binding_id: str) -> ProjectBindingDocument | None:
-        return await self._get({"_id": deterministic_object_id("project-binding", binding_id)})
+        return await self._get(self._identity_filter("project-binding", binding_id))
 
     async def get_mapping(
         self, binding_type: ProjectBindingType, value: str
@@ -192,7 +199,7 @@ class MongoProjectBindingRepository(MongoRepository[ProjectBindingDocument]):
     async def delete(self, binding_id: str, *, expected_revision: int) -> bool:
         """Delete only the exact revision the caller reviewed."""
         return await self._delete(
-            deterministic_object_id("project-binding", binding_id),
+            await self._identity_record_id("project-binding", binding_id),
             expected_revision=expected_revision,
         )
 
@@ -217,8 +224,10 @@ class MongoProjectBindingRepository(MongoRepository[ProjectBindingDocument]):
 class MongoAgentActivityRepository(MongoRepository[AgentActivityDocument]):
     """Append and paginate content-free agent activity records."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument]) -> None:
-        super().__init__(database, "agent_activity", AgentActivityDocument)
+    def __init__(
+        self, database: AsyncDatabase[MongoDocument], *, tenant: TenantContext | None = None
+    ) -> None:
+        super().__init__(database, "agent_activity", AgentActivityDocument, tenant=tenant)
 
     async def create(self, document: AgentActivityDocument) -> AgentActivityDocument:
         return await self._create(document)

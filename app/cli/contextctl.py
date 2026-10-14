@@ -31,6 +31,7 @@ from app.cli.commands import (
     keys,
     memory,
     note,
+    organizations,
     project,
     projects,
     research,
@@ -98,6 +99,7 @@ def build_parser() -> argparse.ArgumentParser:
         dest="api_timeout",
         help="override CONTEXTCTL_REQUEST_TIMEOUT_SECONDS for this command",
     )
+    parser.add_argument("--org-id", help="explicit organization for V6 operator work")
     groups = parser.add_subparsers(dest="group", metavar="COMMAND", required=True)
     for module in (
         agent,
@@ -118,6 +120,7 @@ def build_parser() -> argparse.ArgumentParser:
         health,
         integration,
         backup,
+        organizations,
     ):
         module.add_arguments(groups)
     return parser
@@ -178,7 +181,17 @@ def _reason(message: str) -> str:
 async def _dispatch(arguments: argparse.Namespace) -> Result:
     """Run one command."""
     handler = arguments.handler
-    result: Result = await handler(arguments, _settings(arguments))
+    from app.security.tenant import TenantContext, tenant_scope
+
+    if arguments.org_id is not None and arguments.group == "backup":
+        raise UsageError(
+            "backup/restore is installation-wide; --org-id is not a tenant restore selector"
+        )
+    if arguments.org_id is not None:
+        with tenant_scope(TenantContext(arguments.org_id)):
+            result: Result = await handler(arguments, _settings(arguments))
+            return result
+    result = await handler(arguments, _settings(arguments))
     return result
 
 
@@ -224,6 +237,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return EXIT_FAILED
 
     render(result, as_json=as_json)
+    if arguments.group == "organizations" and result.data.get("compatible") is False:
+        return EXIT_FAILED
     return EXIT_OK
 
 

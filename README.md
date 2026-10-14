@@ -131,6 +131,7 @@ served independently on a public IP; see [website deployment](docs/website.md).
 | Evidence-backed research | [Research workflow](docs/research.md) |
 | Technical content | [Creator profiles](docs/creator.md), [storage](docs/content-storage.md), [publication review](docs/content-publication-safety.md), [manual publishing](docs/content-publishing.md) |
 | Operations | [Deployment](docs/deployment.md), [security](docs/security.md), [backup and recovery](docs/backup.md), [observability](docs/observability.md) |
+| V6 maintenance foundation (domain traffic stays sealed after adoption) | [Tenant adoption](docs/tenant-adoption.md) |
 | Licenses and dependency notices | [MIT License](LICENSE), [third-party notices](docs/third-party-notices.md) |
 
 ## Development and verification

@@ -15,6 +15,7 @@ from app.models.skill import LifecycleStatus, SkillDocument, SkillTrustLevel
 from app.models.skill_chunk import SkillChunkDocument
 from app.repositories.base import DEFAULT_PAGE_SIZE, MongoRepository
 from app.repositories.errors import ConcurrencyConflictError
+from app.security.tenant import TenantContext
 from app.skills.types import SkillLexicalMatch, SkillVersionKey
 
 # Skill metadata filters are resolved to version keys before a chunk query, so
@@ -25,8 +26,10 @@ MAX_VERSION_KEYS = 500
 class MongoSkillRepository(MongoRepository[SkillDocument]):
     """Persist skill versions while limiting updates to lifecycle status."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument]) -> None:
-        super().__init__(database, "skills", SkillDocument)
+    def __init__(
+        self, database: AsyncDatabase[MongoDocument], *, tenant: TenantContext | None = None
+    ) -> None:
+        super().__init__(database, "skills", SkillDocument, tenant=tenant)
         self._database = database
         self._chunks = database["skill_chunks"]
 
@@ -34,7 +37,7 @@ class MongoSkillRepository(MongoRepository[SkillDocument]):
         return await self._create(document)
 
     async def get(self, skill_id: str, version: str) -> SkillDocument | None:
-        return await self._get({"_id": deterministic_object_id("skill", skill_id, version)})
+        return await self._get(self._identity_filter("skill", skill_id, version))
 
     async def get_active(self, skill_id: str) -> SkillDocument | None:
         """Return the single active version of a skill."""
@@ -130,7 +133,12 @@ class MongoSkillRepository(MongoRepository[SkillDocument]):
         document_ids = [
             deterministic_object_id("skill", key.skill_id, key.version) for key in unique
         ]
-        cursor = self._collection.find({"_id": {"$in": document_ids}})
+        query: MongoDocument = {"_id": {"$in": document_ids}}
+        if self._tenant is not None:
+            query = self._owned_filter(
+                {"$or": [{"skill_id": key.skill_id, "version": key.version} for key in unique]}
+            )
+        cursor = self._collection.find(query)
         raw_documents = await cursor.limit(len(document_ids)).to_list(length=len(document_ids))
         return tuple(self._validate(raw) for raw in raw_documents)
 
@@ -138,7 +146,7 @@ class MongoSkillRepository(MongoRepository[SkillDocument]):
         """Return bounded version history in newest-imported-first order."""
         if isinstance(limit, bool) or not 1 <= limit <= 100:
             raise ValueError("version limit must be between 1 and 100")
-        cursor = self._collection.find({"skill_id": skill_id})
+        cursor = self._collection.find(self._owned_filter({"skill_id": skill_id}))
         cursor = cursor.sort([("created_at", -1), ("_id", -1)])
         raw_documents = await cursor.limit(limit).to_list(length=limit)
         return tuple(self._validate(raw) for raw in raw_documents)
@@ -211,7 +219,10 @@ class MongoSkillRepository(MongoRepository[SkillDocument]):
             if not isinstance(raw_chunks, list):
                 raise ValueError("MongoDB returned invalid matched skill chunks")
             skill = self._validate(raw_match)
-            chunks = tuple(SkillChunkDocument.model_validate(raw) for raw in raw_chunks)
+            chunks = tuple(
+                SkillChunkDocument.model_validate(raw, context={"from_storage": True})
+                for raw in raw_chunks
+            )
             matches.append(SkillLexicalMatch(skill=skill, matched_chunks=chunks))
         return tuple(matches)
 
@@ -226,6 +237,10 @@ class MongoSkillRepository(MongoRepository[SkillDocument]):
         layer to classify a concurrent retry as unchanged or conflicting.
         """
         validated_skill = self._validate(skill.model_dump(by_alias=True, mode="python"))
+        if validated_skill.identity_version == 1:
+            raise ValueError("only adoption may insert legacy tenant identities")
+        if validated_skill.org_id is not None and self._tenant is None:
+            raise ValueError("skill import requires explicit trusted organization context")
         if validated_skill.status != "active":
             raise ValueError("a newly installed skill version must be active")
         if not chunks:
@@ -252,19 +267,21 @@ class MongoSkillRepository(MongoRepository[SkillDocument]):
 
         async def transaction(session: AsyncClientSession) -> bool:
             existing = await self._collection.find_one(
-                {"_id": validated_skill.id},
+                self._identity_filter("skill", validated_skill.skill_id, validated_skill.version),
                 session=session,
             )
             if existing is not None:
                 return False
             current_raw = await self._collection.find_one(
-                {"skill_id": validated_skill.skill_id, "status": "active"},
+                self._owned_filter({"skill_id": validated_skill.skill_id, "status": "active"}),
                 session=session,
             )
             if current_raw is not None:
                 current = self._validate(current_raw)
                 result = await self._collection.update_one(
-                    {"_id": current.id, "revision": current.revision, "status": "active"},
+                    self._owned_filter(
+                        {"_id": current.id, "revision": current.revision, "status": "active"}
+                    ),
                     {
                         "$set": {"status": "superseded", "updated_at": utc_now()},
                         "$inc": {"revision": 1},
@@ -288,7 +305,7 @@ class MongoSkillRepository(MongoRepository[SkillDocument]):
         *,
         expected_revision: int,
     ) -> SkillDocument:
-        document_id = deterministic_object_id("skill", skill_id, version)
+        document_id = await self._identity_record_id("skill", skill_id, version)
         return await self._update_fields(
             document_id,
             expected_revision=expected_revision,
@@ -296,5 +313,5 @@ class MongoSkillRepository(MongoRepository[SkillDocument]):
         )
 
     async def delete(self, skill_id: str, version: str, *, expected_revision: int) -> bool:
-        document_id: ObjectId = deterministic_object_id("skill", skill_id, version)
+        document_id: ObjectId = await self._identity_record_id("skill", skill_id, version)
         return await self._delete(document_id, expected_revision=expected_revision)

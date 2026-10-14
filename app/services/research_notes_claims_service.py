@@ -204,7 +204,7 @@ class ResearchNotesClaimsService:
             )
         payload = current.model_dump(by_alias=True, mode="python")
         payload.update(changes)
-        updated = ResearchNoteDocument.model_validate(payload)
+        updated = ResearchNoteDocument.model_validate(payload, context={"from_storage": True})
         return await self._notes(research_project_id).update(
             updated, expected_revision=expected_revision
         )
@@ -322,7 +322,7 @@ class ResearchNotesClaimsService:
                 if key not in {"supporting_citation_ids", "contradicting_citation_ids"}
             }
         )
-        updated = ResearchClaimDocument.model_validate(payload)
+        updated = ResearchClaimDocument.model_validate(payload, context={"from_storage": True})
         await self._validate_citations(
             research_project_id=research_project_id,
             claim_id=claim_id,

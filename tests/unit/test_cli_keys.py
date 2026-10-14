@@ -10,6 +10,7 @@ from collections.abc import Iterator
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -57,7 +58,8 @@ def platform(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Platform]:
 
     class FakeClient:
         def __init__(self, settings: Any) -> None:
-            self.database = object()
+            self.database = MagicMock()
+            self.database["_tenant_control"].find_one = AsyncMock(return_value=None)
 
         async def connect(self, *, require_search: bool = True) -> None:
             state.required_search = require_search

@@ -65,6 +65,7 @@ from app.repositories.api_key_repository import MongoApiKeyRepository
 from app.repositories.audit_repository import MongoAuditRepository
 from app.repositories.client_profile_repository import MongoClientProfileRepository
 from app.repositories.idempotency_repository import MongoGatewayIdempotencyRepository
+from app.security.tenant_maintenance import TenantMaintenanceMiddleware
 from app.services.agent_activity_service import AgentActivityService
 from app.services.agent_client_service import AgentClientService
 from app.services.agent_session_service import AgentSessionService
@@ -200,7 +201,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         record_build_info()
         mongodb = MongoDBClient(resolved_settings)
         await mongodb.connect()
-        await initialize_database(mongodb.database)
+        if resolved_settings.v6_tenant_foundation:
+            await initialize_database(mongodb.database, tenant_foundation=True)
+        else:
+            await initialize_database(mongodb.database)
+        application.state.tenant_control_database = mongodb.database
         await start_lexical_search(mongodb.database)
         embeddings = build_embedding_service(resolved_settings)
         await start_embeddings(embeddings, mongodb.database)
@@ -257,6 +262,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.add_exception_handler(PyMongoError, unavailable_dependency)
     # Outermost first: a body too large is refused before anything reads it,
     # and every answer carries the security headers whatever produced it.
+    application.add_middleware(TenantMaintenanceMiddleware)
     application.add_middleware(SecurityHeadersMiddleware)
     application.add_middleware(
         RequestSizeLimitMiddleware,

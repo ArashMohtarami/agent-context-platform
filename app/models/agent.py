@@ -15,7 +15,6 @@ from app.models.common import (
     Metadata,
     MongoDocumentModel,
     ShortText,
-    deterministic_object_id,
     normalize_mongo_timestamp,
     populate_deterministic_id,
     validate_identifier,
@@ -187,7 +186,7 @@ class AgentClientDocument(MongoDocumentModel):
     @model_validator(mode="after")
     def validate_id(self) -> "AgentClientDocument":
         """Prevent an accidental mismatch between Mongo and public identity."""
-        if self.id != deterministic_object_id("agent-client", self.client_id):
+        if self.id != self.identity_id("agent-client", self.client_id):
             raise ValueError("_id does not match client_id")
         return self
 
@@ -278,7 +277,7 @@ class ProjectBindingDocument(MongoDocumentModel):
 
     @model_validator(mode="after")
     def validate_id(self) -> "ProjectBindingDocument":
-        expected = deterministic_object_id("project-binding", self.binding_id)
+        expected = self.identity_id("project-binding", self.binding_id)
         if self.id != expected:
             raise ValueError("_id does not match binding_id")
         return self

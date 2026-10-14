@@ -35,6 +35,8 @@ from app.db.research_indexes import (
 from app.db.text_indexes import ensure_text_indexes
 from app.db.vector_indexes import ensure_vector_indexes
 from app.embeddings.errors import EmbeddingError
+from app.security.tenant import current_tenant
+from app.security.tenant_maintenance import check_operator_context
 from app.services.embedding_service import build_embedding_service
 from app.skills.errors import SkillError
 
@@ -129,7 +131,11 @@ async def reindex(arguments: argparse.Namespace, settings: Settings) -> Result:
         ) from error
     actions: dict[str, str] = {}
     try:
-        await initialize_database(mongodb.database)
+        await check_operator_context(mongodb.database, enabled=settings.v6_tenant_foundation)
+        await initialize_database(
+            mongodb.database,
+            tenant_foundation=settings.v6_tenant_foundation or current_tenant() is not None,
+        )
         actions["mongodb_schema_and_indexes"] = "verified"
         if arguments.database_only:
             data = {"indexes": actions, "vectors": False}

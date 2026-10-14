@@ -28,6 +28,7 @@ from app.repositories.base import (
 )
 from app.repositories.errors import ProjectIsolationError
 from app.repositories.vectors import validated_vector
+from app.security.tenant import TenantContext
 
 DEFAULT_SEARCH_LIMIT = 10
 MAX_SEARCH_LIMIT = 50
@@ -42,8 +43,14 @@ class MongoProjectContextRepository(MongoRepository[ProjectContextDocument]):
     naming a different project is refused rather than quietly answered.
     """
 
-    def __init__(self, database: AsyncDatabase[MongoDocument], project_id: str) -> None:
-        super().__init__(database, "project_context", ProjectContextDocument)
+    def __init__(
+        self,
+        database: AsyncDatabase[MongoDocument],
+        project_id: str,
+        *,
+        tenant: TenantContext | None = None,
+    ) -> None:
+        super().__init__(database, "project_context", ProjectContextDocument, tenant=tenant)
         self.project_id = validate_identifier(project_id)
 
     def _require_scope(self, document: ProjectContextDocument) -> None:

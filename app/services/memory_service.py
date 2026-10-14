@@ -403,4 +403,4 @@ def _applied(
     payload = document.model_dump(by_alias=True, mode="python")
     payload.update(changes)
     payload["revision"] = revision
-    return MemoryDocument.model_validate(payload)
+    return MemoryDocument.model_validate(payload, context={"from_storage": True})

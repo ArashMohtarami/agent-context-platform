@@ -19,12 +19,14 @@ from app.models.common import (
     MongoObjectId,
     Page,
     decode_page_cursor,
+    deterministic_object_id,
     encode_page_cursor,
     utc_now,
 )
 from app.observability.instruments import record_search
 from app.provenance import attribute
 from app.repositories.errors import ConcurrencyConflictError, DuplicateDocumentError
+from app.security.tenant import TenantContext, TenantContextRequired, current_tenant
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -43,6 +45,8 @@ class MongoRepository[TDocument: MongoDocumentModel]:
         database: AsyncDatabase[MongoDocument],
         collection_name: str,
         model_type: type[TDocument],
+        *,
+        tenant: TenantContext | None = None,
     ) -> None:
         self._collection: AsyncCollection[MongoDocument] = database[collection_name]
         # Kept as the name this repository was built for rather than read back
@@ -50,11 +54,46 @@ class MongoRepository[TDocument: MongoDocumentModel]:
         # metrics, and a label has to be a string the application chose.
         self._collection_name = collection_name
         self._model_type = model_type
+        self._tenant = tenant or current_tenant()
+
+    def _owned_filter(self, filters: Mapping[str, object]) -> MongoDocument:
+        query = dict(filters)
+        if self._tenant is not None:
+            if "org_id" in query and query["org_id"] != self._tenant.org_id:
+                raise TenantContextRequired("query organization conflicts with trusted context")
+            query["org_id"] = self._tenant.org_id
+        return query
+
+    def _identity_filter(self, namespace: str, *parts: str) -> MongoDocument:
+        if self._tenant is None:
+            return {"_id": deterministic_object_id(namespace, *parts)}
+        from app.db.tenant_inventory import IDENTITY_FIELDS
+
+        fields = IDENTITY_FIELDS[namespace]
+        values: list[object] = list(parts)
+        if namespace == "content_version":
+            values[-1] = int(parts[-1])
+        return self._owned_filter(dict(zip(fields, values, strict=True)))
+
+    async def _identity_record_id(self, namespace: str, *parts: str) -> ObjectId:
+        if self._tenant is None:
+            return deterministic_object_id(namespace, *parts)
+        document = await self._get(self._identity_filter(namespace, *parts))
+        if document is None:
+            raise ConcurrencyConflictError("document is absent or was concurrently modified")
+        return document.id
 
     def _validate(self, value: object) -> TDocument:
-        return self._model_type.model_validate(value)
+        document = self._model_type.model_validate(value, context={"from_storage": True})
+        if self._tenant is not None and document.org_id != self._tenant.org_id:
+            raise TenantContextRequired("document organization conflicts with trusted context")
+        return document
 
     async def _create(self, document: TDocument) -> TDocument:
+        if document.identity_version == 1:
+            raise ValueError("only adoption may insert legacy tenant identities")
+        if document.org_id is not None and self._tenant is None:
+            raise TenantContextRequired("tenant writes require trusted organization context")
         document = attribute(document)
         validated = self._validate(document.model_dump(by_alias=True, mode="python"))
         payload = cast(
@@ -70,7 +109,7 @@ class MongoRepository[TDocument: MongoDocumentModel]:
         return validated
 
     async def _get(self, filters: Mapping[str, object]) -> TDocument | None:
-        raw = await self._collection.find_one(dict(filters))
+        raw = await self._collection.find_one(self._owned_filter(filters))
         return self._validate(raw) if raw is not None else None
 
     async def _page(
@@ -104,7 +143,7 @@ class MongoRepository[TDocument: MongoDocumentModel]:
         else:
             query = {"$and": query_parts}
 
-        mongo_cursor = self._collection.find(query)
+        mongo_cursor = self._collection.find(self._owned_filter(query))
         mongo_cursor = mongo_cursor.sort([("created_at", ASCENDING), ("_id", ASCENDING)])
         raw_documents = await mongo_cursor.limit(limit + 1).to_list(length=limit + 1)
         has_more = len(raw_documents) > limit
@@ -139,7 +178,7 @@ class MongoRepository[TDocument: MongoDocumentModel]:
             bounds["$lte"] = updated_before
         if bounds:
             query["updated_at"] = bounds
-        cursor = self._collection.find(query)
+        cursor = self._collection.find(self._owned_filter(query))
         cursor = cursor.sort([("updated_at", DESCENDING), ("_id", DESCENDING)])
         raw_documents = await cursor.limit(limit).to_list(length=limit)
         return tuple(self._validate(raw) for raw in raw_documents)
@@ -214,15 +253,31 @@ class MongoRepository[TDocument: MongoDocumentModel]:
             MongoDocument,
             validated.model_dump(by_alias=True, mode="python"),
         )
-        for immutable_field in ("_id", "created_at", "updated_at", "revision"):
+        for immutable_field in (
+            "_id",
+            "created_at",
+            "updated_at",
+            "revision",
+            "org_id",
+            "identity_version",
+            "legacy_adoption_id",
+        ):
             changes.pop(immutable_field, None)
         changes["updated_at"] = utc_now()
 
         query: MongoDocument = {"_id": validated.id, "revision": expected_revision}
         if filters:
             query.update(filters)
+        if document.org_id is not None:
+            if self._tenant is None:
+                raise TenantContextRequired("tenant writes require trusted organization context")
+            query.update(
+                org_id=document.org_id,
+                identity_version=document.identity_version,
+                legacy_adoption_id=document.legacy_adoption_id,
+            )
         raw = await self._collection.find_one_and_update(
-            query,
+            self._owned_filter(query),
             {"$set": changes, "$inc": {"revision": 1}},
             return_document=ReturnDocument.AFTER,
         )
@@ -241,12 +296,17 @@ class MongoRepository[TDocument: MongoDocumentModel]:
         if isinstance(expected_revision, bool) or expected_revision < 1:
             raise ValueError("expected_revision must be a positive integer")
         update_fields = dict(changes)
+        if any(
+            key.split(".", 1)[0] in {"org_id", "identity_version", "legacy_adoption_id", "_id"}
+            for key in update_fields
+        ):
+            raise ValueError("ownership and identity metadata are immutable")
         update_fields["updated_at"] = utc_now()
         query: MongoDocument = {"_id": document_id, "revision": expected_revision}
         if filters:
             query.update(filters)
         raw = await self._collection.find_one_and_update(
-            query,
+            self._owned_filter(query),
             {"$set": update_fields, "$inc": {"revision": 1}},
             return_document=ReturnDocument.AFTER,
         )
@@ -264,5 +324,5 @@ class MongoRepository[TDocument: MongoDocumentModel]:
         query: MongoDocument = {"_id": document_id, "revision": expected_revision}
         if filters:
             query.update(filters)
-        result = await self._collection.delete_one(query)
+        result = await self._collection.delete_one(self._owned_filter(query))
         return result.deleted_count == 1

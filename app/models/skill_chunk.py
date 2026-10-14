@@ -8,7 +8,6 @@ from app.models.common import (
     Metadata,
     MongoDocumentModel,
     ShortText,
-    deterministic_object_id,
     populate_deterministic_id,
 )
 from app.models.embedding import EmbeddingFields
@@ -40,7 +39,7 @@ class SkillChunkDocument(EmbeddingFields, MongoDocumentModel):
     @model_validator(mode="after")
     def validate_id(self) -> "SkillChunkDocument":
         """Prevent chunk identity drift."""
-        expected = deterministic_object_id(
+        expected = self.identity_id(
             "skill_chunk",
             self.skill_id,
             self.skill_version,

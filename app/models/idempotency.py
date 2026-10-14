@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import AwareDatetime, Field, field_validator, model_validator
 
-from app.models.common import Identifier, Metadata, MongoDocumentModel, deterministic_object_id
+from app.models.common import Identifier, Metadata, MongoDocumentModel, document_object_id
 
 
 class IdempotencyRecordStatus(StrEnum):
@@ -83,14 +83,14 @@ class IdempotencyRecordDocument(MongoDocumentModel):
         ):
             return value
         populated = dict(value)
-        populated["_id"] = deterministic_object_id(
-            "gateway-idempotency", client_id, operation, key_hash
+        populated["_id"] = document_object_id(
+            value, "gateway-idempotency", client_id, operation, key_hash
         )
         return populated
 
     @model_validator(mode="after")
     def validate_state(self) -> "IdempotencyRecordDocument":
-        expected = deterministic_object_id(
+        expected = self.identity_id(
             "gateway-idempotency", self.client_id, self.operation, self.key_hash
         )
         if self.id != expected:

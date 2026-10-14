@@ -133,7 +133,7 @@ class ResearchProjectService:
             project_ids=related,
             owner_key_id=current.authorization.owner_key_id,
         )
-        updated = ResearchProjectDocument.model_validate(payload)
+        updated = ResearchProjectDocument.model_validate(payload, context={"from_storage": True})
         return await self._projects.update(updated, expected_revision=expected_revision)
 
     async def _require_related_projects(self, related_project_ids: Sequence[str]) -> None:

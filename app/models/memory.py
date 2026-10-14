@@ -13,7 +13,7 @@ from app.models.common import (
     MongoObjectId,
     ShortText,
     TaggedDocument,
-    deterministic_object_id,
+    document_object_id,
 )
 from app.models.embedding import EmbeddingFields
 from app.models.promotion import PromotionProvenance
@@ -73,7 +73,7 @@ class MemoryDocument(EmbeddingFields, TaggedDocument):
                 return value
             parts.append(client_id)
         parts.append(external_id)
-        populated["_id"] = deterministic_object_id(*parts)
+        populated["_id"] = document_object_id(value, *parts)
         return populated
 
     @field_validator("last_used_at")
@@ -108,7 +108,7 @@ class MemoryDocument(EmbeddingFields, TaggedDocument):
                     raise ValueError("agent memory requires client_id")
                 parts.append(self.client_id)
             parts.append(self.external_id)
-            expected = deterministic_object_id(*parts)
+            expected = self.identity_id(*parts)
             if self.id != expected:
                 raise ValueError("_id does not match memory scope and external_id")
         return self

@@ -174,7 +174,8 @@ class ProjectBindingService:
         if not changes:
             raise ValueError("provide at least one project binding field to update")
         candidate = ProjectBindingDocument.model_validate(
-            current.model_dump(by_alias=True, mode="python") | changes
+            current.model_dump(by_alias=True, mode="python") | changes,
+            context={"from_storage": True},
         )
         await self._ensure_available(candidate, excluding_binding_id=current.binding_id)
         try:

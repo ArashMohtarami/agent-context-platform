@@ -6,7 +6,6 @@ from app.models.common import (
     Identifier,
     ShortText,
     TaggedDocument,
-    deterministic_object_id,
     populate_deterministic_id,
 )
 
@@ -29,6 +28,6 @@ class ProjectDocument(TaggedDocument):
     @model_validator(mode="after")
     def validate_id(self) -> "ProjectDocument":
         """Prevent project identity drift."""
-        if self.id != deterministic_object_id("project", self.project_id):
+        if self.id != self.identity_id("project", self.project_id):
             raise ValueError("_id does not match project_id")
         return self

@@ -10,13 +10,16 @@ from app.db.client_types import MongoDocument
 from app.models.audit_log import AuditLogDocument, AuditOutcome
 from app.models.common import Page
 from app.repositories.base import DEFAULT_PAGE_SIZE, MongoRepository
+from app.security.tenant import TenantContext
 
 
 class MongoAuditRepository(MongoRepository[AuditLogDocument]):
     """Append to, and read back, the record of authorization decisions."""
 
-    def __init__(self, database: AsyncDatabase[MongoDocument]) -> None:
-        super().__init__(database, "audit_logs", AuditLogDocument)
+    def __init__(
+        self, database: AsyncDatabase[MongoDocument], *, tenant: TenantContext | None = None
+    ) -> None:
+        super().__init__(database, "audit_logs", AuditLogDocument, tenant=tenant)
 
     async def create(self, document: AuditLogDocument) -> AuditLogDocument:
         """Append one decision."""

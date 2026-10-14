@@ -23,6 +23,7 @@ from app.db.client import MongoDBClient, MongoDBNotReadyError
 from app.repositories.api_key_repository import MongoApiKeyRepository
 from app.repositories.audit_repository import MongoAuditRepository
 from app.security.scopes import ALL_SCOPES, REQUIRED_SCOPES, SCOPE_DESCRIPTIONS
+from app.security.tenant_maintenance import check_operator_context
 from app.services.api_key_service import ApiKeyNotFoundError, ApiKeyService
 from app.services.audit_service import AuditService
 
@@ -159,8 +160,9 @@ async def _platform(settings: Settings) -> AsyncIterator[tuple[ApiKeyService, Au
             "MongoDB is not ready",
             hint="keys are issued at the database, so it has to be running",
         ) from error
-    audit = MongoAuditRepository(mongodb.database) if settings.audit_log_enabled else None
     try:
+        await check_operator_context(mongodb.database, enabled=settings.v6_tenant_foundation)
+        audit = MongoAuditRepository(mongodb.database) if settings.audit_log_enabled else None
         yield ApiKeyService(MongoApiKeyRepository(mongodb.database)), AuditService(audit)
     finally:
         await mongodb.close()

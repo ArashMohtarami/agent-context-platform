@@ -10,7 +10,6 @@ from app.models.common import (
     Identifier,
     ShortText,
     TaggedDocument,
-    deterministic_object_id,
     populate_deterministic_id,
 )
 from app.models.embedding import EmbeddingFields
@@ -68,7 +67,7 @@ class ProjectContextDocument(EmbeddingFields, TaggedDocument):
     def validate_external_id(self) -> "ProjectContextDocument":
         """Keep an external idempotency key aligned with `_id`."""
         if self.external_id is not None:
-            expected = deterministic_object_id("project_context", self.project_id, self.external_id)
+            expected = self.identity_id("project_context", self.project_id, self.external_id)
             if self.id != expected:
                 raise ValueError("_id does not match project_id and external_id")
         return self

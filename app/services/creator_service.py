@@ -143,7 +143,7 @@ class CreatorService:
             raise ConcurrencyConflictError("creator profile changed after it was read")
         payload = current.model_dump(by_alias=True, mode="python")
         payload.update(changes)
-        updated = CreatorProfileDocument.model_validate(payload)
+        updated = CreatorProfileDocument.model_validate(payload, context={"from_storage": True})
         return await self._profiles.update(updated, expected_revision=expected_revision)
 
     async def create_pillar(
@@ -202,5 +202,5 @@ class CreatorService:
             raise ConcurrencyConflictError("content pillar changed after it was read")
         payload = current.model_dump(by_alias=True, mode="python")
         payload.update(changes)
-        updated = ContentPillarDocument.model_validate(payload)
+        updated = ContentPillarDocument.model_validate(payload, context={"from_storage": True})
         return await repository.update(updated, expected_revision=expected_revision)

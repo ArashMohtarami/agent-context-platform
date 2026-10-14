@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 
 from app.core.config import Settings, get_settings
@@ -15,6 +16,8 @@ from app.db.vector_indexes import ensure_vector_indexes
 from app.embeddings.errors import EmbeddingError
 from app.repositories.skill_chunk_repository import MongoSkillChunkRepository
 from app.repositories.skill_repository import MongoSkillRepository
+from app.security.tenant import TenantContext, current_tenant, tenant_scope
+from app.security.tenant_maintenance import check_operator_context
 from app.services.embedding_service import EmbeddingService, build_embedding_service
 from app.services.skill_service import ChunkEmbedder, SkillService
 from app.skills.chunker import MarkdownSkillChunker
@@ -37,6 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="store chunks without vectors instead of loading the local model",
     )
+    parser.add_argument("--org-id", help="explicit organization on a V6 installation")
     return parser
 
 
@@ -76,7 +80,11 @@ async def import_skills(
     mongodb = MongoDBClient(settings)
     await mongodb.connect()
     try:
-        await initialize_database(mongodb.database)
+        await check_operator_context(mongodb.database, enabled=settings.v6_tenant_foundation)
+        await initialize_database(
+            mongodb.database,
+            tenant_foundation=settings.v6_tenant_foundation or current_tenant() is not None,
+        )
         await ensure_text_indexes(mongodb.database)
         if embedding_service is not None:
             # Fail before any write when the configured model is unusable, and
@@ -106,13 +114,14 @@ def main() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
     try:
-        report = asyncio.run(
-            import_skills(
-                settings,
-                arguments.directory,
-                embeddings=not arguments.no_embeddings,
+        with tenant_scope(TenantContext(arguments.org_id)) if arguments.org_id else nullcontext():
+            report = asyncio.run(
+                import_skills(
+                    settings,
+                    arguments.directory,
+                    embeddings=not arguments.no_embeddings,
+                )
             )
-        )
     except (SkillError, EmbeddingError, SearchUnavailableError, ValueError) as error:
         print(f"Skill import failed: {error}", file=sys.stderr)
         raise SystemExit(1) from error

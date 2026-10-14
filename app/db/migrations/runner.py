@@ -49,6 +49,7 @@ from app.db.migrations.v032_skill_update_proposal_actor import SkillUpdatePropos
 from app.db.migrations.v033_client_profiles import ClientProfileMigration
 from app.db.migrations.v034_client_profile_lifecycle import ClientProfileLifecycleMigration
 from app.db.migrations.v035_gemini_client_type import GeminiClientTypeMigration
+from app.db.migrations.v036_tenant_foundation import TenantFoundationMigration
 
 MIGRATIONS: Final[tuple[Migration, ...]] = (
     InitialSchemaMigration(),
@@ -86,10 +87,13 @@ MIGRATIONS: Final[tuple[Migration, ...]] = (
     ClientProfileMigration(),
     ClientProfileLifecycleMigration(),
     GeminiClientTypeMigration(),
+    TenantFoundationMigration(),
 )
 
 
-async def run_migrations(database: AsyncDatabase[MongoDocument]) -> None:
+async def run_migrations(
+    database: AsyncDatabase[MongoDocument], *, tenant_foundation: bool = False
+) -> None:
     """Apply each unapplied migration and record its version once."""
     history = database["_schema_migrations"]
     await history.create_index("version", unique=True, name="migration_version_uq")
@@ -98,7 +102,11 @@ async def run_migrations(database: AsyncDatabase[MongoDocument]) -> None:
         async for document in history.find({}, {"version": 1, "_id": 0})
         if isinstance(document.get("version"), int)
     }
+    if 36 in applied and not tenant_foundation:
+        raise RuntimeError("tenant schema requires the tenant-aware maintenance binary")
     for migration in MIGRATIONS:
+        if migration.version >= 36 and not tenant_foundation:
+            continue
         if migration.version in applied:
             continue
         await migration.up(database)

@@ -15,6 +15,7 @@ from app.repositories.agent_repository import (
     MongoAgentClientRepository,
 )
 from app.repositories.api_key_repository import MongoApiKeyRepository
+from app.security.tenant_maintenance import check_operator_context
 from app.services.agent_client_service import AgentClientNotFoundError, AgentClientService
 from app.services.api_key_service import ApiKeyService
 
@@ -90,6 +91,7 @@ async def activity(args: argparse.Namespace, settings: Settings) -> Result:
     mongodb = MongoDBClient(settings)
     await mongodb.connect(require_search=False)
     try:
+        await check_operator_context(mongodb.database, enabled=settings.v6_tenant_foundation)
         page = await MongoAgentActivityRepository(mongodb.database).list(
             client_id=args.client_id,
             session_id=args.session_id,
@@ -125,6 +127,7 @@ async def _service(settings: Settings) -> AsyncIterator[AgentClientService]:
     mongodb = MongoDBClient(settings)
     await mongodb.connect(require_search=False)
     try:
+        await check_operator_context(mongodb.database, enabled=settings.v6_tenant_foundation)
         yield AgentClientService(
             MongoAgentClientRepository(mongodb.database),
             ApiKeyService(MongoApiKeyRepository(mongodb.database)),

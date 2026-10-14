@@ -206,7 +206,7 @@ class ContextService:
         payload = existing.model_dump(by_alias=True, mode="python")
         payload.update(changes)
         payload["revision"] = revision
-        updated = ProjectContextDocument.model_validate(payload)
+        updated = ProjectContextDocument.model_validate(payload, context={"from_storage": True})
         if updated.title != existing.title or updated.content != existing.content:
             updated = await self._embedded(updated)
         return await repository.update(updated, expected_revision=revision)
@@ -240,4 +240,4 @@ class ContextService:
             embedding_dimensions=vector.dimensions,
             embedding_generated_at=utc_now(),
         )
-        return ProjectContextDocument.model_validate(payload)
+        return ProjectContextDocument.model_validate(payload, context={"from_storage": True})

@@ -28,6 +28,7 @@ from app.repositories.base import (
 )
 from app.repositories.errors import ProjectIsolationError
 from app.repositories.vectors import validated_vector
+from app.security.tenant import TenantContext
 
 DEFAULT_SEARCH_LIMIT = 10
 MAX_SEARCH_LIMIT = 50
@@ -50,8 +51,9 @@ class MongoMemoryRepository(MongoRepository[MemoryDocument]):
         project_id: str | None,
         client_id: str | None = None,
         scope: MemoryScope | None = None,
+        tenant: TenantContext | None = None,
     ) -> None:
-        super().__init__(database, "memories", MemoryDocument)
+        super().__init__(database, "memories", MemoryDocument, tenant=tenant)
         self.project_id = validate_identifier(project_id) if project_id is not None else None
         self.client_id = validate_identifier(client_id) if client_id is not None else None
         self.scope = _address_scope(self.project_id, self.client_id, scope)

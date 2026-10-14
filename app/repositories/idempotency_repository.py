@@ -8,17 +8,21 @@ from pymongo.errors import DuplicateKeyError
 
 from app.db.client_types import MongoDocument
 from app.models.idempotency import IdempotencyRecordDocument, IdempotencyRecordStatus
+from app.repositories.base import MongoRepository
 from app.repositories.errors import DuplicateDocumentError
 
 
-class MongoGatewayIdempotencyRepository:
+class MongoGatewayIdempotencyRepository(MongoRepository[IdempotencyRecordDocument]):
     """Store only hashed idempotency identities and bounded replay results."""
 
     def __init__(self, database: AsyncDatabase[MongoDocument]) -> None:
-        self._collection = database["gateway_idempotency"]
+        super().__init__(database, "gateway_idempotency", IdempotencyRecordDocument)
 
     async def create(self, document: IdempotencyRecordDocument) -> IdempotencyRecordDocument:
         """Create a reservation, reporting a natural-key race to the service."""
+        if document.identity_version == 1:
+            raise ValueError("only adoption may insert legacy tenant identities")
+        document = self._validate(document.model_dump(by_alias=True, mode="python"))
         payload = document.model_dump(by_alias=True, mode="python")
         try:
             await self._collection.insert_one(payload)
@@ -29,10 +33,9 @@ class MongoGatewayIdempotencyRepository:
     async def get(
         self, *, client_id: str, operation: str, key_hash: str
     ) -> IdempotencyRecordDocument | None:
-        raw = await self._collection.find_one(
+        return await self._get(
             {"client_id": client_id, "operation": operation, "key_hash": key_hash}
         )
-        return None if raw is None else IdempotencyRecordDocument.model_validate(raw)
 
     async def complete(
         self,
@@ -43,11 +46,13 @@ class MongoGatewayIdempotencyRepository:
     ) -> IdempotencyRecordDocument | None:
         """Attach a result only to this still-pending reservation."""
         raw = await self._collection.find_one_and_update(
-            {
-                "_id": document.id,
-                "payload_hash": document.payload_hash,
-                "status": IdempotencyRecordStatus.IN_PROGRESS.value,
-            },
+            self._owned_filter(
+                {
+                    "_id": document.id,
+                    "payload_hash": document.payload_hash,
+                    "status": IdempotencyRecordStatus.IN_PROGRESS.value,
+                }
+            ),
             {
                 "$set": {
                     "status": IdempotencyRecordStatus.COMPLETED.value,
@@ -57,18 +62,20 @@ class MongoGatewayIdempotencyRepository:
             },
             return_document=ReturnDocument.AFTER,
         )
-        return None if raw is None else IdempotencyRecordDocument.model_validate(raw)
+        return None if raw is None else self._validate(raw)
 
     async def abandon(self, document: IdempotencyRecordDocument) -> None:
         """Release a known-safe failed attempt before it has produced a result."""
         await self._collection.delete_one(
-            {
-                "_id": document.id,
-                "payload_hash": document.payload_hash,
-                "status": IdempotencyRecordStatus.IN_PROGRESS.value,
-            }
+            self._owned_filter(
+                {
+                    "_id": document.id,
+                    "payload_hash": document.payload_hash,
+                    "status": IdempotencyRecordStatus.IN_PROGRESS.value,
+                }
+            )
         )
 
     async def prune_expired(self, now: datetime) -> None:
         """Bound storage promptly; the TTL index remains the crash-safe backstop."""
-        await self._collection.delete_many({"expires_at": {"$lte": now}})
+        await self._collection.delete_many(self._owned_filter({"expires_at": {"$lte": now}}))
