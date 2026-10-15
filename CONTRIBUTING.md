@@ -34,6 +34,34 @@ Use a separate host or an override that changes database, volume, network, and
 port names; never run destructive fixture tests against your real knowledge
 database. Follow [deployment](docs/deployment.md) for configuration details.
 
+## Local code graph
+
+[Graphify](https://github.com/Graphify-Labs/graphify) is optional developer tooling
+(Apache-2.0, with bundled third-party notices). Install the official `graphifyy`
+package in its own environment, then build a local structural graph:
+
+```bash
+make graphify-setup
+make graphify
+.graphify/venv/bin/graphify query "tenant isolation and credential authentication"
+.graphify/venv/bin/graphify explain "TenantCollection"
+```
+
+Open `graphify-out/graph.html` to explore the graph; `graph.json` and
+`GRAPH_REPORT.md` are alongside it. Run `make graphify` after source changes.
+Large graphs render a community overview in HTML; CLI queries use the full graph.
+The commands use local parsing and clustering, skip semantic document extraction,
+and disable model-generated community labels. They need no provider key. The
+graph helps navigation; inferred edges do not establish runtime behavior or
+security coverage. The default install uses Louvain clustering when the optional
+Leiden dependency is absent.
+
+`.graphifyignore` excludes credentials, private planning, agent configuration,
+dependencies, and generated output. `.graphify/` and `graphify-out/` stay out of
+Git, Docker builds, and source releases. Keep outputs local; no assistant hooks,
+hosted service, or MCP server is required for these commands. See the official
+[CLI reference](https://docs.graphify.com/reference/overview) for graph queries.
+
 ## Changes to the platform
 
 Keep routes, MCP tools, and API-backed CLI commands thin. Put lifecycle,
