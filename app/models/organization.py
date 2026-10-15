@@ -13,7 +13,7 @@ class OrganizationDocument(MongoDocumentModel):
     org_id: Identifier = Field(frozen=True)
     name: ShortText
     slug: Identifier
-    status: Literal["sealed", "suspended"] = "sealed"
+    status: Literal["sealed", "active", "suspended"] = "sealed"
     auth_policy: Literal["local_only", "sso_preferred", "sso_required"] = "sso_preferred"
     policy_version: int = Field(default=1, ge=1)
 

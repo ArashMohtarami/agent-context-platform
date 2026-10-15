@@ -18,6 +18,7 @@ from typing import Protocol, cast
 
 from app.embeddings.types import EmbeddingVector
 from app.models.common import Metadata
+from app.models.job_authority import JobAuthority
 from app.models.research import (
     CitationLocator,
     IngestionJobDocument,
@@ -52,6 +53,14 @@ from app.research.repository import (
     RepositoryFile,
     RepositorySourceProvider,
 )
+from app.security.job_authority import (
+    JobAuthorityError,
+    MongoJobAuthorityChecker,
+    job_authority_scope,
+)
+from app.security.tenant import require_tenant
+from app.security.tenant_policy import current_policy, policy_allows
+from app.security.tenant_service import tenant_service
 from app.services.embedding_service import EmbeddingService
 
 
@@ -146,6 +155,7 @@ class IngestionJobRepository(Protocol):
     ) -> IngestionJobDocument: ...
 
 
+@tenant_service
 class ResearchIngestionService:
     """Store one safe source version, its normalized content, chunks, and vectors."""
 
@@ -166,9 +176,11 @@ class ResearchIngestionService:
         repository_chunker: RepositoryCodeChunker | None = None,
         limiter: ResearchIngestionLimiter | None = None,
         max_chunks_per_ingestion: int = 500,
+        authority_checker: MongoJobAuthorityChecker | None = None,
     ) -> None:
         if max_chunks_per_ingestion < 1:
             raise ValueError("research chunk limit must be positive")
+        self._authority_checker = authority_checker
         self._snapshots = snapshots
         self._documents = documents
         self._chunks = chunks
@@ -199,11 +211,43 @@ class ResearchIngestionService:
         acquisition remains read-only and provider-scoped: the service has no
         URL, filesystem, or command input of its own.
         """
+        if source.org_id != require_tenant().org_id or not policy_allows(
+            source.model_dump(by_alias=True), "research_sources"
+        ):
+            raise ResearchIngestionInputError("source is unavailable")
+        authority = self._authority(source)
+
+        async def recheck() -> None:
+            await self._check_authority(authority)
+
+        await recheck()
         if source.status is not ResearchRecordStatus.ACTIVE:
             raise ResearchIngestionInputError("only active sources can be ingested")
         provider = self._provider_for(source, manually_provided, payload)
-        async with self._limiter.reserve():
-            return await self._ingest_with_provider(source, payload, provider)
+        with job_authority_scope(recheck):
+            async with self._limiter.reserve():
+                return await self._ingest_with_provider(source, payload, provider)
+
+    def _authority(self, source: ResearchSourceDocument) -> JobAuthority:
+        policy = current_policy()
+        return JobAuthority(
+            org_id=require_tenant().org_id,
+            key_id=None if policy is None or policy.operator else policy.subject_id,
+            client_id=policy.client_id if policy else None,
+            project_ids=policy.selector("research:write", "project") if policy else None,
+            profile_ids=policy.selector("research:write", "creator_profile") if policy else None,
+            research_project_id=source.research_project_id,
+            source_id=source.source_id,
+        )
+
+    async def _check_authority(self, authority: JobAuthority | None) -> None:
+        if authority is None or authority.org_id != require_tenant().org_id:
+            raise JobAuthorityError("job initiating authority is unavailable")
+        if self._authority_checker is None:
+            if authority.key_id is not None:
+                raise JobAuthorityError("job authority rechecker is not configured")
+            return
+        await self._authority_checker.check(authority)
 
     async def _ingest_with_provider(
         self,
@@ -212,6 +256,7 @@ class ResearchIngestionService:
         provider: SourceProvider | RepositorySourceProvider,
     ) -> IngestionResult:
         """Run the bounded work after a shared capacity slot has been reserved."""
+        await self._check_authority(self._authority(source))
         extracted: ExtractedResearchDocument | ExtractedRepository | None = None
         if payload.acquire_url or payload.acquire_repository:
             try:
@@ -247,6 +292,7 @@ class ResearchIngestionService:
         job_id = _job_id(source.source_id, snapshot.content_hash)
         existing = await jobs.get(job_id)
         if existing is not None:
+            await self._check_authority(existing.initiating_authority)
             return IngestionResult(
                 job=existing,
                 snapshot=snapshot,
@@ -254,6 +300,7 @@ class ResearchIngestionService:
             )
 
         pending = IngestionJobDocument(
+            initiating_authority=self._authority(source),
             research_project_id=source.research_project_id,
             job_id=job_id,
             source_id=source.source_id,
@@ -266,6 +313,7 @@ class ResearchIngestionService:
             concurrent = await jobs.get(job_id)
             if concurrent is None:
                 raise
+            await self._check_authority(concurrent.initiating_authority)
             return IngestionResult(
                 job=concurrent,
                 snapshot=snapshot,
@@ -321,6 +369,7 @@ class ResearchIngestionService:
             documents_created=created_documents,
             chunks_created=created_chunks,
         )
+        await self._check_authority(completed.initiating_authority)
         return IngestionResult(job=completed, snapshot=snapshot, idempotent=False)
 
     def _enforce_chunk_limit(self, count: int) -> None:
@@ -378,6 +427,12 @@ class ResearchIngestionService:
         job = await self._jobs(research_project_id).get(job_id)
         if job is None:
             raise ResearchIngestionJobNotFoundError("research ingestion job was not found")
+        try:
+            await self._check_authority(job.initiating_authority)
+        except JobAuthorityError as error:
+            raise ResearchIngestionJobNotFoundError(
+                "research ingestion job was not found"
+            ) from error
         return job
 
     async def _snapshot_for(

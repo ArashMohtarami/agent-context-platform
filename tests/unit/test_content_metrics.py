@@ -378,3 +378,9 @@ async def test_metrics_api_enforces_content_scopes_and_project_grants() -> None:
 
     assert write_refused.status_code == 403
     assert project_refused.status_code == 403
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

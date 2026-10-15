@@ -34,6 +34,12 @@ The repository includes a [skill catalog](docs/skill-catalog.md), a fictional
 [small Notes API](examples/starter-notes-api/README.md), and an isolated
 [async Django example](examples/django-async/README.md).
 
+V6 setup requires explicit [legacy adoption](docs/tenant-adoption.md) and
+[tenant isolation cutover](docs/tenant-isolation.md) before domain traffic is enabled.
+The workflows below assume completed setup and organization-bound credentials.
+Provisioning, import, and administrative commands require `--org-id`; human
+management dashboards remain disabled.
+
 ## Quick start
 
 Run from this checkout. You need Docker with Compose v2, Python 3.12+, OpenSSL,

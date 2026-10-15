@@ -53,6 +53,7 @@ from app.search.logging import (
     RetrievalLogger,
     StructuredRetrievalLogger,
 )
+from app.security.job_authority import MongoJobAuthorityChecker
 from app.services.agent_session_service import (
     AgentSessionAccessError,
     AgentSessionNotFoundError,
@@ -160,6 +161,7 @@ def get_research_ingestion_service(request: Request) -> ResearchIngestionService
         lambda research_project_id: MongoIngestionJobRepository(database, research_project_id),
         request.app.state.embeddings,
         limiter=limiter,
+        authority_checker=MongoJobAuthorityChecker(database),
         max_chunks_per_ingestion=request.app.state.settings.research_max_chunks_per_ingestion,
     )
 
@@ -444,7 +446,7 @@ def get_retrieval_service(request: Request) -> RetrievalService:
     Lexical retrieval works without an embedding model, so a disabled model is
     refused by the vector endpoint rather than by this dependency. Project
     context is wired in as a source here; a request that names no project still
-    reaches none of it, while global memory belongs to every request.
+    reaches none of it, while global memory stays inside the verified organization.
     """
     embeddings: EmbeddingService | None = request.app.state.embeddings
     settings: Settings = request.app.state.settings

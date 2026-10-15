@@ -129,8 +129,8 @@ class CollectionSearchReadiness(BaseModel):
 class AuthenticationReadiness(BaseModel):
     """Whether this deployment requires a credential.
 
-    Reported so an open platform is visible rather than assumed: `enabled:
-    false` means every endpoint answers without a key.
+    Tenant domain startup requires authentication. This diagnostic reports
+    configuration; it never establishes organization authority.
     """
 
     enabled: bool

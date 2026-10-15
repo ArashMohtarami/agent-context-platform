@@ -387,3 +387,9 @@ async def test_source_registration_refuses_an_exhausted_project_quota() -> None:
         )
 
     assert tuple(store.sources) == ("provider-docs",)
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

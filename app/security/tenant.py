@@ -8,7 +8,7 @@ import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 _IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 
@@ -22,6 +22,7 @@ class TenantContext:
     """One immutable organization, selected by a verified server/operator boundary."""
 
     org_id: str
+    cursor_secret: bytes | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.org_id, str) or _IDENTIFIER.fullmatch(self.org_id) is None:
@@ -41,6 +42,20 @@ def require_tenant() -> TenantContext:
     if context is None:
         raise TenantContextRequired("trusted organization context is required")
     return context
+
+
+def establish_tenant(context: TenantContext) -> None:
+    """Bind verified server identity; request selectors must never call this."""
+    _current.set(context)
+
+
+@contextmanager
+def tenant_request_boundary() -> Iterator[None]:
+    token = _current.set(None)
+    try:
+        yield
+    finally:
+        _current.reset(token)
 
 
 @contextmanager

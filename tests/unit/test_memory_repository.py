@@ -83,7 +83,9 @@ async def test_a_global_repository_pre_filters_to_global_memory() -> None:
         filters=MemoryQueryFilters(scopes=("global",), status=None),
     )
 
-    assert pipeline_of(collection)[0]["$vectorSearch"]["filter"] == {"scope": {"$eq": "global"}}
+    assert pipeline_of(collection)[0]["$vectorSearch"]["filter"] == {
+        "$and": [{"scope": {"$eq": "global"}}, {"org_id": "org-test"}]
+    }
 
 
 @pytest.mark.asyncio
@@ -158,6 +160,7 @@ async def test_reads_are_scoped_to_the_repository_s_scope() -> None:
     await repository.get(document.id)
 
     assert collection.find_one.await_args.args[0] == {
+        "org_id": "org-test",
         "_id": document.id,
         "scope": "project",
         "project_id": PROJECT,
@@ -225,6 +228,7 @@ async def test_listing_filters_within_the_scope() -> None:
     await repository.list(memory_type="preference", status="active", tags=["python"])
 
     assert collection.find.call_args.args[0] == {
+        "org_id": "org-test",
         "scope": "project",
         "project_id": PROJECT,
         "client_id": None,
@@ -262,3 +266,9 @@ async def test_scoped_search_results_keep_their_own_scope() -> None:
     assert [match.memory.scope for match in matches] == ["global", "project"]
     assert [match.memory.project_id for match in matches] == [None, PROJECT]
     assert matches[0].key != matches[1].key
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

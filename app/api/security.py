@@ -23,9 +23,9 @@ from app.security.principal import (
     AuthenticationError,
     AuthorizationError,
     Principal,
-    unauthenticated_principal,
 )
 from app.security.scopes import Scope
+from app.security.tenant_policy import bind_principal, select_action
 from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
 
@@ -57,9 +57,8 @@ async def current_principal(
 ) -> Principal:
     """Resolve who is calling, or refuse the request.
 
-    When a deployment has authentication switched off this returns the open
-    principal rather than skipping the dependency, so every endpoint still runs
-    the same code path and there is no branch that bypasses a check.
+    Authentication-disabled deployments and unowned credentials fail closed.
+    Organization context comes only from the verified credential.
     """
     state = request.app.state
     if not hasattr(state, "auth") or not hasattr(state, "audit"):
@@ -74,12 +73,10 @@ async def current_principal(
     auth: AuthService | None = state.auth
     audit: AuditService = state.audit
     if auth is None:
-        # Explicitly open, decided once at startup and reported by readiness.
-        principal = unauthenticated_principal()
-        provenance.set_principal(principal)
-        return principal
+        raise HTTPException(status_code=401, detail=_UNAUTHENTICATED_DETAIL, headers=_CHALLENGE)
     try:
         principal = await auth.authenticate(credential(authorization))
+        bind_principal(principal)
     except AuthenticationError as error:
         await audit.record(
             "authenticate",
@@ -107,6 +104,7 @@ async def authorize_scope(request: Request, principal: Principal, scope: Scope) 
     audit: AuditService = request.app.state.audit
     try:
         principal.require_scope(scope)
+        select_action(scope)
     except AuthorizationError as error:
         _denied(principal, reason="scope", scope=scope, path=request.url.path)
         await audit.record(

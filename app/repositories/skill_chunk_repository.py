@@ -1,8 +1,6 @@
 """MongoDB repository for skill chunks, including vector retrieval."""
 
-from base64 import b64decode, urlsafe_b64encode
 from collections.abc import Sequence
-from json import JSONDecodeError, dumps, loads
 
 from bson import ObjectId
 from pymongo import ASCENDING
@@ -15,7 +13,7 @@ from app.db.text_indexes import (
     version_filter_clauses,
 )
 from app.db.vector_indexes import SKILL_CHUNK_VECTOR_INDEX, VECTOR_PATH
-from app.models.common import InvalidCursorError, Page
+from app.models.common import Page
 from app.models.skill_chunk import SkillChunkDocument
 from app.repositories.base import (
     DEFAULT_PAGE_SIZE,
@@ -25,6 +23,7 @@ from app.repositories.base import (
 )
 from app.repositories.vectors import validated_vector
 from app.security.tenant import TenantContext
+from app.security.tenant_cursor import binding, decode_chunk_cursor, encode_chunk_cursor
 from app.skills.types import SkillChunkMatch, SkillVersionKey
 
 DEFAULT_SEARCH_LIMIT = 10
@@ -66,8 +65,9 @@ class MongoSkillChunkRepository(MongoRepository[SkillChunkDocument]):
         if isinstance(limit, bool) or not 1 <= limit <= 50:
             raise ValueError("limit must be between 1 and 50")
         filters: MongoDocument = {"skill_id": skill_id, "skill_version": skill_version}
+        cursor_scope = binding("skill_chunks", filters)
         if cursor is not None:
-            chunk_index, document_id = _decode_chunk_cursor(cursor)
+            chunk_index, document_id = decode_chunk_cursor(cursor, cursor_scope)
             filters["$or"] = [
                 {"chunk_index": {"$gt": chunk_index}},
                 {"chunk_index": chunk_index, "_id": {"$gt": document_id}},
@@ -80,7 +80,7 @@ class MongoSkillChunkRepository(MongoRepository[SkillChunkDocument]):
         next_cursor = None
         if has_more and documents:
             last = documents[-1]
-            next_cursor = _encode_chunk_cursor(last.chunk_index, last.id)
+            next_cursor = encode_chunk_cursor(last.chunk_index, last.id, cursor_scope)
         return Page(items=documents, next_cursor=next_cursor)
 
     async def vector_search(
@@ -195,31 +195,3 @@ def _version_filter(skill_versions: Sequence[SkillVersionKey]) -> MongoDocument 
     if len(clauses) == 1:
         return clauses[0]
     return {"$or": clauses}
-
-
-def _encode_chunk_cursor(chunk_index: int, document_id: ObjectId) -> str:
-    payload = dumps(
-        {"chunk_index": chunk_index, "id": str(document_id)},
-        separators=(",", ":"),
-    ).encode()
-    return urlsafe_b64encode(payload).decode().rstrip("=")
-
-
-def _decode_chunk_cursor(cursor: str) -> tuple[int, ObjectId]:
-    try:
-        padding = "=" * (-len(cursor) % 4)
-        payload = loads(b64decode(cursor + padding, altchars=b"-_", validate=True))
-        chunk_index = payload["chunk_index"]
-        document_id_text = payload["id"]
-        if (
-            isinstance(chunk_index, bool)
-            or not isinstance(chunk_index, int)
-            or chunk_index < 0
-            or not isinstance(document_id_text, str)
-            or not ObjectId.is_valid(document_id_text)
-        ):
-            raise ValueError
-        document_id = ObjectId(document_id_text)
-    except (KeyError, TypeError, ValueError, JSONDecodeError) as error:
-        raise InvalidCursorError("invalid skill chunk cursor") from error
-    return chunk_index, document_id

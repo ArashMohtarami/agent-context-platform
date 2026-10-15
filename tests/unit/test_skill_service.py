@@ -251,3 +251,9 @@ async def test_an_unchanged_import_does_not_embed_again() -> None:
     assert repeated.action == "unchanged"
     assert repeated.chunks_embedded == 0
     assert len(embedder.calls) == 1
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

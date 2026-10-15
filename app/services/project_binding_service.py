@@ -20,6 +20,7 @@ from app.models.common import Page
 from app.models.project import ProjectDocument
 from app.projects.bindings import normalize_binding_value
 from app.repositories.errors import ConcurrencyConflictError, DuplicateDocumentError
+from app.security.tenant_service import tenant_service
 
 
 class ProjectBindingNotFoundError(Exception):
@@ -97,6 +98,7 @@ class ProjectResolution:
     candidates: tuple[ProjectResolutionCandidate, ...] = ()
 
 
+@tenant_service
 class ProjectBindingService:
     """Manage explicit bindings and resolve them in documented priority order."""
 

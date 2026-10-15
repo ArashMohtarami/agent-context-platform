@@ -206,3 +206,9 @@ async def test_an_import_reports_what_it_did_as_one_structured_event(tmp_path: P
     assert logged.kwargs["extra"]["outcome"] == "ok"
     assert logged.kwargs["extra"]["result_count"] == 1
     assert logged.kwargs["extra"]["duration_ms"] >= 0.0
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing domain behavior uses an explicit test organization."""
+    yield

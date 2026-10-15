@@ -489,3 +489,9 @@ def test_locator_supports_url_page_and_lines_but_refuses_missing_location() -> N
     assert locator.line_start == 21
     with pytest.raises(ValidationError, match="must identify a source location"):
         CitationLocator()
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

@@ -15,6 +15,7 @@ class GatewayAuthenticationMiddleware:
     """
 
     def __init__(self, client: ContextApiClient, *, session_id: str | None = None) -> None:
+        self._org_id: str | None = None
         self._client = client
         self._session_id = None if session_id is None else validate_identifier(session_id)
 
@@ -35,11 +36,15 @@ class GatewayAuthenticationMiddleware:
     async def authenticate(self, request_id: str) -> ClientRequestContext:
         identity = await self._client.gateway_identity(session_id=self._session_id)
         try:
-            return ClientRequestContext.from_identity(
+            context = ClientRequestContext.from_identity(
                 identity,
                 request_id=request_id,
                 session_id=self._session_id,
             )
+            if self._org_id is not None and self._org_id != context.org_id:
+                raise ValueError("a gateway process cannot switch organizations")
+            self._org_id = context.org_id
+            return context
         except ValueError as error:
             # The API identity response is an internal contract.  If it is
             # malformed, refuse rather than granting a partial or widened

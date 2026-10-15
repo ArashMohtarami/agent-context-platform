@@ -21,6 +21,9 @@ class ClientRequestContext:
     agent activity provenance.
     """
 
+    org_id: str
+    key_id: str
+    allowed_profile_ids: tuple[str, ...] | None
     request_id: str
     client_id: str | None
     client_type: AgentClientType | None
@@ -29,6 +32,8 @@ class ClientRequestContext:
     session_id: str | None = None
 
     def __post_init__(self) -> None:
+        validate_identifier(self.org_id)
+        validate_identifier(self.key_id)
         validate_identifier(self.request_id)
         if self.client_id is not None:
             validate_identifier(self.client_id)
@@ -36,6 +41,11 @@ class ClientRequestContext:
             validate_identifier(self.session_id)
         if len(set(self.scopes)) != len(self.scopes):
             raise ValueError("gateway scopes must be unique")
+        if self.allowed_profile_ids is not None:
+            if len(set(self.allowed_profile_ids)) != len(self.allowed_profile_ids):
+                raise ValueError("gateway profile identifiers must be unique")
+            for profile_id in self.allowed_profile_ids:
+                validate_identifier(profile_id)
         if self.allowed_project_ids is not None:
             if len(set(self.allowed_project_ids)) != len(self.allowed_project_ids):
                 raise ValueError("gateway allowed project identifiers must be unique")
@@ -51,6 +61,18 @@ class ClientRequestContext:
         session_id: str | None = None,
     ) -> "ClientRequestContext":
         """Build a checked gateway context from the API's narrow identity reply."""
+        org_id = identity.get("org_id")
+        key_id = identity.get("key_id")
+        if not isinstance(org_id, str) or not isinstance(key_id, str):
+            raise ValueError("gateway identity requires a trusted organization and key")
+        if "allowed_profile_ids" not in identity:
+            raise ValueError("gateway profile selector is missing")
+        raw_profiles = identity["allowed_profile_ids"]
+        if raw_profiles is not None and (
+            not isinstance(raw_profiles, list) or not all(isinstance(v, str) for v in raw_profiles)
+        ):
+            raise ValueError("gateway profile selector is invalid")
+        profiles = None if raw_profiles is None else tuple(raw_profiles)
         raw_client_id = identity.get("client_id")
         client_id = raw_client_id if isinstance(raw_client_id, str) else None
         raw_client_type = identity.get("client_type")
@@ -62,7 +84,9 @@ class ClientRequestContext:
             isinstance(value, str) for value in raw_scopes
         ):
             raise ValueError("gateway identity returned invalid scopes")
-        raw_projects = identity.get("allowed_project_ids")
+        if "allowed_project_ids" not in identity:
+            raise ValueError("gateway project selector is missing")
+        raw_projects = identity["allowed_project_ids"]
         if raw_projects is None:
             projects = None
         elif isinstance(raw_projects, list) and all(
@@ -72,6 +96,9 @@ class ClientRequestContext:
         else:
             raise ValueError("gateway identity returned invalid project grants")
         return cls(
+            org_id=org_id,
+            key_id=key_id,
+            allowed_profile_ids=profiles,
             request_id=request_id,
             client_id=client_id,
             client_type=client_type,
@@ -109,7 +136,10 @@ def bind_client_context(context: ClientRequestContext) -> Iterator[None]:
     """Make one gateway context available to the API client for this call only."""
     token: Token[ClientRequestContext | None] = _current.set(context)
     try:
-        yield
+        from app.security.tenant import TenantContext, tenant_scope
+
+        with tenant_scope(TenantContext(context.org_id)):
+            yield
     finally:
         _current.reset(token)
 

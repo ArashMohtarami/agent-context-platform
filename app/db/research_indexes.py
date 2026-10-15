@@ -433,7 +433,7 @@ def research_vector_definition(
                 "numDimensions": dimensions,
                 "similarity": VECTOR_SIMILARITY,
             },
-            *({"type": "filter", "path": path} for path in _FILTER_PATHS[kind]),
+            *({"type": "filter", "path": path} for path in ("org_id", "_id", *_FILTER_PATHS[kind])),
         ]
     }
 
@@ -442,6 +442,8 @@ def research_text_definition(kind: ResearchSearchCollectionKind) -> MongoDocumen
     """Build a V3 lexical index with only citable/searchable text and filters."""
     _require_kind(kind)
     fields: MongoDocument = {
+        "org_id": {"type": "token"},
+        "_id": {"type": "objectId"},
         _PRIMARY_TEXT_PATHS[kind]: searchable_text_field(exact=True),
         "research_project_id": {"type": "token"},
         "authorization.project_ids": {"type": "token"},

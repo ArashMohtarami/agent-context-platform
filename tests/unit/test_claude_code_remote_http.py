@@ -90,6 +90,8 @@ def client(
     project_ids: tuple[str, ...] = (PROJECT,),
 ) -> AgentClientDocument:
     return AgentClientDocument(
+        org_id="org-test",
+        project_mode="include" if list(project_ids) else "all_in_org",
         client_id=client_id,
         client_type=client_type,
         name=name,
@@ -561,3 +563,9 @@ async def test_remote_session_limit_and_client_revocation_apply_to_live_connecti
     assert capacity.json()["error"]["code"] == "RATE_LIMITED"
     assert revoked.status_code == 403
     assert revoked.json()["error"]["code"] == "CLIENT_DISABLED"
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

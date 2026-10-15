@@ -299,3 +299,9 @@ async def test_github_provider_accepts_only_one_public_repository_path() -> None
     )
     with pytest.raises(SourceProviderError, match="GitHub sources"):
         await github.extract_repository(redirected_host, payload())
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

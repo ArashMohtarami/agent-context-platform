@@ -14,19 +14,19 @@ from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from app.db.client_types import MongoDocument
 from app.db.errors import SearchUnavailableError
+from app.db.tenant_collection import scoped_collection
 from app.models.common import (
     MongoDocumentModel,
     MongoObjectId,
     Page,
-    decode_page_cursor,
-    deterministic_object_id,
-    encode_page_cursor,
     utc_now,
 )
 from app.observability.instruments import record_search
 from app.provenance import attribute
 from app.repositories.errors import ConcurrencyConflictError, DuplicateDocumentError
-from app.security.tenant import TenantContext, TenantContextRequired, current_tenant
+from app.security.tenant import TenantContext, TenantContextRequired, current_tenant, require_tenant
+from app.security.tenant_cursor import binding, decode_cursor, encode_cursor
+from app.security.tenant_policy import policy_allows
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -48,7 +48,9 @@ class MongoRepository[TDocument: MongoDocumentModel]:
         *,
         tenant: TenantContext | None = None,
     ) -> None:
-        self._collection: AsyncCollection[MongoDocument] = database[collection_name]
+        self._collection: AsyncCollection[MongoDocument] = scoped_collection(
+            database, collection_name, self._require_tenant
+        )
         # Kept as the name this repository was built for rather than read back
         # off the driver handle: it is what labels this collection's search
         # metrics, and a label has to be a string the application chose.
@@ -56,17 +58,22 @@ class MongoRepository[TDocument: MongoDocumentModel]:
         self._model_type = model_type
         self._tenant = tenant or current_tenant()
 
+    def _require_tenant(self) -> TenantContext:
+        ambient = require_tenant()
+        if self._tenant is not None and self._tenant.org_id != ambient.org_id:
+            raise TenantContextRequired("repository context differs from the active tenant")
+        return self._tenant or ambient
+
     def _owned_filter(self, filters: Mapping[str, object]) -> MongoDocument:
+        tenant = self._require_tenant()
         query = dict(filters)
-        if self._tenant is not None:
-            if "org_id" in query and query["org_id"] != self._tenant.org_id:
-                raise TenantContextRequired("query organization conflicts with trusted context")
-            query["org_id"] = self._tenant.org_id
+        if "org_id" in query and query["org_id"] != tenant.org_id:
+            raise TenantContextRequired("query organization conflicts with trusted context")
+        query["org_id"] = tenant.org_id
         return query
 
     def _identity_filter(self, namespace: str, *parts: str) -> MongoDocument:
-        if self._tenant is None:
-            return {"_id": deterministic_object_id(namespace, *parts)}
+        self._require_tenant()
         from app.db.tenant_inventory import IDENTITY_FIELDS
 
         fields = IDENTITY_FIELDS[namespace]
@@ -76,8 +83,7 @@ class MongoRepository[TDocument: MongoDocumentModel]:
         return self._owned_filter(dict(zip(fields, values, strict=True)))
 
     async def _identity_record_id(self, namespace: str, *parts: str) -> ObjectId:
-        if self._tenant is None:
-            return deterministic_object_id(namespace, *parts)
+        self._require_tenant()
         document = await self._get(self._identity_filter(namespace, *parts))
         if document is None:
             raise ConcurrencyConflictError("document is absent or was concurrently modified")
@@ -85,14 +91,16 @@ class MongoRepository[TDocument: MongoDocumentModel]:
 
     def _validate(self, value: object) -> TDocument:
         document = self._model_type.model_validate(value, context={"from_storage": True})
-        if self._tenant is not None and document.org_id != self._tenant.org_id:
+        if document.org_id != self._require_tenant().org_id or not policy_allows(
+            document.model_dump(by_alias=True, mode="python"), self._collection_name
+        ):
             raise TenantContextRequired("document organization conflicts with trusted context")
         return document
 
     async def _create(self, document: TDocument) -> TDocument:
         if document.identity_version == 1:
             raise ValueError("only adoption may insert legacy tenant identities")
-        if document.org_id is not None and self._tenant is None:
+        if document.org_id != self._require_tenant().org_id:
             raise TenantContextRequired("tenant writes require trusted organization context")
         document = attribute(document)
         validated = self._validate(document.model_dump(by_alias=True, mode="python"))
@@ -106,7 +114,7 @@ class MongoRepository[TDocument: MongoDocumentModel]:
             # A deterministic natural key is already taken, which the caller
             # decides how to treat: a conflict, or an idempotent repeat.
             raise DuplicateDocumentError("a document with this key already exists") from error
-        return validated
+        return self._validate(payload)
 
     async def _get(self, filters: Mapping[str, object]) -> TDocument | None:
         raw = await self._collection.find_one(self._owned_filter(filters))
@@ -122,11 +130,12 @@ class MongoRepository[TDocument: MongoDocumentModel]:
         if isinstance(limit, bool) or not 1 <= limit <= MAX_PAGE_SIZE:
             raise ValueError(f"limit must be between 1 and {MAX_PAGE_SIZE}")
 
+        cursor_scope = binding(self._collection_name, filters or {})
         query_parts: list[MongoDocument] = []
         if filters:
             query_parts.append(dict(filters))
         if cursor is not None:
-            created_at, document_id = decode_page_cursor(cursor)
+            created_at, document_id = decode_cursor(cursor, cursor_scope)
             query_parts.append(
                 {
                     "$or": [
@@ -151,7 +160,7 @@ class MongoRepository[TDocument: MongoDocumentModel]:
         next_cursor = None
         if has_more and documents:
             last = documents[-1]
-            next_cursor = encode_page_cursor(last.created_at, last.id)
+            next_cursor = encode_cursor(last.created_at, last.id, cursor_scope)
         return Page[TDocument](items=documents, next_cursor=next_cursor)
 
     async def _recent(
@@ -261,6 +270,9 @@ class MongoRepository[TDocument: MongoDocumentModel]:
             "org_id",
             "identity_version",
             "legacy_adoption_id",
+            "resource_project_ids",
+            "initiating_authority",
+            "policy_hash",
         ):
             changes.pop(immutable_field, None)
         changes["updated_at"] = utc_now()
@@ -269,7 +281,7 @@ class MongoRepository[TDocument: MongoDocumentModel]:
         if filters:
             query.update(filters)
         if document.org_id is not None:
-            if self._tenant is None:
+            if document.org_id != self._require_tenant().org_id:
                 raise TenantContextRequired("tenant writes require trusted organization context")
             query.update(
                 org_id=document.org_id,

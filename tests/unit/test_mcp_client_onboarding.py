@@ -34,6 +34,8 @@ class Agents:
         metadata: dict[str, object] | None = None,
     ) -> AgentClientDocument:
         record = AgentClientDocument(
+            org_id="org-test",
+            project_mode="include" if list(project_ids) else "all_in_org",
             client_id=client_id,
             client_type=client_type,
             name=name,
@@ -217,3 +219,9 @@ async def test_onboarding_composes_existing_admin_services_without_a_new_credent
             profile_id="coding-agent-default",
             scope_overrides=("research:promote",),
         )
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing domain behavior uses an explicit test organization."""
+    yield

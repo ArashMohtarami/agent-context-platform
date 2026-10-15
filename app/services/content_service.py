@@ -45,6 +45,7 @@ from app.models.content import (
 )
 from app.models.research import ResearchBriefCitationReference, ResearchBriefClaimReference
 from app.repositories.errors import ConcurrencyConflictError, DuplicateDocumentError
+from app.security.tenant_service import tenant_service
 from app.services.content_research_service import ContentResearchIntegrationService
 
 
@@ -225,6 +226,7 @@ _ALLOWED_CONTENT_TRANSITIONS: dict[ContentStatus, frozenset[ContentStatus]] = {
 }
 
 
+@tenant_service
 class ContentService:
     """Coordinate profile-isolated content records without generation or publishing."""
 

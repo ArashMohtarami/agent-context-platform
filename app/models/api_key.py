@@ -31,9 +31,9 @@ KEY_HASH_PATTERN = r"^[0-9a-f]{64}$"
 class ApiKeyDocument(MongoDocumentModel):
     """One issued API key, without its secret.
 
-    `projects` empty means every project. That is the widest grant, so it is
-    the one an operator has to choose deliberately by omitting the option
-    rather than the one they fall into by listing nothing.
+    Resource modes distinguish none, include, and all_in_org. Adoption converts
+    historical empty lists using their preservation manifest. No selector grants
+    access outside this key's immutable organization.
     """
 
     key_id: str = Field(pattern=KEY_ID_PATTERN)
@@ -41,6 +41,8 @@ class ApiKeyDocument(MongoDocumentModel):
     key_hash: str = Field(pattern=KEY_HASH_PATTERN)
     name: ShortText
     scopes: list[str] = Field(min_length=1, max_length=MAX_SCOPES)
+    project_mode: Literal["none", "include", "all_in_org"] | None = None
+    profile_mode: Literal["none", "include", "all_in_org"] | None = None
     projects: list[Identifier] = Field(default_factory=list, max_length=MAX_PROJECTS)
     profiles: list[Identifier] = Field(default_factory=list, max_length=MAX_PROFILES)
     status: KeyStatus = "active"

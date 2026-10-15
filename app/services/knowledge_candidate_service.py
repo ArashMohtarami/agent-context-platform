@@ -41,6 +41,7 @@ from app.research.errors import (
     KnowledgeCandidateNotFoundError,
     ResearchProjectNotFoundError,
 )
+from app.security.tenant_service import tenant_service
 
 
 class ResearchProjectLookup(Protocol):
@@ -173,6 +174,7 @@ class CandidateReview:
     event: PromotionEventDocument
 
 
+@tenant_service
 class KnowledgeCandidateService:
     """Create, review, and explicitly promote candidates through V1 services."""
 

@@ -6,7 +6,7 @@ endpoint cannot forget half of one.
 """
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Final
 
 from app.security.scopes import ALL_SCOPES, ANY_PROJECT, Scope, canonical
@@ -49,6 +49,8 @@ class Principal:
     client_id: str | None = None
     client_type: str | None = None
     authenticated: bool = True
+    org_id: str | None = None
+    cursor_secret: bytes | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         """Reject a principal that could not be enforced as written."""
@@ -60,8 +62,6 @@ class Principal:
             if len(set(self.projects)) != len(self.projects):
                 raise ValueError("allowed projects must be unique")
         if self.profiles is not None:
-            if not self.profiles:
-                raise ValueError("a profile allow-list must name at least one profile")
             if len(set(self.profiles)) != len(self.profiles):
                 raise ValueError("allowed profiles must be unique")
 
@@ -105,6 +105,7 @@ class Principal:
     def describe(self) -> dict[str, object]:
         """Return a credential-free summary, safe to log."""
         description: dict[str, object] = {
+            "org_id": self.org_id,
             "key_id": self.key_id,
             "scopes": list(self.scopes),
             "projects": "all" if self.projects is None else list(self.projects),

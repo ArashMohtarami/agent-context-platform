@@ -22,6 +22,7 @@ from app.research.errors import (
     ResearchProjectAlreadyExistsError,
     ResearchProjectNotFoundError,
 )
+from app.security.tenant_service import tenant_service
 
 
 class ResearchProjectRepository(Protocol):
@@ -51,6 +52,7 @@ class ProjectLookup(Protocol):
     async def get(self, project_id: str) -> ProjectDocument | None: ...
 
 
+@tenant_service
 class ResearchProjectService:
     """Create, read, list, and revision-guard research project metadata."""
 

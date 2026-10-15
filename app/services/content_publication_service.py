@@ -9,6 +9,9 @@ from app.content.publication import (
     review_content_for_publication,
 )
 from app.models.content import ContentItemDocument, ContentStatus
+from app.security.tenant import TenantContextRequired, require_tenant
+from app.security.tenant_policy import policy_allows
+from app.security.tenant_service import tenant_service
 
 
 class ContentPublicationRepository(Protocol):
@@ -26,6 +29,7 @@ class ContentPublicationRepository(Protocol):
     ) -> ContentItemDocument: ...
 
 
+@tenant_service
 class ContentPublicationService:
     """Review current content and make the existing ``review → approved`` step explicit."""
 
@@ -47,6 +51,10 @@ class ContentPublicationService:
 
     def review_item_for_publication(self, item: ContentItemDocument) -> PublicationReview:
         """Review an item already authorized by the API boundary."""
+        if item.org_id != require_tenant().org_id or not policy_allows(
+            item.model_dump(by_alias=True, mode="python"), "content_items"
+        ):
+            raise TenantContextRequired("publication review is unavailable in this tenant")
         return review_content_for_publication(item, policy=self._policy)
 
     async def approve_content(

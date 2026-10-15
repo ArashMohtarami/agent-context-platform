@@ -162,9 +162,17 @@ async def test_client_credentials_enforce_expiration_disabled_clients_and_grants
 def test_client_scope_validation_rejects_unknown_vocabulary() -> None:
     with pytest.raises(ValidationError, match="unknown scopes"):
         AgentClientDocument(
+            org_id="org-test",
+            project_mode="include" if [] else "all_in_org",
             client_id="codex-main",
             client_type="codex",
             name="Codex",
             owner_id="operator",
             scopes=["not:a:scope"],
         )
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

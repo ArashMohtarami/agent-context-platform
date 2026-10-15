@@ -66,6 +66,8 @@ class Activities:
 
 def client(client_id: str, client_type: str, projects: list[str]) -> AgentClientDocument:
     return AgentClientDocument(
+        org_id="org-test",
+        project_mode="include" if projects else "all_in_org",
         client_id=client_id,
         client_type=client_type,
         name=client_id,
@@ -166,3 +168,9 @@ async def test_admin_can_filter_activity_for_another_client() -> None:
 
     assert response.status_code == 200  # type: ignore[attr-defined]
     assert response.json()["items"][0]["client_id"] == "codex-main"  # type: ignore[attr-defined]
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing domain behavior uses an explicit test organization."""
+    yield

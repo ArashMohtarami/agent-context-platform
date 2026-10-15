@@ -49,6 +49,7 @@ from app.retrieval.types import (
     SourceMatches,
     SourceType,
 )
+from app.security.tenant_service import tenant_service
 from app.services.retrieval_service import RetrievalService
 from app.skills.chunker import estimate_tokens
 from app.skills.types import RetrievalMethod
@@ -391,6 +392,7 @@ class ResearchSearchResult:
     diagnostics: Mapping[str, object]
 
 
+@tenant_service
 class ResearchSearchService:
     """Search V3 evidence first, then authorized V1 knowledge through its public service."""
 

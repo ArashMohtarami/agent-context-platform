@@ -105,7 +105,14 @@ def test_only_queried_and_filtered_fields_are_indexed() -> None:
     mappings = cast(dict[str, Any], definition["mappings"])
 
     assert mappings["dynamic"] is False
-    assert set(mapped_fields(definition)) == {"content", "section", "skill_id", "skill_version"}
+    assert set(mapped_fields(definition)) == {
+        "org_id",
+        "_id",
+        "content",
+        "section",
+        "skill_id",
+        "skill_version",
+    }
     assert mapped_fields(definition)["skill_id"] == {"type": "token"}
     assert mapped_fields(definition)["skill_version"] == {"type": "token"}
     # Vectors and internal fields must never reach the text index.

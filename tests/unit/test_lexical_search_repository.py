@@ -77,12 +77,14 @@ async def test_the_pipeline_searches_scores_and_bounds_results() -> None:
 
 
 @pytest.mark.asyncio
-async def test_an_unfiltered_query_carries_no_filter_clause() -> None:
+async def test_a_query_without_skill_filters_still_has_tenant_prefilter() -> None:
     repository, collection = build_repository([])
 
     await repository.text_search("OAuth2", limit=3)
 
-    assert "filter" not in pipeline_of(collection)[0]["$search"]["compound"]
+    assert pipeline_of(collection)[0]["$search"]["compound"]["filter"] == [
+        {"equals": {"path": "org_id", "value": "org-test"}}
+    ]
 
 
 @pytest.mark.asyncio
@@ -179,3 +181,9 @@ async def test_an_unusable_score_is_refused(score: object) -> None:
 
     with pytest.raises(SearchUnavailableError, match="unusable score"):
         await repository.text_search("Keycloak", limit=5)
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

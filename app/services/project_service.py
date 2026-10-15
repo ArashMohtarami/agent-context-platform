@@ -7,6 +7,7 @@ from app.models.common import Page
 from app.models.project import ProjectDocument
 from app.projects.errors import ProjectAlreadyExistsError, ProjectNotFoundError
 from app.repositories.errors import DuplicateDocumentError
+from app.security.tenant_service import tenant_service
 
 DEFAULT_PAGE_SIZE = 20
 
@@ -26,6 +27,7 @@ class ProjectRepository(Protocol):
     ) -> Page[ProjectDocument]: ...
 
 
+@tenant_service
 class ProjectService:
     """Own project identity, which every piece of context depends on."""
 

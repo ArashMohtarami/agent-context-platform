@@ -7,6 +7,7 @@ record actor provenance on V1--V3 resources; those are later V4 phases.
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import AwareDatetime, Field, ValidationInfo, field_validator, model_validator
 
@@ -149,6 +150,7 @@ class AgentClientDocument(MongoDocumentModel):
     # widen an already-issued client credential.
     profile_id: Identifier | None = None
     scopes: list[str] = Field(default_factory=list, max_length=MAX_AGENT_SCOPES)
+    project_mode: Literal["none", "include", "all_in_org"] | None = None
     project_ids: list[Identifier] = Field(default_factory=list, max_length=MAX_AGENT_PROJECTS)
     metadata: Metadata = Field(default_factory=dict)
     last_seen_at: AwareDatetime | None = None

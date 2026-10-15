@@ -17,6 +17,7 @@ from app.repositories.tenant_adoption_repository import (
 )
 from app.security.tenant import current_tenant
 from app.services.tenant_adoption_service import TenantAdoptionService
+from app.services.tenant_isolation_service import TenantIsolationService
 
 
 async def operate(arguments: argparse.Namespace, settings: Settings) -> Result:
@@ -26,15 +27,35 @@ async def operate(arguments: argparse.Namespace, settings: Settings) -> Result:
     mongodb = MongoDBClient(settings)
     await mongodb.connect(require_search=False)
     try:
+        if arguments.action in {"prepare-isolation", "activate-isolation"}:
+            isolation = TenantIsolationService(mongodb.database)
+            options = dict(
+                writers_stopped=arguments.writers_stopped,
+                worker_schema_versions=arguments.worker_schema_version,
+            )
+            if arguments.action == "prepare-isolation":
+                await isolation.prepare(**options)
+                data = {
+                    "org_id": context.org_id,
+                    "stage": "isolating",
+                    "domain_traffic_enabled": False,
+                }
+            else:
+                data = await isolation.activate(**options, evidence=arguments.evidence)
+            return Result(data=data, lines=fields(data))
         # A dry run is read-only, including the schema ledger.
         if arguments.action == "provision" or not arguments.dry_run:
-            await initialize_database(mongodb.database, tenant_foundation=True)
+            await initialize_database(
+                mongodb.database,
+                tenant_foundation=True,
+                tenant_isolation=settings.v6_tenant_isolation,
+            )
         if arguments.action == "provision":
             organization = OrganizationDocument(
                 org_id=context.org_id, name=arguments.name, slug=arguments.slug
             )
             await MongoOrganizationRepository(mongodb.database).create(organization)
-            data: dict[str, object] = {"org_id": organization.org_id, "status": organization.status}
+            data = {"org_id": organization.org_id, "status": organization.status}
         else:
             service = TenantAdoptionService(MongoTenantAdoptionRepository(mongodb.database))
             if arguments.dry_run:
@@ -79,3 +100,11 @@ def add_arguments(subparsers: SubParsers) -> None:
     adopt.add_argument("--writers-stopped", action="store_true")
     adopt.add_argument("--worker-schema-version", type=int, action="append", default=[])
     adopt.set_defaults(handler=operate, needs_platform=False)
+
+    for name in ("prepare-isolation", "activate-isolation"):
+        isolation = actions.add_parser(name, help="operator-only schema-37 tenant cutover")
+        isolation.add_argument("--writers-stopped", action="store_true")
+        isolation.add_argument("--worker-schema-version", type=int, action="append", default=[])
+        if name == "activate-isolation":
+            isolation.add_argument("--evidence", type=Path, action="append", required=True)
+        isolation.set_defaults(handler=operate, needs_platform=False)

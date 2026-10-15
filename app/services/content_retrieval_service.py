@@ -33,6 +33,7 @@ from app.retrieval.hybrid import DEFAULT_DUPLICATE_OVERLAP, hybrid_rank
 from app.retrieval.query import normalize_query
 from app.retrieval.ranking import DEFAULT_RECENCY_HALF_LIFE_DAYS, DEFAULT_WEIGHTS, RankingWeights
 from app.retrieval.types import RetrievalCandidate, RetrievalMatch, SourceType
+from app.security.tenant_service import tenant_service
 from app.services.content_service import (
     brief_embedding_text,
     idea_embedding_text,
@@ -227,6 +228,7 @@ class ContentSearchResult:
 ContentRepositoryFactory = Callable[[str], ContentSearchRepository]
 
 
+@tenant_service
 class ContentRetrievalService:
     """Rank current content records without changing V1 engineering retrieval."""
 

@@ -18,6 +18,7 @@ from app.models.content import (
     CreatorVoice,
 )
 from app.repositories.errors import ConcurrencyConflictError, DuplicateDocumentError
+from app.security.tenant_service import tenant_service
 
 
 class CreatorProfileRepository(Protocol):
@@ -56,6 +57,7 @@ class ContentPillarRepository(Protocol):
     ) -> ContentPillarDocument: ...
 
 
+@tenant_service
 class CreatorService:
     """Own creator preference data without generating or interpreting prose."""
 

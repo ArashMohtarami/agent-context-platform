@@ -3,6 +3,13 @@
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.db.client_types import MongoDocument
+from app.security.tenant_policy import current_policy
+
+
+def _operator() -> None:
+    policy = current_policy()
+    if policy is not None and not policy.operator:
+        raise ValueError("whole-database backup is installation-operator-only")
 
 
 class MongoBackupRepository:
@@ -18,6 +25,7 @@ class MongoBackupRepository:
         enumerates rather than whitelists collections: newly migrated persistent
         collections are captured and verified without a second backup registry.
         """
+        _operator()
         counts: dict[str, int] = {}
         for name in sorted(await self._database.list_collection_names()):
             counts[name] = await self._database[name].count_documents({})
@@ -25,6 +33,7 @@ class MongoBackupRepository:
 
     async def restored_document_count(self, prefix: str) -> int:
         """Count documents restored under one isolated collection prefix."""
+        _operator()
         total = 0
         for name in await self._database.list_collection_names():
             if name.startswith(prefix):
@@ -33,6 +42,7 @@ class MongoBackupRepository:
 
     async def discard_restored(self, prefix: str) -> None:
         """Drop only collections created under one restore-check prefix."""
+        _operator()
         for name in await self._database.list_collection_names():
             if name.startswith(prefix):
                 await self._database.drop_collection(name)

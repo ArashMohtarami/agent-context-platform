@@ -383,3 +383,9 @@ async def test_context_without_an_embedding_model_still_answers_lexically() -> N
     assert [call["method"] for call in payment.calls] == ["lexical"]
     assert len(results) == 1
     assert results[0].methods == ("lexical",)
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing domain behavior uses an explicit test organization."""
+    yield

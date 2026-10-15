@@ -7,7 +7,6 @@ import pytest
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.db.client_types import MongoDocument
-from app.models.common import deterministic_object_id
 from app.repositories.skill_repository import MAX_VERSION_KEYS, MongoSkillRepository
 from app.skills.types import SkillVersionKey
 
@@ -20,7 +19,9 @@ def build_repository(
     cursor = MagicMock()
     cursor.sort = MagicMock(return_value=cursor)
     cursor.limit = MagicMock(return_value=cursor)
-    cursor.to_list = AsyncMock(return_value=list(documents or []))
+    cursor.to_list = AsyncMock(
+        return_value=[{**row, "org_id": "org-test"} for row in documents or []]
+    )
     collection.find = MagicMock(return_value=cursor)
     database = MagicMock()
     database.__getitem__ = MagicMock(return_value=collection)
@@ -44,8 +45,8 @@ async def test_version_keys_default_to_active_versions_only() -> None:
     keys = await repository.list_version_keys()
 
     filters, projection = find_call(collection)
-    assert filters == {"status": "active"}
-    assert projection == {"skill_id": 1, "version": 1, "_id": 0}
+    assert filters == {"status": "active", "org_id": "org-test"}
+    assert projection is None  # full ownership checked before the adapter projects fields
     assert keys == (SkillVersionKey("fastapi-production", "1.0.0"),)
 
 
@@ -65,6 +66,7 @@ async def test_every_metadata_filter_becomes_one_bounded_query() -> None:
 
     filters, _ = find_call(collection)
     assert filters == {
+        "org_id": "org-test",
         "skill_id": "fastapi-production",
         "version": "1.0.0",
         "category": "backend",
@@ -106,12 +108,11 @@ async def test_selected_versions_are_loaded_by_deterministic_identity() -> None:
 
     filters, _ = find_call(collection)
     assert filters == {
-        "_id": {
-            "$in": [
-                deterministic_object_id("skill", "fastapi-production", "1.0.0"),
-                deterministic_object_id("skill", "strict-python", "2.0.0"),
-            ]
-        }
+        "org_id": "org-test",
+        "$or": [
+            {"skill_id": "fastapi-production", "version": "1.0.0"},
+            {"skill_id": "strict-python", "version": "2.0.0"},
+        ],
     }
 
 
@@ -130,3 +131,9 @@ async def test_loading_an_unbounded_version_set_is_refused() -> None:
 
     with pytest.raises(ValueError, match="at most"):
         await repository.get_many(keys)
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

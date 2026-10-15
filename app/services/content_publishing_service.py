@@ -19,6 +19,7 @@ from app.content.publication import (
 from app.content.publishers import PublicationReceipt, PublisherError, PublisherRegistry
 from app.models.content import ContentItemDocument, ContentPublicationProvider, ContentStatus
 from app.repositories.errors import ConcurrencyConflictError
+from app.security.tenant_service import tenant_service
 
 logger = logging.getLogger("agent_context.content.publishing")
 
@@ -51,6 +52,7 @@ class ContentPublishingStore(Protocol):
     ) -> ContentItemDocument: ...
 
 
+@tenant_service
 class ContentPublishingService:
     """Run a fresh safety check then record one explicit provider action."""
 

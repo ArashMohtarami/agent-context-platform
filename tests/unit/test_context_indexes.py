@@ -110,7 +110,17 @@ def test_the_text_index_maps_content_title_and_every_filter_field() -> None:
     mappings = cast(dict[str, Any], definition["mappings"])
 
     assert mappings["dynamic"] is False
-    assert set(fields) == {"content", "title", "project_id", "type", "status", "tags", "importance"}
+    assert set(fields) == {
+        "org_id",
+        "_id",
+        "content",
+        "title",
+        "project_id",
+        "type",
+        "status",
+        "tags",
+        "importance",
+    }
     assert fields["content"]["analyzer"] == STANDARD_ANALYZER
     assert fields["content"]["multi"][EXACT_MULTI]["analyzer"] == "identifier_exact"
     assert fields["title"]["analyzer"] == STANDARD_ANALYZER

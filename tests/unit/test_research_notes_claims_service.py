@@ -391,3 +391,9 @@ async def test_note_reference_cannot_cross_an_unauthorized_v1_project_boundary()
             created_by="writer-key",
             allowed_project_ids=(PROJECT,),
         )
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

@@ -337,3 +337,9 @@ async def test_an_invalid_update_is_rejected_before_storage() -> None:
         await service.update_context(PROJECT, stored.id, importance=5.0)
 
     assert factory(PROJECT).documents[stored.id] == stored
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

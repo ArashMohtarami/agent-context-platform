@@ -35,6 +35,14 @@ class GatewayAuthorization:
             raise GatewayError(GatewayErrorCode.PROJECT_FORBIDDEN, str(error)) from error
 
     def require_profile(self, profile_id: str | None) -> None:
+        if (
+            profile_id is not None
+            and self._context.allowed_profile_ids is not None
+            and profile_id not in self._context.allowed_profile_ids
+        ):
+            raise GatewayError(
+                GatewayErrorCode.FORBIDDEN, "this client is not authorized for that profile"
+            )
         try:
             self._configured.require_profile(profile_id)
         except AuthorizationError as error:
@@ -63,10 +71,18 @@ class GatewayAuthorization:
                 for project_id in configured_projects
                 if project_id in credential_projects
             ]
+        configured_profiles = self._configured.profiles
+        credential_profiles = self._context.allowed_profile_ids
+        profiles = (
+            credential_profiles
+            if configured_profiles is None
+            else configured_profiles
+            if credential_profiles is None
+            else tuple(p for p in configured_profiles if p in credential_profiles)
+        )
         return {
+            "org_id": self._context.org_id,
             "scopes": scopes,
             "projects": projects,
-            "profiles": (
-                "all" if self._configured.profiles is None else list(self._configured.profiles)
-            ),
+            "profiles": ("all" if profiles is None else list(profiles)),
         }

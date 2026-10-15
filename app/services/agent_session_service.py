@@ -9,6 +9,7 @@ from app.models.agent import AgentClientType, AgentSessionDocument, AgentSession
 from app.models.common import utc_now
 from app.repositories.errors import ConcurrencyConflictError
 from app.security.principal import Principal
+from app.security.tenant_service import tenant_service
 
 DEFAULT_SESSION_IDLE_TIMEOUT = timedelta(hours=8)
 
@@ -39,6 +40,7 @@ class AgentSessionRepository(Protocol):
     async def touch_active(self, session_id: str, client_id: str, seen_at: datetime) -> bool: ...
 
 
+@tenant_service
 class AgentSessionService:
     """Own sessions by authenticated client identity, never caller input.
 

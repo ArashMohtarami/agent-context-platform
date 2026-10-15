@@ -22,8 +22,9 @@ from app.schemas.gateway import (
     GatewaySessionEndRequest,
     GatewaySessionUpdateRequest,
 )
-from app.security.principal import AuthenticationError, Principal, unauthenticated_principal
+from app.security.principal import AuthenticationError, Principal
 from app.security.scopes import Scope
+from app.security.tenant_policy import bind_principal, select_action
 from app.services.agent_activity_service import AgentActivityService
 from app.services.agent_session_service import (
     AgentSessionAccessError,
@@ -53,10 +54,11 @@ async def _gateway_principal(
     """Use the existing authenticator while preserving public API error policy."""
     auth: AuthService | None = request.app.state.auth
     if auth is None:
-        principal = unauthenticated_principal()
+        raise HTTPException(status_code=401, detail={"code": "UNAUTHENTICATED"})
     else:
         try:
             principal = await auth.authenticate_gateway(credential(authorization))
+            bind_principal(principal)
         except GatewayAuthenticationError as error:
             await _record_refusal(request, error.code.value)
             raise HTTPException(
@@ -73,6 +75,8 @@ async def _gateway_principal(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"code": "UNAUTHENTICATED"},
             ) from error
+    if "agent:self" in principal.scopes:
+        select_action("agent:self")
     request.state.principal = principal
     provenance.set_principal(principal)
     return principal
@@ -92,6 +96,15 @@ async def _record_refusal(request: Request, reason: str) -> None:
         request_id=request_id,
         reason=reason,
     )
+
+
+async def _authorize_operation(request: Request, principal: Principal, operation: str) -> None:
+    from app.mcp.tools import TOOLS_BY_NAME
+
+    definition = TOOLS_BY_NAME.get(operation)
+    if definition is None or not definition.writes:
+        raise HTTPException(status_code=403, detail="operation is unavailable")
+    await authorize_scope(request, principal, definition.scope)
 
 
 def _idempotency_service(request: Request) -> GatewayIdempotencyService:
@@ -155,6 +168,9 @@ async def identity(
                 detail={"code": "FORBIDDEN"},
             ) from error
     return GatewayIdentityResponse(
+        org_id=cast(str, principal.org_id),
+        key_id=principal.key_id,
+        allowed_profile_ids=principal.profiles,
         client_id=principal.client_id,
         client_type=(
             AgentClientType(principal.client_type) if principal.client_type is not None else None
@@ -172,6 +188,7 @@ async def acquire_idempotency_reservation(
 ) -> GatewayIdempotencyAcquireResponse:
     """Reserve a retry-safe write or return its prior completed MCP result."""
     principal = await _gateway_principal(request, authorization)
+    await _authorize_operation(request, principal, body.operation)
     try:
         reservation = await _idempotency_service(request).acquire(
             client_id=_gateway_client_id(principal),
@@ -190,10 +207,35 @@ async def acquire_idempotency_reservation(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="gateway idempotency result is unavailable",
         )
+    await _revalidate_job_replay(request, body.operation, record.result_data)
     return GatewayIdempotencyAcquireResponse(
         decision="replay",
         result=GatewayIdempotencyResult(text=record.result_text, data=record.result_data),
     )
+
+
+async def _revalidate_job_replay(request: Request, operation: str, data: dict[str, object]) -> None:
+    if operation != "ingest_research_source":
+        return
+    from app.api.dependencies import get_research_ingestion_service
+    from app.services.research_ingestion_service import ResearchIngestionJobNotFoundError
+
+    ingestion = data.get("research_ingestion")
+    job_data = ingestion.get("job") if isinstance(ingestion, dict) else None
+    if (
+        not isinstance(job_data, dict)
+        or not isinstance(job_data.get("research_project_id"), str)
+        or not isinstance(job_data.get("job_id"), str)
+    ):
+        raise HTTPException(status_code=403, detail="cached job is unavailable")
+    try:
+        job = await get_research_ingestion_service(request).get_job(
+            research_project_id=job_data["research_project_id"], job_id=job_data["job_id"]
+        )
+        if not isinstance(ingestion, dict) or job.source_id != ingestion.get("source_id"):
+            raise ResearchIngestionJobNotFoundError("cached job is unavailable")
+    except ResearchIngestionJobNotFoundError as error:
+        raise HTTPException(status_code=403, detail="cached job is unavailable") from error
 
 
 @router.post("/idempotency/reservations/complete", status_code=status.HTTP_204_NO_CONTENT)
@@ -204,6 +246,7 @@ async def complete_idempotency_reservation(
 ) -> None:
     """Persist a replay-safe result after the reserved MCP write succeeded."""
     principal = await _gateway_principal(request, authorization)
+    await _authorize_operation(request, principal, body.operation)
     try:
         await _idempotency_service(request).complete_request(
             client_id=_gateway_client_id(principal),

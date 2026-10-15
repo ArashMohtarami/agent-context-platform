@@ -15,7 +15,6 @@ from app.models.agent import (
     ProjectBindingDocument,
     ProjectBindingType,
 )
-from app.models.common import deterministic_object_id
 from app.repositories.agent_repository import (
     MongoAgentActivityRepository,
     MongoAgentClientRepository,
@@ -33,6 +32,8 @@ def _database(collection: MagicMock) -> AsyncDatabase[MongoDocument]:
 def _client(index: int) -> AgentClientDocument:
     created_at = datetime(2026, 10, 5, 9, index, tzinfo=UTC)
     return AgentClientDocument(
+        org_id="org-test",
+        project_mode="include" if [] else "all_in_org",
         client_id=f"client-{index}",
         client_type="codex",
         name=f"Codex {index}",
@@ -59,7 +60,11 @@ async def test_client_repository_pages_by_cursor_with_identity_filters() -> None
 
     assert [client.client_id for client in page.items] == ["client-1"]
     assert page.next_cursor is not None
-    assert collection.find.call_args.args[0] == {"owner_id": "owner", "status": "active"}
+    assert collection.find.call_args.args[0] == {
+        "owner_id": "owner",
+        "status": "active",
+        "org_id": "org-test",
+    }
     cursor.limit.assert_called_once_with(2)
 
 
@@ -76,11 +81,15 @@ async def test_identity_repositories_use_narrow_exact_filters() -> None:
 
     assert await clients.get("codex-main") is None
     assert collection.find_one.await_args.args[0] == {
-        "_id": deterministic_object_id("agent-client", "codex-main")
+        "client_id": "codex-main",
+        "org_id": "org-test",
     }
 
     assert await sessions.get("session-1") is None
-    assert collection.find_one.await_args.args[0] == {"session_id": "session-1"}
+    assert collection.find_one.await_args.args[0] == {
+        "session_id": "session-1",
+        "org_id": "org-test",
+    }
 
     assert (
         await bindings.get_mapping(ProjectBindingType.GIT_REMOTE, "git@example.test:payments.git")
@@ -89,10 +98,11 @@ async def test_identity_repositories_use_narrow_exact_filters() -> None:
     assert collection.find_one.await_args.args[0] == {
         "binding_type": "git_remote",
         "value": "git@example.test:payments.git",
+        "org_id": "org-test",
     }
 
     assert await activity.get("event-1") is None
-    assert collection.find_one.await_args.args[0] == {"event_id": "event-1"}
+    assert collection.find_one.await_args.args[0] == {"event_id": "event-1", "org_id": "org-test"}
 
 
 @pytest.mark.asyncio
@@ -107,7 +117,8 @@ async def test_repository_binding_lookup_uses_the_cross_protocol_canonical_index
 
     assert matches == ()
     assert collection.find.call_args.args[0] == {
-        "repository_locator": "github.com/example/payment-service"
+        "repository_locator": "github.com/example/payment-service",
+        "org_id": "org-test",
     }
 
 
@@ -147,3 +158,9 @@ async def test_session_binding_and_activity_repositories_preserve_serializable_d
     assert created_binding.binding_id == binding.binding_id
     assert created_activity.event_id == activity.event_id
     assert collection.insert_one.await_count == 3
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

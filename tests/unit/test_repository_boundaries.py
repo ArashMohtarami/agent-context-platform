@@ -10,7 +10,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from app.db.client_types import MongoDocument
 from app.models import MemoryDocument, ProjectContextDocument, ProjectDocument
-from app.models.common import InvalidCursorError, deterministic_object_id
+from app.models.common import InvalidCursorError
 from app.models.content import ContentIdeaDocument
 from app.repositories.content_repository import MongoContentIdeaRepository
 from app.repositories.context_repository import MongoProjectContextRepository
@@ -22,7 +22,7 @@ from app.repositories.project_repository import MongoProjectRepository
 def mock_database() -> tuple[AsyncDatabase[MongoDocument], MagicMock]:
     collection = MagicMock()
     collection.insert_one = AsyncMock()
-    collection.find_one = AsyncMock()
+    collection.find_one = AsyncMock(return_value=None)
     collection.find_one_and_update = AsyncMock()
     collection.delete_one = AsyncMock()
     database = MagicMock()
@@ -50,7 +50,7 @@ async def test_project_bound_repositories_reject_cross_project_writes_and_reads(
     collection.find_one.return_value = None
     assert await repository.get(other_context.id) is None
     collection.find_one.assert_awaited_once_with(
-        {"_id": other_context.id, "project_id": "project-a"}
+        {"_id": other_context.id, "project_id": "project-a", "org_id": "org-test"}
     )
 
 
@@ -128,7 +128,13 @@ async def test_updates_are_revision_guarded() -> None:
 
     query = collection.find_one_and_update.await_args.args[0]
     update = collection.find_one_and_update.await_args.args[1]
-    assert query == {"_id": project.id, "revision": 1}
+    assert query == {
+        "_id": project.id,
+        "revision": 1,
+        "org_id": "org-test",
+        "identity_version": 2,
+        "legacy_adoption_id": None,
+    }
     assert update["$inc"] == {"revision": 1}
     assert "updated_at" in update["$set"]
 
@@ -137,7 +143,7 @@ async def test_updates_are_revision_guarded() -> None:
 async def test_invalid_database_documents_fail_validation_on_read() -> None:
     database, collection = mock_database()
     repository = MongoProjectRepository(database)
-    collection.find_one.return_value = {"_id": "invalid"}
+    collection.find_one.return_value = {"_id": "invalid", "org_id": "org-test"}
 
     with pytest.raises(ValidationError):
         await repository.get("project-a")
@@ -165,7 +171,8 @@ async def test_content_repositories_bind_every_write_read_and_update_to_a_profil
     assert await repository.get(other_idea.idea_id) is None
     collection.find_one.assert_awaited_once_with(
         {
-            "_id": deterministic_object_id("content_idea", "profile-a", other_idea.idea_id),
+            "idea_id": other_idea.idea_id,
+            "org_id": "org-test",
             "profile_id": "profile-a",
         }
     )
@@ -183,4 +190,17 @@ async def test_content_repositories_bind_every_write_read_and_update_to_a_profil
     with pytest.raises(ConcurrencyConflictError):
         await repository.update(own_idea, expected_revision=1)
     query = collection.find_one_and_update.await_args.args[0]
-    assert query == {"_id": own_idea.id, "revision": 1, "profile_id": "profile-a"}
+    assert query == {
+        "_id": own_idea.id,
+        "revision": 1,
+        "profile_id": "profile-a",
+        "org_id": "org-test",
+        "identity_version": 2,
+        "legacy_adoption_id": None,
+    }
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

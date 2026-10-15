@@ -198,3 +198,9 @@ async def test_a_retrieval_outside_a_correlated_call_still_records_its_metrics()
     assert (
         REGISTRY.summary(instruments.RETRIEVAL_DURATION, operation="search_knowledge") is not None
     )
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

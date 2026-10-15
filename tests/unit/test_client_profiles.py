@@ -76,6 +76,8 @@ class Clients:
 
 def gemini_client() -> AgentClientDocument:
     return AgentClientDocument(
+        org_id="org-test",
+        project_mode="include" if ["payments"] else "all_in_org",
         client_id="gemini-cli-main",
         client_type=AgentClientType.GEMINI_CLI,
         name="Gemini CLI",
@@ -88,6 +90,8 @@ def gemini_client() -> AgentClientDocument:
 def existing_client(client_id: str, client_type: AgentClientType) -> AgentClientDocument:
     """Represent an unchanged V4 client beside the new Gemini identity."""
     return AgentClientDocument(
+        org_id="org-test",
+        project_mode="include" if ["ledger"] else "all_in_org",
         client_id=client_id,
         client_type=client_type,
         name=client_id.replace("-", " ").title(),
@@ -280,3 +284,9 @@ def test_client_profile_timestamp_contract_is_preserved() -> None:
     )
 
     assert profile.created_at == profile.updated_at
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

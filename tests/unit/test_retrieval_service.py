@@ -632,3 +632,9 @@ async def test_gather_sources_can_request_lexical_only_without_embedding_or_vect
     assert embedder.queries == []
     assert len(chunks.calls) == 1
     assert chunks.calls[0]["query"] == "Keycloak"
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

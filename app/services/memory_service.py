@@ -16,6 +16,7 @@ from app.models.skill import LifecycleStatus
 from app.observability.instruments import record_memory_operation
 from app.projects.errors import ProjectNotFoundError
 from app.repositories.errors import ConcurrencyConflictError, DuplicateDocumentError
+from app.security.tenant_service import tenant_service
 
 DEFAULT_PAGE_SIZE = 20
 # What a memory write turned out to be. Counted rather than only logged,
@@ -112,6 +113,7 @@ class ContentEmbedder(Protocol):
 MemoryRepositoryFactory = Callable[[MemoryScope, str | None, str | None], MemoryRepository]
 
 
+@tenant_service
 class MemoryService:
     """Store memory on purpose, and replace it without destroying history.
 

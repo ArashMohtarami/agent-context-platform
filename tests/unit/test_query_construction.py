@@ -206,7 +206,10 @@ async def test_a_key_lookup_filters_on_exactly_one_string() -> None:
 
     await repository.get_by_key_id("0123456789abcdef")
 
-    assert recorded.find_one.await_args.args[0] == {"key_id": "0123456789abcdef"}
+    assert recorded.find_one.await_args.args[0] == {
+        "key_id": "0123456789abcdef",
+        "org_id": "org-test",
+    }
 
 
 # --- through the API -------------------------------------------------------
@@ -305,3 +308,9 @@ def test_the_application_connects_as_a_role_that_can_do_almost_nothing() -> None
     assert 'actions: ["collMod"]' in granted
     for privileged in ("root", "dbOwner", "dbAdmin", "clusterAdmin", "__system", "anyAction"):
         assert privileged not in granted
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

@@ -7,6 +7,7 @@ from uuid import uuid4
 from app.models.agent import AgentActivityDocument, AgentActivityStatus, AgentClientType
 from app.models.common import Page
 from app.security.principal import Principal
+from app.security.tenant_service import tenant_service
 
 
 class AgentActivityRepository(Protocol):
@@ -28,6 +29,7 @@ class AgentActivityRepository(Protocol):
     ) -> Page[AgentActivityDocument]: ...
 
 
+@tenant_service
 class AgentActivityService:
     """Store gateway activity only for an authenticated registered client."""
 

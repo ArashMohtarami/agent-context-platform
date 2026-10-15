@@ -396,3 +396,9 @@ async def test_brief_excludes_claims_and_provenance_outside_callers_project_gran
             brief_id=private_brief.brief_id,
             allowed_project_ids=(PROJECT,),
         )
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

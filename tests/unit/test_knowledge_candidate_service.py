@@ -662,3 +662,9 @@ async def test_promotion_requires_approval_and_cannot_repeat_or_modify_skills() 
             reviewer="promoter-key",
             allowed_project_ids=(PROJECT,),
         )
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

@@ -31,6 +31,7 @@ from urllib.parse import urlsplit
 from app.models.common import Metadata
 from app.models.research import ResearchSourceDocument, ResearchSourceType
 from app.research.providers import IngestionPayload, SourceProviderError
+from app.security.tenant import require_tenant
 
 MAX_REPOSITORY_FILES: Final = 2_000
 MAX_REPOSITORY_FILE_BYTES: Final = 200_000
@@ -273,7 +274,9 @@ class GitSourceProvider:
     async def _read_repository(
         self, repository: str, selection: _RepositorySelection
     ) -> ExtractedRepository:
-        with tempfile.TemporaryDirectory(prefix="research-git-") as temporary:
+        with tempfile.TemporaryDirectory(
+            prefix="research-" + require_tenant().org_id + "-git-"
+        ) as temporary:
             root = Path(temporary)
             checkout = root / "repository"
             clone = [

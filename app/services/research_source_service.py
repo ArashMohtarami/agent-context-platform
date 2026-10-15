@@ -28,6 +28,7 @@ from app.research.errors import (
     SourceSnapshotAlreadyExistsError,
 )
 from app.research.uri import canonicalize_source_uri
+from app.security.tenant_service import tenant_service
 
 
 class ResearchSourceLimitError(Exception):
@@ -120,6 +121,7 @@ class RegisteredResearchSource:
     snapshot: SourceSnapshotDocument | None
 
 
+@tenant_service
 class ResearchSourceService:
     """Register source metadata, retain supplied snapshots, and detect exact duplicates."""
 

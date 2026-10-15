@@ -9,6 +9,7 @@ from time import monotonic
 from typing import Literal, Protocol
 
 from app.core.config import McpSettings
+from app.security.tenant import require_tenant
 
 ExecutionClass = Literal["fast", "standard", "long_running"]
 
@@ -32,6 +33,7 @@ class ClientLimitPolicy:
 class LimitRequest:
     """The bounded characteristics of one already-authorized MCP operation."""
 
+    org_id: str
     client_id: str
     writes: bool
     execution_class: ExecutionClass
@@ -42,6 +44,7 @@ class LimitRequest:
 class LimitLease:
     """An opaque reservation which must be released once the operation finishes."""
 
+    org_id: str
     client_id: str
     long_running: bool
 
@@ -75,13 +78,13 @@ class InMemoryClientLimitBackend:
     def __init__(self, *, clock: Callable[[], float] = monotonic) -> None:
         self._clock = clock
         self._lock = asyncio.Lock()
-        self._windows: dict[str, _ClientWindow] = {}
+        self._windows: dict[tuple[str, str], _ClientWindow] = {}
 
     async def acquire(self, request: LimitRequest, policy: ClientLimitPolicy) -> LimitLease:
         """Atomically check and consume one client's independent budgets."""
         now = self._clock()
         async with self._lock:
-            window = self._windows.setdefault(request.client_id, _ClientWindow())
+            window = self._windows.setdefault((request.org_id, request.client_id), _ClientWindow())
             self._prune(window, now)
             if len(window.requests) >= policy.requests_per_minute:
                 raise RateLimitExceededError("request rate limit reached; try again shortly")
@@ -105,12 +108,14 @@ class InMemoryClientLimitBackend:
             window.active_calls += 1
             if long_running:
                 window.active_long_running += 1
-            return LimitLease(client_id=request.client_id, long_running=long_running)
+            return LimitLease(
+                org_id=request.org_id, client_id=request.client_id, long_running=long_running
+            )
 
     async def release(self, lease: LimitLease) -> None:
         """Release only the active-count portion of a completed reservation."""
         async with self._lock:
-            window = self._windows.get(lease.client_id)
+            window = self._windows.get((lease.org_id, lease.client_id))
             if window is None:  # pragma: no cover - defensive against a custom reset
                 return
             window.active_calls = max(0, window.active_calls - 1)
@@ -124,7 +129,7 @@ class InMemoryClientLimitBackend:
                 or window.active_calls
                 or window.active_long_running
             ):
-                self._windows.pop(lease.client_id, None)
+                self._windows.pop((lease.org_id, lease.client_id), None)
 
     @staticmethod
     def _prune(window: _ClientWindow, now: float) -> None:
@@ -158,11 +163,17 @@ class GatewayRateLimiter:
         research_ingestion: bool,
     ) -> AsyncIterator[None]:
         """Reserve a client budget; legacy unlinked keys retain existing behavior."""
+        org_id = require_tenant().org_id
         if client_id is None:
-            yield
-            return
+            from app.mcp.middleware.client_context import current_client_context
+
+            context = current_client_context()
+            if context is None or context.org_id != org_id:
+                raise ValueError("verified MCP subject is required for a limit reservation")
+            client_id = context.client_id or context.key_id
         lease = await self._backend.acquire(
             LimitRequest(
+                org_id=org_id,
                 client_id=client_id,
                 writes=writes,
                 execution_class=execution_class,

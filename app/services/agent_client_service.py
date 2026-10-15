@@ -5,6 +5,7 @@ from typing import Protocol
 
 from app.models.agent import AgentClientDocument, AgentClientStatus, AgentClientType
 from app.models.common import Page
+from app.security.tenant_service import tenant_service
 from app.services.api_key_service import ApiKeyService, IssuedKey
 
 
@@ -27,6 +28,7 @@ class AgentClientRepository(Protocol):
     ) -> AgentClientDocument: ...
 
 
+@tenant_service
 class AgentClientService:
     """Create and administer clients without exposing raw credentials again."""
 
@@ -50,6 +52,7 @@ class AgentClientService:
         try:
             return await self._clients.create(
                 AgentClientDocument(
+                    project_mode="include" if project_ids else "all_in_org",
                     client_id=client_id,
                     client_type=client_type,
                     name=name,
@@ -96,6 +99,8 @@ class AgentClientService:
             }.items()
             if value is not None
         }
+        if project_ids is not None:
+            changes["project_mode"] = "include" if project_ids else "all_in_org"
         if not changes:
             raise ValueError("at least one client field must be updated")
         return await self._clients.update(

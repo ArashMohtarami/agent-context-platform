@@ -541,3 +541,9 @@ async def test_a_replacement_survives_a_failure_to_mark_the_old_memory() -> None
     # failure costs a link, never a memory.
     assert len(repository.documents) == 2
     assert repository.documents[stored.id].status == "active"
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

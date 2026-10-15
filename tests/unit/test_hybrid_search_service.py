@@ -520,3 +520,9 @@ def test_a_chunk_without_a_section_is_titled_by_its_skill() -> None:
     candidate = skill_candidate(chunk(section=None), skill())
 
     assert candidate.title == "FastAPI Production"
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

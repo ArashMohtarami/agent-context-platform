@@ -400,3 +400,9 @@ async def test_revalidation_respects_research_project_authorization() -> None:
         await review.list_stale_knowledge(
             research_project_id=RESEARCH, allowed_project_ids=("other-project",), as_of=AFTER
         )
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

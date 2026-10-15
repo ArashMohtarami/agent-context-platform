@@ -9,6 +9,7 @@ trail and the operator's log, where it belongs.
 
 import logging
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime
 from enum import StrEnum
 from typing import NoReturn, Protocol, cast
@@ -18,7 +19,9 @@ from app.models.api_key import ApiKeyDocument
 from app.models.common import utc_now
 from app.security.keys import MalformedKeyError, matches, parse
 from app.security.principal import AuthenticationError, Principal
-from app.security.scopes import ANY_PROJECT, Scope, canonical
+from app.security.scopes import Scope, canonical
+from app.security.tenant import TenantContext, tenant_scope
+from app.security.tenant_policy import TenantPolicy, policy_scope
 
 # What every rejected credential is told, whatever was actually wrong with it.
 REFUSED = "the API key was not accepted"
@@ -116,24 +119,39 @@ class AuthService:
                 code=GatewayAuthenticationCode.CREDENTIAL_EXPIRED,
             )
 
-        client: AgentClientDocument | None = None
-        if record.client_id is not None:
-            clients = self._clients
-            if clients is None:
-                self._raise_refused("client lookup unavailable", presented.key_id, gateway=gateway)
-            client = await clients.get(record.client_id)
-            if client is None or client.status != "active":
-                self._raise_refused(
-                    "client inactive",
-                    presented.key_id,
-                    gateway=gateway,
-                    code=GatewayAuthenticationCode.CLIENT_DISABLED,
-                )
-        if self._record_usage:
-            await self._keys.touch(record.key_id, now)
-            if client is not None and clients is not None:
-                await clients.touch(client.client_id, now)
-        return principal_of(record, client)
+        if record.org_id is None:
+            self._raise_refused("unowned credential", presented.key_id, gateway=gateway)
+        enabled = getattr(self._keys, "organization_enabled", None)
+        if enabled is not None and not await enabled(record.org_id):
+            self._raise_refused("organization unavailable", presented.key_id, gateway=gateway)
+        with (
+            tenant_scope(TenantContext(record.org_id)),
+            policy_scope(TenantPolicy(record.org_id, "credential-resolution", (), operator=True)),
+        ):
+            client: AgentClientDocument | None = None
+            if record.client_id is not None:
+                clients = self._clients
+                if clients is None:
+                    self._raise_refused(
+                        "client lookup unavailable", presented.key_id, gateway=gateway
+                    )
+                client = await clients.get(record.client_id)
+                if client is None or client.status != "active" or client.org_id != record.org_id:
+                    self._raise_refused(
+                        "client inactive",
+                        presented.key_id,
+                        gateway=gateway,
+                        code=GatewayAuthenticationCode.CLIENT_DISABLED,
+                    )
+            if self._record_usage:
+                await self._keys.touch(record.key_id, now)
+                if client is not None and clients is not None:
+                    await clients.touch(client.client_id, now)
+            principal = principal_of(record, client)
+            secret_reader = getattr(self._keys, "cursor_secret", None)
+            if secret_reader is not None:
+                principal = replace(principal, cursor_secret=await secret_reader())
+            return principal
 
     def _raise_refused(
         self,
@@ -184,11 +202,15 @@ def principal_of(record: ApiKeyDocument, client: AgentClientDocument | None = No
     but cannot retain a scope the client administrator subsequently removed.
     Legacy V1 keys have no client and therefore retain their original grant.
     """
+    if record.org_id is None or (client is not None and client.org_id != record.org_id):
+        raise AuthenticationError(REFUSED)
+    if record.project_mode is None or record.profile_mode is None:
+        raise AuthenticationError(REFUSED)
     scopes = granted_scopes(record)
     if client is not None:
         scopes = canonical(scope for scope in scopes if scope in client.scopes)
-    projects = tuple(record.projects) if record.projects else ANY_PROJECT
-    if client is not None and client.project_ids:
+    projects = None if record.project_mode == "all_in_org" else tuple(record.projects)
+    if client is not None and client.project_mode != "all_in_org":
         projects = (
             tuple(client.project_ids)
             if projects is None
@@ -201,7 +223,8 @@ def principal_of(record: ApiKeyDocument, client: AgentClientDocument | None = No
         # An empty allow-list is stored to mean "every project", because that
         # is what omitting the option at creation says.
         projects=projects,
-        profiles=tuple(record.profiles) if record.profiles else None,
+        profiles=None if record.profile_mode == "all_in_org" else tuple(record.profiles),
+        org_id=record.org_id,
         client_id=record.client_id,
         client_type=client.client_type if client is not None else None,
     )

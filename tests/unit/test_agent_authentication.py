@@ -24,6 +24,8 @@ class Clients:
 
 def client(client_id: str, *, status: str = "active") -> AgentClientDocument:
     return AgentClientDocument(
+        org_id="org-test",
+        project_mode="all_in_org",
         client_id=client_id,
         client_type="codex",
         name=client_id,

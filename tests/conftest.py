@@ -6,6 +6,8 @@ import pytest
 
 from app.core.config import Settings
 
+pytest_plugins = ("v6_isolation_fixtures",)
+
 
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
@@ -21,3 +23,12 @@ def settings(tmp_path: Path) -> Settings:
         mongodb_replica_set="rs0",
         mongodb_app_name="agent-context-platform-tests",
     )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def bind_isolation_evidence_to_source(record_testsuite_property):
+    """Reports identify the exact public runtime and test source they exercised."""
+    from app.services.tenant_isolation_service import source_fingerprint, suite_fingerprint
+
+    record_testsuite_property("v6_source_sha256", source_fingerprint())
+    record_testsuite_property("v6_tests_sha256", suite_fingerprint())

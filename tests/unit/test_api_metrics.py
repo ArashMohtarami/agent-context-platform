@@ -1,6 +1,8 @@
 """The metrics endpoint: who may read it, what it says, and what it costs."""
 
 from collections.abc import Iterator
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 
 import pytest
@@ -32,11 +34,17 @@ def client_for(application: object) -> AsyncClient:
 
 def open_platform(*, metrics_enabled: bool = True) -> AsyncClient:
     """Build a client against a deployment that answers without a credential."""
+    directory = TemporaryDirectory()
+    path = Path(directory.name) / "operator-token"
+    path.write_text("operator-test-token-at-least-32-characters")
     application = open_application(
         metrics_router,
-        settings=SimpleNamespace(metrics_enabled=metrics_enabled),
+        settings=SimpleNamespace(metrics_enabled=metrics_enabled, operator_metrics_token_file=path),
     )
-    return client_for(application)
+    client = client_for(application)
+    client.headers["Authorization"] = "Bearer operator-test-token-at-least-32-characters"
+    application.state.test_token_directory = directory
+    return client
 
 
 def guarded(*scopes: Scope) -> tuple[AsyncClient, str]:
@@ -46,7 +54,7 @@ def guarded(*scopes: Scope) -> tuple[AsyncClient, str]:
         metrics_router,
         auth=AuthService(FakeApiKeyRepository(record), clock=lambda: NOW),
         audit=AuditService(None),
-        settings=SimpleNamespace(metrics_enabled=True),
+        settings=SimpleNamespace(metrics_enabled=True, operator_metrics_token_file=None),
     )
     return client_for(application), token
 
@@ -81,11 +89,11 @@ async def test_reading_metrics_requires_a_credential() -> None:
     async with client:
         refused = await client.get("/metrics")
 
-    assert refused.status_code == 401
+    assert refused.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_reading_metrics_requires_the_diagnostics_scope() -> None:
+async def test_tenant_search_scope_does_not_grant_raw_shared_metrics() -> None:
     # A key that can search must not thereby be able to read how the platform
     # is doing: operational data describes a deployment, not its knowledge.
     client, token = guarded("search:read")
@@ -96,13 +104,13 @@ async def test_reading_metrics_requires_the_diagnostics_scope() -> None:
 
 
 @pytest.mark.asyncio
-async def test_a_scraper_holding_the_diagnostics_scope_is_answered() -> None:
+async def test_tenant_system_read_scope_does_not_grant_raw_shared_metrics() -> None:
     client, token = guarded("system:read")
     async with client:
         response = await client.get("/metrics", headers=bearer(token))
 
-    assert response.status_code == 200
-    assert response.text.startswith("# HELP acp_")
+    assert response.status_code == 403
+    assert "installation operator" in response.text
 
 
 @pytest.mark.asyncio
@@ -119,7 +127,8 @@ async def test_a_scrape_runs_no_dependency_checks() -> None:
 
 @pytest.mark.asyncio
 async def test_the_body_carries_no_credential_and_no_knowledge() -> None:
-    client, token = guarded("system:read")
+    client = open_platform()
+    token = "operator-test-token-at-least-32-characters"
     instruments.record_mcp_call(tool="search_knowledge", outcome="ok", seconds=0.1)
     instruments.record_memory_operation(operation="create")
 

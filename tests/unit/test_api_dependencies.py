@@ -30,7 +30,9 @@ DIMENSIONS = 4
 
 
 # One active skill version, so the chunk search has a scope to run against.
-SKILL_ROWS: tuple[MongoDocument, ...] = ({"skill_id": "fastapi-production", "version": "1.0.0"},)
+SKILL_ROWS: tuple[MongoDocument, ...] = (
+    {"skill_id": "fastapi-production", "version": "1.0.0", "org_id": "org-test"},
+)
 
 
 class FakeCursor:
@@ -192,3 +194,9 @@ async def test_nothing_is_stored_when_a_deployment_did_not_ask(settings: Setting
     await service.search_knowledge("payment idempotency", project_id=PROJECT)
 
     assert all(name != "retrieval_logs" for name, _ in database.calls)
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing domain behavior uses an explicit test organization."""
+    yield

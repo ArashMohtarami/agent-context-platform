@@ -7,6 +7,7 @@ from app.models.agent import AgentClientDocument
 from app.models.client_profile import ClientProfileDocument, ClientProfileStatus
 from app.models.common import Page
 from app.repositories.errors import DuplicateDocumentError
+from app.security.tenant_service import tenant_service
 
 
 class ClientProfileNotFoundError(Exception):
@@ -39,6 +40,7 @@ class ClientNotFoundForProfileError(Exception):
     """A profile assignment named no registered agent client."""
 
 
+@tenant_service
 class ClientProfileService:
     """Manage generic profiles without inventing a second authorization path.
 

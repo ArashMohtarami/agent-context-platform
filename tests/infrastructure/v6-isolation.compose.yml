@@ -1,0 +1,79 @@
+name: acp-v6-phase2-test-${V6_TEST_RUN:?}
+services:
+  mongodb:
+    networks:
+      isolated:
+        aliases:
+        - mongodb
+    restart: 'no'
+    image: mongo:8.3.9-noble@sha256:1cd50aca58bb5f84ca6bb32b69a75ad67b23867fc8454bd1ff288822e4599219
+    container_name: acp-v6-phase2-mongodb-${V6_TEST_RUN:?}
+    hostname: mongodb
+    mem_limit: 2g
+    cpus: 2
+    tmpfs:
+    - /data/db:size=1610612736
+    - /data/configdb:size=67108864
+    ports:
+    - 127.0.0.1::27017
+    entrypoint:
+    - /bin/bash
+    - /entrypoint.sh
+    command:
+    - mongod
+    - --replSet
+    - acp_v6_phase2
+    - --bind_ip_all
+    - --auth
+    - --keyFile
+    - /run/mongodb-internal/keyfile
+    - --oplogSize
+    - '64'
+    - --wiredTigerCacheSizeGB
+    - '0.25'
+    - --setParameter
+    - searchIndexManagementHostAndPort=mongot:27028
+    - --setParameter
+    - mongotHost=mongot:27028
+    - --setParameter
+    - searchTLSMode=disabled
+    - --setParameter
+    - useGrpcForSearch=true
+    - --setParameter
+    - skipAuthenticationToSearchIndexManagementServer=false
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: v6-test-root
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/root
+    volumes:
+    - ${V6_TEST_DIR:?}/root:/run/secrets/root:ro
+    - ${V6_TEST_DIR:?}/keyfile:/run/secrets/mongodb-keyfile:ro
+    - ${V6_REPOSITORY_ROOT:?}/scripts/mongodb-entrypoint.sh:/entrypoint.sh:ro
+    - ${V6_TEST_DIR:?}/sync:/run/secrets/sync:ro
+    - ${V6_REPOSITORY_ROOT:?}/tests/infrastructure/v6-bootstrap.js:/bootstrap.js:ro
+    - ${V6_REPOSITORY_ROOT:?}/tests/infrastructure/v6-search-user.js:/sync.js:ro
+  mongot:
+    networks:
+      isolated:
+        aliases:
+        - mongot
+    restart: 'no'
+    image: mongodb/mongodb-community-search@sha256:63ebc805c6b55d027e345b5224d8713009f21911aedafb50b6c28c1cd9583e4f
+    container_name: acp-v6-phase2-mongot-${V6_TEST_RUN:?}
+    hostname: mongot
+    mem_limit: 2g
+    cpus: 2
+    entrypoint:
+    - /bin/bash
+    - /entrypoint.sh
+    environment:
+      MONGOT_SYNC_USERNAME: v6-test-sync
+      MONGOT_LOG_LEVEL: WARN
+    tmpfs:
+    - /data/mongot:size=1073741824
+    volumes:
+    - ${V6_TEST_DIR:?}/sync:/run/secrets/mongot-sync-password:ro
+    - ${V6_REPOSITORY_ROOT:?}/docker/mongot/mongot.yml.template:/etc/mongot/mongot.yml.template:ro
+    - ${V6_REPOSITORY_ROOT:?}/scripts/mongot-entrypoint.sh:/entrypoint.sh:ro
+networks:
+  isolated:
+    name: acp-v6-phase2-isolated-${V6_TEST_RUN:?}

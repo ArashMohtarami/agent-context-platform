@@ -114,7 +114,7 @@ async def test_research_project_crud_routes_are_revision_guarded_and_expose_serv
     assert listed.json()["next_cursor"] == "next-page"
     assert loaded.json()["question"] == body["question"]
     assert updated.json()["status"] == "archived"
-    assert service.create_project.await_args.kwargs["owner_key_id"] is None
+    assert service.create_project.await_args.kwargs["owner_key_id"] == "0123456789abcdef"
     assert service.list_projects.await_args.kwargs == {
         "allowed_project_ids": None,
         "status": "active",

@@ -28,6 +28,7 @@ from app.research.errors import (
     SkillUpdateProposalSkillNotFoundError,
     SkillUpdateProposalVersionMismatchError,
 )
+from app.security.tenant_service import tenant_service
 
 
 class ResearchProjectLookup(Protocol):
@@ -79,6 +80,7 @@ ResearchCitationRepositoryFactory = Callable[[str], ResearchCitationStore]
 SkillUpdateProposalRepositoryFactory = Callable[[str], SkillUpdateProposalStore]
 
 
+@tenant_service
 class SkillUpdateProposalService:
     """Create, read, list, and export generated patches without applying them."""
 

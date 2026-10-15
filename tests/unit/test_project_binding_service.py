@@ -256,3 +256,9 @@ async def test_resolution_filters_unauthorized_projects_and_reports_no_match() -
     assert denied.status == ProjectResolutionStatus.NO_MATCH
     assert denied.project_id is None
     assert unmatched.status == ProjectResolutionStatus.NO_MATCH
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

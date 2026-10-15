@@ -150,9 +150,8 @@ class McpSettings(BaseSettings):
     def mcp_api_token_value(self) -> str | None:
         """Read the API token without exposing it in settings output.
 
-        No token configured is a valid deployment today: the Context API does
-        not require one until API keys exist, and the MCP server reaches it
-        over loopback or a private network.
+        Missing tokens never establish organization authority. Every data tool
+        still performs fresh authenticated API preflight and fails closed.
         """
         if self.mcp_api_token is not None:
             value = self.mcp_api_token.get_secret_value()
@@ -172,6 +171,13 @@ class Settings(McpSettings):
     """The full platform configuration, loaded by the API and the tooling."""
 
     v6_tenant_foundation: bool = False
+    v6_tenant_isolation: bool = False
+    operator_metrics_token_file: Path | None = None
+
+    @field_validator("operator_metrics_token_file", mode="before")
+    @classmethod
+    def optional_operator_metrics_path(cls, value: object) -> object:
+        return None if value == "" else value
 
     app_env: str = "development"
     app_name: str = "Agent Context Platform"

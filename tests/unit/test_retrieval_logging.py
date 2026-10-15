@@ -251,3 +251,9 @@ async def test_an_unreachable_log_never_fails_the_search_that_wrote_it() -> None
     await composite.record(entry())
 
     assert logs.repositories[PROJECT].documents == []
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

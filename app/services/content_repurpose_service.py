@@ -20,6 +20,7 @@ from app.models.content import (
     ContentSourceReference,
 )
 from app.models.skill import SkillDocument
+from app.security.tenant_service import tenant_service
 from app.services.content_discovery_service import SkillReference
 from app.services.content_novelty_service import ContentHistorySearch
 from app.services.content_retrieval_service import (
@@ -88,6 +89,7 @@ class _SourceMaterial:
     source_refs: tuple[ContentSourceReference, ...]
 
 
+@tenant_service
 class ContentRepurposeService:
     """Build platform-specific planning data around reviewed source records."""
 

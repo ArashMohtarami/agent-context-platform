@@ -104,3 +104,9 @@ async def test_duplicate_tags_are_rejected_before_storage() -> None:
         )
 
     assert repository.documents == {}
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

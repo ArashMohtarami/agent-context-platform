@@ -256,6 +256,7 @@ def test_a_principal_describes_itself_without_a_credential() -> None:
     described = principal_of(record).describe()
 
     assert described == {
+        "org_id": "org-test",
         "key_id": record.key_id,
         "scopes": ["search:read"],
         "projects": [PROJECT],

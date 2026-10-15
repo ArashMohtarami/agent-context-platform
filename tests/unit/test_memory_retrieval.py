@@ -463,3 +463,9 @@ async def test_memory_without_an_embedding_model_still_answers_lexically() -> No
 
     assert [call["method"] for call in repository.calls] == ["lexical"]
     assert results[0].methods == ("lexical",)
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing domain behavior uses an explicit test organization."""
+    yield

@@ -405,3 +405,9 @@ def test_the_agent_facing_client_ignores_an_inherited_proxy() -> None:
     source = Path("app/mcp/client.py").read_text(encoding="utf-8")
 
     assert "trust_env=False" in source
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing domain behavior uses an explicit test organization."""
+    yield

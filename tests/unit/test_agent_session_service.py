@@ -145,3 +145,9 @@ async def test_legacy_key_cannot_create_or_attach_an_agent_session() -> None:
 
     with pytest.raises(AgentSessionAccessError):
         await service.begin(legacy)
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

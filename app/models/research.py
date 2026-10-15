@@ -32,6 +32,7 @@ from app.models.common import (
 )
 from app.models.embedding import EmbeddingFields
 from app.models.freshness import FreshnessClass, RevalidationReason
+from app.models.job_authority import JobAuthority
 from app.models.skill import SemanticVersion
 
 
@@ -843,6 +844,7 @@ class PromotionEventDocument(ResearchScopedDocument):
 class IngestionJobDocument(ResearchScopedDocument):
     """Persisted job metadata only; it does not create a worker or queue."""
 
+    initiating_authority: JobAuthority | None = Field(default=None, frozen=True)
     job_id: Identifier
     source_id: Identifier
     snapshot_id: Identifier | None = None

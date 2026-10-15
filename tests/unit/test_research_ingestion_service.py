@@ -403,3 +403,9 @@ async def test_saturated_ingestion_gate_refuses_work_before_creating_a_job() -> 
     assert not store.documents
     assert not store.chunks
     assert not store.jobs
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

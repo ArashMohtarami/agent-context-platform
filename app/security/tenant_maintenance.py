@@ -1,4 +1,4 @@
-"""Fail closed during adoption; this is a seal, not Phase 2 authorization."""
+"""Persisted cutover seal and request-local tenant/policy lifetime."""
 
 from pymongo.asynchronous.database import AsyncDatabase
 from starlette.requests import Request
@@ -7,7 +7,14 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.db.client_types import MongoDocument
 from app.repositories.organization_repository import MongoOrganizationRepository
-from app.security.tenant import TenantContextRequired, current_tenant
+from app.security.tenant import (
+    TenantContext,
+    TenantContextRequired,
+    current_tenant,
+    establish_tenant,
+    tenant_request_boundary,
+)
+from app.security.tenant_policy import policy_request_boundary
 
 
 async def check_operator_context(
@@ -19,13 +26,17 @@ async def check_operator_context(
         if control is not None or enabled:
             raise TenantContextRequired("explicit --org-id is required on a V6 installation")
         return
-    if control is None or control.get("stage") != "prepared":
+    if control is None or control.get("stage") not in {"prepared", "isolated"}:
         raise TenantContextRequired("tenant operator writes require completed adoption")
     organization = await MongoOrganizationRepository(database).get(context.org_id)
-    if organization is None or organization.status != "sealed":
+    if organization is None or organization.status not in {"sealed", "active"}:
         raise TenantContextRequired(
             "operator organization must be explicitly provisioned and sealed"
         )
+
+    secret = control.get("cursor_secret")
+    if isinstance(secret, bytes):
+        establish_tenant(TenantContext(context.org_id, secret))
 
 
 class TenantMaintenanceMiddleware:
@@ -35,14 +46,24 @@ class TenantMaintenanceMiddleware:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] == "http" and (
-            scope["path"].startswith(("/api", "/mcp")) or scope["path"] == "/metrics"
-        ):
+        with tenant_request_boundary(), policy_request_boundary():
+            await self._call(scope, receive, send)
+
+    async def _call(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and (scope["path"].startswith(("/api", "/mcp"))):
             request = Request(scope)
             database = getattr(request.app.state, "tenant_control_database", None)
             if database is not None:
                 control = await database["_tenant_control"].find_one({"_id": "installation"})
-                if control is not None and control.get("stage") != "not_adopted":
+                if (
+                    control is not None
+                    and control.get("stage") != "not_adopted"
+                    and not (
+                        control.get("schema_version") == 37
+                        and control.get("stage") == "isolated"
+                        and control.get("domain_traffic_enabled") is True
+                    )
+                ):
                     response = JSONResponse(
                         {"detail": "Tenant domain traffic is sealed pending Phase 2 enforcement"},
                         status_code=503,

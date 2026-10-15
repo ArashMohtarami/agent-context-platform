@@ -83,6 +83,8 @@ def client(
     scopes: list[str] | None = None,
 ) -> AgentClientDocument:
     return AgentClientDocument(
+        org_id="org-test",
+        project_mode="include",
         client_id=client_id,
         client_type="codex",
         name="Codex",
@@ -162,6 +164,9 @@ async def test_gateway_identity_and_activity_are_derived_from_the_client_link() 
 
     assert identity.status_code == 200  # type: ignore[attr-defined]
     assert identity.json() == {  # type: ignore[attr-defined]
+        "org_id": "org-test",
+        "key_id": record.key_id,
+        "allowed_profile_ids": None,
         "client_id": "codex-main",
         "client_type": "codex",
         "scopes": ["search:read"],

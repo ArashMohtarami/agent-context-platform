@@ -14,6 +14,7 @@ from app.models.promotion import PromotionProvenance
 from app.models.skill import LifecycleStatus
 from app.projects.errors import ContextNotFoundError, ProjectNotFoundError
 from app.repositories.errors import DuplicateDocumentError
+from app.security.tenant_service import tenant_service
 
 DEFAULT_PAGE_SIZE = 20
 
@@ -71,6 +72,7 @@ class ContentEmbedder(Protocol):
 ContextRepositoryFactory = Callable[[str], ContextRepository]
 
 
+@tenant_service
 class ContextService:
     """Keep context writes inside one project and always retrievable.
 

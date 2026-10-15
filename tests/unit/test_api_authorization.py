@@ -521,13 +521,14 @@ async def test_an_application_that_never_decided_whether_it_authenticates_fails_
 
 
 @pytest.mark.asyncio
-async def test_an_explicitly_open_deployment_serves_without_a_key() -> None:
+async def test_an_explicitly_authentication_disabled_deployment_refuses_domain_traffic() -> None:
     application = open_application(*ROUTERS)
     application.dependency_overrides.update(services())
+    application.state.auth = None
 
     response = await call(application, "GET", "/api/v1/skills")
 
-    assert response.status_code == 200
+    assert response.status_code == 401
 
 
 def test_every_route_that_is_not_health_declares_a_scope() -> None:

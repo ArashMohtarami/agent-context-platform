@@ -288,3 +288,9 @@ async def test_content_queries_retrieve_platform_skills_through_v1_retrieval_pat
         assert vector[0].skill.skill_id == expected_skill_id
         assert lexical[0].skill.skill_id == expected_skill_id
         assert hybrid.items[0].metadata["skill_id"] == expected_skill_id
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing domain behavior uses an explicit test organization."""
+    yield

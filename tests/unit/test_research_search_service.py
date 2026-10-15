@@ -563,3 +563,9 @@ async def test_research_code_profile_retrieves_repository_architecture_documents
 
     assert [item.identifier for item in result.items] == ["architecture-repository-chunk"]
     assert result.items[0].source_type is ResearchSourceType.GIT
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

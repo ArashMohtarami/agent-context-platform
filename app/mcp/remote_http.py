@@ -181,7 +181,10 @@ class RemoteMcpGateway:
 
         requested_session = request.headers.get(MCP_SESSION_ID_HEADER)
         runtime = await self._get_session(requested_session) if requested_session else None
-        if runtime is not None and runtime.principal.key_id != principal.key_id:
+        if runtime is not None and (
+            runtime.principal.key_id != principal.key_id
+            or runtime.principal.org_id != principal.org_id
+        ):
             # A random session ID must not turn one valid credential into
             # authority to send requests through a different client's session.
             await _authentication_response(GatewayErrorCode.UNAUTHENTICATED, scope, receive, send)

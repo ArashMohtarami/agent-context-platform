@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from hashlib import sha256
 from typing import Protocol
 
 from app.models.common import utc_now
@@ -11,6 +12,9 @@ from app.models.idempotency import (
     digest_idempotency_key,
 )
 from app.repositories.errors import DuplicateDocumentError
+from app.security.tenant import require_tenant
+from app.security.tenant_policy import current_policy
+from app.security.tenant_service import tenant_service
 
 
 class IdempotencyRepository(Protocol):
@@ -49,6 +53,16 @@ class IdempotencyReservation:
     replay: bool
 
 
+def policy_hash() -> str:
+    policy = current_policy()
+    return (
+        policy.fingerprint
+        if policy
+        else sha256(("operator:" + require_tenant().org_id).encode()).hexdigest()
+    )
+
+
+@tenant_service
 class GatewayIdempotencyService:
     """Reserve, complete, and replay bounded client-side write retries."""
 
@@ -75,6 +89,7 @@ class GatewayIdempotencyService:
             operation=operation,
             key_hash=key_hash,
             payload_hash=payload_hash,
+            policy_hash=policy_hash(),
             expires_at=now + self._retention,
         )
         try:
@@ -91,6 +106,8 @@ class GatewayIdempotencyService:
                     idempotency_key=idempotency_key,
                     payload_hash=payload_hash,
                 )
+            if existing.policy_hash != policy_hash():
+                raise IdempotencyConflictError("the initiating authority changed") from None
             if existing.payload_hash != payload_hash:
                 raise IdempotencyConflictError(
                     "the idempotency key was already used for a different request"
@@ -135,7 +152,11 @@ class GatewayIdempotencyService:
             operation=operation,
             key_hash=digest_idempotency_key(idempotency_key),
         )
-        if document is None or document.payload_hash != payload_hash:
+        if (
+            document is None
+            or document.payload_hash != payload_hash
+            or document.policy_hash != policy_hash()
+        ):
             raise IdempotencyConflictError("the idempotency reservation was not found")
         if document.status is IdempotencyRecordStatus.COMPLETED:
             return
@@ -159,7 +180,11 @@ class GatewayIdempotencyService:
             operation=operation,
             key_hash=digest_idempotency_key(idempotency_key),
         )
-        if document is None or document.payload_hash != payload_hash:
+        if (
+            document is None
+            or document.payload_hash != payload_hash
+            or document.policy_hash != policy_hash()
+        ):
             return
         if document.status is IdempotencyRecordStatus.IN_PROGRESS:
             await self.abandon(document)

@@ -32,6 +32,8 @@ async def test_client_profile_api_requires_management_scope_and_assigns_a_snapsh
     administrator, token = issued_key(scopes=("agent:manage",))
     records.records[administrator.key_id] = administrator
     client = AgentClientDocument(
+        org_id="org-test",
+        project_mode="include" if ["payments", "ledger"] else "all_in_org",
         client_id="gemini-cli-main",
         client_type="gemini_cli",
         name="Gemini CLI",
@@ -89,6 +91,8 @@ async def test_client_profile_api_returns_revision_conflicts_and_refuses_scope_e
     records.records[administrator.key_id] = administrator
     clients = Clients(
         AgentClientDocument(
+            org_id="org-test",
+            project_mode="include" if [] else "all_in_org",
             client_id="gemini-cli-main",
             client_type="gemini_cli",
             name="Gemini CLI",
@@ -129,3 +133,9 @@ async def test_client_profile_api_returns_revision_conflicts_and_refuses_scope_e
 
     assert escalated.status_code == 422
     assert stale.status_code == 409
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing domain behavior uses an explicit test organization."""
+    yield

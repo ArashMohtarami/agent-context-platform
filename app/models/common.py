@@ -143,6 +143,7 @@ class MongoDocumentModel(BaseModel):
     org_id: Identifier | None = Field(default=None, frozen=True)
     identity_version: Literal[1, 2] | None = Field(default=None, frozen=True)
     legacy_adoption_id: Identifier | None = Field(default=None, frozen=True)
+    resource_project_ids: list[Identifier] | None = Field(default=None, frozen=True)
 
     @model_validator(mode="before")
     @classmethod
@@ -181,6 +182,15 @@ class MongoDocumentModel(BaseModel):
         self, handler: SerializerFunctionWrapHandler
     ) -> dict[str, object]:
         result: dict[str, object] = handler(self)
+        for key in (
+            "project_mode",
+            "profile_mode",
+            "initiating_authority",
+            "resource_project_ids",
+            "policy_hash",
+        ):
+            if result.get(key) is None:
+                result.pop(key, None)
         if self.org_id is None:
             for key in ("org_id", "identity_version", "legacy_adoption_id"):
                 result.pop(key, None)

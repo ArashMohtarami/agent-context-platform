@@ -121,6 +121,10 @@ def issued_key(
     """
     credential = minted if minted is not None else mint()
     document = ApiKeyDocument(
+        org_id="org-test",
+        identity_version=2,
+        project_mode="include" if projects else "all_in_org",
+        profile_mode="include" if profiles else "all_in_org",
         key_id=credential.key_id,
         key_hash=credential.key_hash,
         name=name,

@@ -10,7 +10,8 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.db.client_types import MongoDocument
-from app.models.common import Page, deterministic_object_id, utc_now
+from app.db.tenant_collection import scoped_collection
+from app.models.common import Page, utc_now
 from app.models.skill import LifecycleStatus, SkillDocument, SkillTrustLevel
 from app.models.skill_chunk import SkillChunkDocument
 from app.repositories.base import DEFAULT_PAGE_SIZE, MongoRepository
@@ -31,7 +32,7 @@ class MongoSkillRepository(MongoRepository[SkillDocument]):
     ) -> None:
         super().__init__(database, "skills", SkillDocument, tenant=tenant)
         self._database = database
-        self._chunks = database["skill_chunks"]
+        self._chunks = scoped_collection(database, "skill_chunks", self._require_tenant)
 
     async def create(self, document: SkillDocument) -> SkillDocument:
         return await self._create(document)
@@ -130,16 +131,11 @@ class MongoSkillRepository(MongoRepository[SkillDocument]):
             return ()
         if len(unique) > MAX_VERSION_KEYS:
             raise ValueError(f"at most {MAX_VERSION_KEYS} skill versions can be loaded at once")
-        document_ids = [
-            deterministic_object_id("skill", key.skill_id, key.version) for key in unique
-        ]
-        query: MongoDocument = {"_id": {"$in": document_ids}}
-        if self._tenant is not None:
-            query = self._owned_filter(
-                {"$or": [{"skill_id": key.skill_id, "version": key.version} for key in unique]}
-            )
+        query = self._owned_filter(
+            {"$or": [{"skill_id": key.skill_id, "version": key.version} for key in unique]}
+        )
         cursor = self._collection.find(query)
-        raw_documents = await cursor.limit(len(document_ids)).to_list(length=len(document_ids))
+        raw_documents = await cursor.limit(len(unique)).to_list(length=len(unique))
         return tuple(self._validate(raw) for raw in raw_documents)
 
     async def list_versions(self, skill_id: str, *, limit: int = 100) -> tuple[SkillDocument, ...]:
@@ -239,7 +235,7 @@ class MongoSkillRepository(MongoRepository[SkillDocument]):
         validated_skill = self._validate(skill.model_dump(by_alias=True, mode="python"))
         if validated_skill.identity_version == 1:
             raise ValueError("only adoption may insert legacy tenant identities")
-        if validated_skill.org_id is not None and self._tenant is None:
+        if validated_skill.org_id != self._require_tenant().org_id:
             raise ValueError("skill import requires explicit trusted organization context")
         if validated_skill.status != "active":
             raise ValueError("a newly installed skill version must be active")

@@ -30,7 +30,7 @@ SKILL_CHUNK_TEXT_INDEX: Final = "skill_chunk_text_index"
 TEXT_INDEX_TYPE: Final = "search"
 CONTENT_PATH: Final = "content"
 SECTION_PATH: Final = "section"
-FILTER_PATHS: Final[tuple[str, ...]] = ("skill_id", "skill_version")
+FILTER_PATHS: Final[tuple[str, ...]] = ("org_id", "_id", "skill_id", "skill_version")
 STANDARD_ANALYZER: Final = "lucene.standard"
 IDENTIFIER_ANALYZER: Final = "identifier_exact"
 EXACT_MULTI: Final = "exact"
@@ -77,6 +77,8 @@ def skill_chunk_text_definition() -> MongoDocument:
             "fields": {
                 CONTENT_PATH: searchable_text_field(exact=True),
                 SECTION_PATH: searchable_text_field(),
+                "org_id": {"type": "token"},
+                "_id": {"type": "objectId"},
                 "skill_id": {"type": "token"},
                 "skill_version": {"type": "token"},
             },

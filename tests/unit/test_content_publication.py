@@ -305,3 +305,9 @@ async def test_approval_requires_content_write_scope() -> None:
 
     assert response.status_code == 403
     store.update_content.assert_not_awaited()
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

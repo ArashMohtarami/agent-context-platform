@@ -25,7 +25,7 @@ VECTOR_PATH: Final = "embedding"
 VECTOR_SIMILARITY: Final = "cosine"
 # Only chunk-level fields can pre-filter a vector query. Skill metadata filters
 # are resolved to these keys by the retrieval service.
-VECTOR_FILTER_PATHS: Final[tuple[str, ...]] = ("skill_id", "skill_version")
+VECTOR_FILTER_PATHS: Final[tuple[str, ...]] = ("org_id", "_id", "skill_id", "skill_version")
 
 VectorIndexAction = SearchIndexAction
 

@@ -85,7 +85,9 @@ async def test_the_vector_query_always_pre_filters_by_project() -> None:
         filters=ContextQueryFilters(project_id=PROJECT, status=None),
     )
 
-    assert pipeline_of(collection)[0]["$vectorSearch"]["filter"] == {"project_id": {"$eq": PROJECT}}
+    assert pipeline_of(collection)[0]["$vectorSearch"]["filter"] == {
+        "$and": [{"project_id": {"$eq": PROJECT}}, {"org_id": "org-test"}]
+    }
 
 
 @pytest.mark.asyncio
@@ -153,6 +155,7 @@ async def test_reads_are_scoped_to_the_repository_s_project() -> None:
     await repository.get(document.id)
 
     assert collection.find_one.await_args.args[0] == {
+        "org_id": "org-test",
         "_id": document.id,
         "project_id": PROJECT,
     }
@@ -207,3 +210,9 @@ async def test_an_unusable_score_is_refused() -> None:
             limit=5,
             filters=ContextQueryFilters(project_id=PROJECT),
         )
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

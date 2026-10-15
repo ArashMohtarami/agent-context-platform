@@ -388,3 +388,9 @@ async def test_discovery_returns_an_empty_result_without_project_context_or_matc
     )
 
     assert result.candidates == ()
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

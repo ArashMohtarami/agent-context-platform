@@ -98,6 +98,8 @@ def test_the_text_index_maps_content_summary_and_every_filter_field() -> None:
 
     assert mappings["dynamic"] is False
     assert set(fields) == {
+        "org_id",
+        "_id",
         "content",
         "summary",
         "scope",

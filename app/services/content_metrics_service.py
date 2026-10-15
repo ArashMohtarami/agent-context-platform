@@ -21,6 +21,7 @@ from app.models.content import (
     CreatorProfileDocument,
 )
 from app.repositories.errors import DuplicateDocumentError
+from app.security.tenant_service import tenant_service
 
 
 class CreatorProfileRepository(Protocol):
@@ -60,6 +61,7 @@ class ContentMetricHistory:
     page: Page[ContentMetricDocument]
 
 
+@tenant_service
 class ContentMetricsService:
     """Coordinate generic, profile-isolated metric observations.
 

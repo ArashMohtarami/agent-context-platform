@@ -31,6 +31,7 @@ from app.models.research import (
     ResearchProjectDocument,
 )
 from app.research.errors import ResearchClaimNotFoundError, ResearchProjectNotFoundError
+from app.security.tenant_service import tenant_service
 from app.services.research_evidence_service import CitationEvidence
 
 _MAX_FACT_CLAIMS = 100
@@ -130,6 +131,7 @@ class ContentFactReview:
     missing_evidence: tuple[str, ...]
 
 
+@tenant_service
 class ContentResearchIntegrationService:
     """Join V2 content with only explicit, authorized V3 claim evidence."""
 

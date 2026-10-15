@@ -24,6 +24,9 @@ def identity(
 ) -> dict[str, object]:
     """Build the narrow response supplied by the API identity preflight."""
     return {
+        "org_id": "org-test",
+        "key_id": "a" * 16,
+        "allowed_profile_ids": None,
         "client_id": client_id,
         "client_type": client_type,
         "scopes": scopes or ["search:read", "context:read", "memory:write"],

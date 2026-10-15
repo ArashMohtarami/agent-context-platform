@@ -12,6 +12,9 @@ from app.security.scopes import Scope
 class GatewayIdentityResponse(BaseModel):
     """The safe authorization facts an MCP process needs for one tool call."""
 
+    org_id: Identifier
+    key_id: str
+    allowed_profile_ids: tuple[str, ...] | None
     client_id: str | None
     client_type: AgentClientType | None
     scopes: tuple[Scope, ...]

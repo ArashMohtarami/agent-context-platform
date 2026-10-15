@@ -12,6 +12,7 @@ from typing import Protocol
 from app.models.agent import AgentClientType
 from app.models.retrieval_log import RetrievalLogDocument
 from app.search.logging import RetrievalLogEntry
+from app.security.tenant_service import tenant_service
 
 
 class RetrievalLogRepository(Protocol):
@@ -28,6 +29,7 @@ class RetrievalLogRepository(Protocol):
 RetrievalLogFactory = Callable[[str | None], RetrievalLogRepository]
 
 
+@tenant_service
 class PersistentRetrievalLogger:
     """Store one bounded record per search, inside the scope it was run in."""
 

@@ -14,6 +14,7 @@ from app.models.api_key import ApiKeyDocument, KeyStatus
 from app.models.common import Page, utc_now
 from app.security.keys import mint
 from app.security.scopes import Scope, canonical, parse_scopes
+from app.security.tenant_service import tenant_service
 
 
 class ApiKeyNotFoundError(Exception):
@@ -57,6 +58,7 @@ class IssuedKey:
     token: str
 
 
+@tenant_service
 class ApiKeyService:
     """Create, list, and revoke the credentials the API accepts."""
 
@@ -91,6 +93,8 @@ class ApiKeyService:
         minted = mint()
         record = await self._keys.create(
             ApiKeyDocument(
+                project_mode="include" if projects else "all_in_org",
+                profile_mode="include" if profiles else "all_in_org",
                 key_id=minted.key_id,
                 client_id=client_id,
                 key_hash=minted.key_hash,

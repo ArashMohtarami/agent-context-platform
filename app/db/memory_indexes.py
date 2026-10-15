@@ -58,6 +58,8 @@ IMPORTANCE_PATH: Final = "importance"
 # Every field a memory query may restrict. `scope` and `project_id` are both
 # indexed because the scope rule needs them together.
 MEMORY_FILTER_PATHS: Final[tuple[str, ...]] = (
+    "org_id",
+    "_id",
     SCOPE_PATH,
     PROJECT_PATH,
     CLIENT_PATH,
@@ -134,6 +136,8 @@ def memory_text_definition() -> MongoDocument:
         "mappings": {
             "dynamic": False,
             "fields": {
+                "org_id": {"type": "token"},
+                "_id": {"type": "objectId"},
                 CONTENT_PATH: searchable_text_field(exact=True),
                 SUMMARY_PATH: searchable_text_field(),
                 SCOPE_PATH: {"type": "token"},

@@ -443,3 +443,9 @@ async def test_malformed_context_searches_are_rejected(payload: dict[str, Any]) 
 
     assert response.status_code == 422
     retrieval.context_search.assert_not_awaited()
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

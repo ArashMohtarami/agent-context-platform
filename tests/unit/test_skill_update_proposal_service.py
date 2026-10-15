@@ -239,3 +239,9 @@ async def test_proposal_requires_authorized_project_local_claim_and_citation() -
             allowed_project_ids=(PROJECT,),
         )
     assert proposals.values == {}
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

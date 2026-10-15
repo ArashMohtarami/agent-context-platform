@@ -45,6 +45,7 @@ class IdempotencyRecordDocument(MongoDocumentModel):
     operation: Identifier
     key_hash: str = Field(pattern=HASH_PATTERN)
     payload_hash: str = Field(pattern=HASH_PATTERN)
+    policy_hash: str | None = Field(default=None, pattern=HASH_PATTERN, frozen=True)
     status: IdempotencyRecordStatus = IdempotencyRecordStatus.IN_PROGRESS
     result_text: str | None = Field(default=None, max_length=MAX_RESULT_TEXT)
     result_data: Metadata | None = None

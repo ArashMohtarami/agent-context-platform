@@ -284,3 +284,9 @@ async def test_duplicate_url_snapshot_is_idempotent_and_preserves_heading_citati
     assert chunk.locator.url == "https://public.example/retries"
     assert chunk.locator.anchor == "keys"
     assert chunk.locator.path is None
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing domain behavior uses an explicit test organization."""
+    yield

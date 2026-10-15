@@ -84,6 +84,7 @@ async def import_skills(
         await initialize_database(
             mongodb.database,
             tenant_foundation=settings.v6_tenant_foundation or current_tenant() is not None,
+            tenant_isolation=settings.v6_tenant_isolation,
         )
         await ensure_text_indexes(mongodb.database)
         if embedding_service is not None:

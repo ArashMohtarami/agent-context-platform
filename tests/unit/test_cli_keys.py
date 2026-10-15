@@ -59,7 +59,14 @@ def platform(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Platform]:
     class FakeClient:
         def __init__(self, settings: Any) -> None:
             self.database = MagicMock()
-            self.database["_tenant_control"].find_one = AsyncMock(return_value=None)
+            from app.models.organization import OrganizationDocument
+
+            organization = OrganizationDocument(org_id="org-test", slug="test", name="Test")
+            self.database["_tenant_control"].find_one = AsyncMock(
+                side_effect=lambda query: {"stage": "prepared", "schema_version": 36}
+                if "_id" in query
+                else organization.model_dump(by_alias=True, mode="python")
+            )
 
         async def connect(self, *, require_search: bool = True) -> None:
             state.required_search = require_search
@@ -75,7 +82,7 @@ def platform(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Platform]:
 
 def run(capsys: pytest.CaptureFixture[str], *argv: str) -> tuple[int, str, str]:
     """Run one invocation and return its exit code and streams."""
-    code = contextctl.main(argv)
+    code = contextctl.main(("--org-id", "org-test", *argv))
     captured = capsys.readouterr()
     return code, captured.out, captured.err
 

@@ -32,6 +32,7 @@ from app.search.types import (
     resolve_sources,
     retrieval_method,
 )
+from app.security.tenant_service import tenant_service
 from app.services.retrieval_service import SKILL_SOURCE, RetrievalService
 
 # Latency is reported to the nearest microsecond: finer resolution would be
@@ -41,6 +42,7 @@ LATENCY_PRECISION: Final = 3
 OPERATION: Final = "search_knowledge"
 
 
+@tenant_service
 class SearchService:
     """Answer one question from every source a request is allowed to see.
 

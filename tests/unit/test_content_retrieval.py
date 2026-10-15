@@ -287,3 +287,9 @@ def test_retrieval_profiles_are_v2_only_and_keep_configurable_creation_prioritie
     assert creation.source_priorities["content_skill"] == 0.85
     assert creation.source_priorities["published_content"] == 0.71
     assert creation.source_priorities["conversation"] == 0.40
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

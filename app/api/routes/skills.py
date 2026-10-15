@@ -42,7 +42,7 @@ _SEARCH_UNAVAILABLE = "semantic search is unavailable"
 
 SkillServiceDependency = Annotated[SkillService, Depends(get_skill_service)]
 RetrievalServiceDependency = Annotated[RetrievalService, Depends(get_retrieval_service)]
-# Skills are global knowledge, so one scope covers every route here.
+# Imported skills belong to the verified organization; one scope covers these routes.
 SkillReader = Annotated[Principal, Depends(requires("skills:read"))]
 
 

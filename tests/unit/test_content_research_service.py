@@ -345,3 +345,9 @@ async def test_private_research_scope_is_not_materialized_for_another_project() 
             claim_statements=(),
             allowed_project_ids=("other-project",),
         )
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

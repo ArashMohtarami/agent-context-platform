@@ -130,6 +130,7 @@ async def dispatch(
         resource_id: str | None = None
         clear_session_id: str | None = None
         try:
+            gateway = gateway or GatewayAuthenticationMiddleware(client)
             if gateway is not None:
                 request_id = correlation.current_or_fail().request_id
                 client_context = await gateway.authenticate(request_id)
@@ -249,7 +250,9 @@ async def _run(
             result = await invoke()
         else:
             async with controls.limiter.reserve(
-                None if client_context is None else client_context.client_id,
+                None
+                if client_context is None
+                else (client_context.client_id or client_context.key_id),
                 writes=definition.writes,
                 execution_class=definition.execution_class,
                 research_ingestion=definition.name == "ingest_research_source",

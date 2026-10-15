@@ -71,6 +71,7 @@ async def test_the_pipeline_requests_top_k_with_scores() -> None:
         "queryVector": QUERY_VECTOR,
         "numCandidates": 50,
         "limit": 5,
+        "filter": {"$and": [{}, {"org_id": "org-test"}]},
     }
     assert pipeline[1] == {"$addFields": {"score": {"$meta": "vectorSearchScore"}}}
     assert len(matches) == 1
@@ -80,12 +81,12 @@ async def test_the_pipeline_requests_top_k_with_scores() -> None:
 
 
 @pytest.mark.asyncio
-async def test_an_unfiltered_query_carries_no_filter() -> None:
+async def test_a_query_without_skill_filters_still_has_a_tenant_prefilter() -> None:
     repository, collection = build_repository([])
 
     await repository.vector_search(QUERY_VECTOR, limit=3, num_candidates=30)
 
-    assert "filter" not in search_stage(collection)
+    assert search_stage(collection)["filter"] == {"$and": [{}, {"org_id": "org-test"}]}
 
 
 @pytest.mark.asyncio
@@ -99,7 +100,8 @@ async def test_one_version_is_pre_filtered_exactly() -> None:
         skill_versions=[SkillVersionKey("fastapi-production", "1.0.0")],
     )
 
-    assert search_stage(collection)["filter"] == {
+    assert search_stage(collection)["filter"]["$and"][1] == {"org_id": "org-test"}
+    assert search_stage(collection)["filter"]["$and"][0] == {
         "$and": [
             {"skill_id": {"$eq": "fastapi-production"}},
             {"skill_version": {"$eq": "1.0.0"}},
@@ -121,7 +123,8 @@ async def test_several_versions_are_pre_filtered_as_exact_pairs() -> None:
         ],
     )
 
-    clauses = search_stage(collection)["filter"]["$or"]
+    assert search_stage(collection)["filter"]["$and"][1] == {"org_id": "org-test"}
+    clauses = search_stage(collection)["filter"]["$and"][0]["$or"]
     assert clauses == [
         {
             "$and": [
@@ -222,3 +225,9 @@ async def test_the_score_is_not_stored_on_the_returned_chunk() -> None:
     matches = await repository.vector_search(QUERY_VECTOR, limit=1, num_candidates=10)
 
     assert "score" not in matches[0].chunk.model_dump()
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

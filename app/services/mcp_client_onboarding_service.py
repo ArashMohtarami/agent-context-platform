@@ -18,6 +18,7 @@ from app.integrations.base import (
 )
 from app.models.agent import AgentClientDocument, AgentClientType
 from app.models.client_profile import ClientProfileDocument
+from app.security.tenant_service import tenant_service
 from app.services.api_key_service import IssuedKey
 
 
@@ -62,6 +63,7 @@ class ClientProfileAdministrator(Protocol):
     ) -> AgentClientDocument: ...
 
 
+@tenant_service
 class McpClientOnboardingService:
     """Onboard a generic MCP client through existing administrative services."""
 

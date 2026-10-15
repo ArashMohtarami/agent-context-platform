@@ -32,6 +32,7 @@ from app.models.project import ProjectDocument
 from app.models.project_context import ProjectContextDocument
 from app.models.skill import SkillDocument
 from app.projects.errors import ProjectNotFoundError
+from app.security.tenant_service import tenant_service
 
 DiscoverySourceType = Literal["project_context", "memory", "skill", "content_item"]
 _MAX_SOURCE_SCAN = 50
@@ -230,6 +231,7 @@ class ContentBriefPreparation:
     content_constraints: tuple[str, ...]
 
 
+@tenant_service
 class ContentDiscoveryService:
     """Assemble Phase 5 inputs without generation, publication, or direct DB access."""
 

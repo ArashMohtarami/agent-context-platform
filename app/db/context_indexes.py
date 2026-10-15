@@ -59,6 +59,8 @@ IMPORTANCE_PATH: Final = "importance"
 # Every field a context query may restrict, so no filter costs recall by being
 # applied after the search instead of inside it.
 CONTEXT_FILTER_PATHS: Final[tuple[str, ...]] = (
+    "org_id",
+    "_id",
     PROJECT_PATH,
     TYPE_PATH,
     STATUS_PATH,
@@ -120,6 +122,8 @@ def context_text_definition() -> MongoDocument:
         "mappings": {
             "dynamic": False,
             "fields": {
+                "org_id": {"type": "token"},
+                "_id": {"type": "objectId"},
                 CONTENT_PATH: searchable_text_field(exact=True),
                 TITLE_PATH: searchable_text_field(),
                 PROJECT_PATH: {"type": "token"},

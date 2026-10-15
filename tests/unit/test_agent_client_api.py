@@ -138,3 +138,9 @@ async def test_agent_admin_routes_require_the_management_scope_and_validate_scop
 
     assert forbidden.status_code == 403
     assert invalid.status_code == 422
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

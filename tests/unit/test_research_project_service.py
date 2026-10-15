@@ -119,3 +119,9 @@ async def test_research_project_listing_passes_the_complete_v1_allow_list_to_rep
     page = await research.list_projects(allowed_project_ids=(PROJECT,), limit=20)
 
     assert {item.research_project_id for item in page.items} == {"global", "payments"}
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

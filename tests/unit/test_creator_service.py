@@ -181,3 +181,9 @@ async def test_pillars_are_owned_by_one_existing_profile_and_are_revision_guarde
             expected_revision=1,
             changes={"name": "Stale"},
         )
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

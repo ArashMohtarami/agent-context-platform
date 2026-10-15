@@ -257,3 +257,9 @@ async def test_invalid_creator_voice_and_empty_updates_are_rejected_at_the_bound
     assert empty_update.status_code == 422
     assert duplicate_preference.status_code == 422
     assert duplicate_pillar_tag.status_code == 422
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

@@ -33,6 +33,7 @@ from app.research.errors import (
     ResearchProjectNotFoundError,
 )
 from app.retrieval.context_builder import MAX_TOKEN_BUDGET, resolve_token_budget
+from app.security.tenant_service import tenant_service
 from app.services.research_search_service import (
     ResearchRetrievalProfileName,
     ResearchSearchFilters,
@@ -157,6 +158,7 @@ class EvidencePacket:
     tokens_used: int
 
 
+@tenant_service
 class ResearchEvidenceService:
     """Author citations and build read-only, provenance-preserving evidence packets."""
 

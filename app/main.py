@@ -64,6 +64,7 @@ from app.repositories.agent_repository import (
 from app.repositories.api_key_repository import MongoApiKeyRepository
 from app.repositories.audit_repository import MongoAuditRepository
 from app.repositories.client_profile_repository import MongoClientProfileRepository
+from app.repositories.credential_repository import MongoCredentialResolver
 from app.repositories.idempotency_repository import MongoGatewayIdempotencyRepository
 from app.security.tenant_maintenance import TenantMaintenanceMiddleware
 from app.services.agent_activity_service import AgentActivityService
@@ -177,14 +178,12 @@ def start_authentication(
 ) -> AuthService | None:
     """Build the authenticator, or report that this deployment has none.
 
-    Returning `None` is the one way authentication is skipped, and it happens
-    once at startup where it is logged, rather than per request where a branch
-    could be missed.
+    Tenant domain traffic requires authentication. The narrow credential
+    resolver establishes one organization before any domain repository runs.
     """
     if not settings.api_auth_enabled:
-        logger.warning("api_authentication_disabled")
-        return None
-    return AuthService(MongoApiKeyRepository(database), MongoAgentClientRepository(database))
+        raise RuntimeError("tenant domain traffic requires authentication and organization context")
+    return AuthService(MongoCredentialResolver(database), MongoAgentClientRepository(database))
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -201,7 +200,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         record_build_info()
         mongodb = MongoDBClient(resolved_settings)
         await mongodb.connect()
-        if resolved_settings.v6_tenant_foundation:
+        if resolved_settings.v6_tenant_isolation:
+            if not resolved_settings.api_auth_enabled:
+                raise RuntimeError("authentication-disabled tenant startup is refused")
+            await initialize_database(
+                mongodb.database, tenant_foundation=True, tenant_isolation=True
+            )
+        elif resolved_settings.v6_tenant_foundation:
             await initialize_database(mongodb.database, tenant_foundation=True)
         else:
             await initialize_database(mongodb.database)

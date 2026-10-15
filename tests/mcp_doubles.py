@@ -13,6 +13,7 @@ from typing import Any
 import httpx
 
 from app.mcp.client import ContextApiClient
+from app.security.scopes import ALL_SCOPES
 
 Responder = Callable[[httpx.Request], httpx.Response]
 
@@ -68,7 +69,26 @@ def api_client(
     base_url: str = "http://context-api.invalid",
 ) -> ContextApiClient:
     """Build a client bound to a fake API."""
-    return ContextApiClient(base_url, token=token, transport=httpx.MockTransport(api))
+
+    class TenantApiHarness(ContextApiClient):
+        async def gateway_identity(self, *, session_id=None):
+            if isinstance(api, RecordedApi) and (
+                api.error is not None or ("GET", "/api/v4/gateway/identity") in api.responses
+            ):
+                return await super().gateway_identity(session_id=session_id)
+            # Tool/HTTP mapping tests inject an admitted test identity. Gateway
+            # contract tests explicitly arrange the preflight response instead.
+            return {
+                "org_id": "org-test",
+                "key_id": "a" * 16,
+                "client_id": None,
+                "client_type": None,
+                "scopes": list(ALL_SCOPES),
+                "allowed_project_ids": None,
+                "allowed_profile_ids": None,
+            }
+
+    return TenantApiHarness(base_url, token=token, transport=httpx.MockTransport(api))
 
 
 def search_body(

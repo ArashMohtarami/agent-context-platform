@@ -290,3 +290,9 @@ async def test_repurpose_supports_idea_and_brief_sources(
 
     assert result.source_kind == expected_kind
     assert result.source_refs[0].source_id == "adr"
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

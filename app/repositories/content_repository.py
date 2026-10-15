@@ -25,13 +25,12 @@ from app.db.content_indexes import (
     content_text_query,
     content_vector_filter,
 )
+from app.db.tenant_collection import scoped_collection
 from app.db.vector_indexes import VECTOR_PATH
 from app.models.common import (
     MongoDocumentModel,
     MongoObjectId,
     Page,
-    decode_page_cursor,
-    encode_page_cursor,
     utc_now,
     validate_identifier,
 )
@@ -63,6 +62,7 @@ from app.repositories.errors import (
 )
 from app.repositories.vectors import validated_vector
 from app.security.tenant import TenantContext
+from app.security.tenant_cursor import binding, decode_cursor, encode_cursor
 
 DEFAULT_SEARCH_LIMIT = 10
 MAX_SEARCH_LIMIT = 50
@@ -265,7 +265,7 @@ class _ContentSearchRepository[TDocument: MongoDocumentModel](_ProfileRepository
 
 
 class MongoCreatorProfileRepository(MongoRepository[CreatorProfileDocument]):
-    """Persist globally listed creator profiles by deterministic profile ID."""
+    """Persist organization-owned creator profiles by deterministic profile ID."""
 
     def __init__(
         self, database: AsyncDatabase[MongoDocument], *, tenant: TenantContext | None = None
@@ -433,7 +433,7 @@ class MongoContentItemRepository(_ContentSearchRepository[ContentItemDocument]):
         tenant: TenantContext | None = None,
     ) -> None:
         super().__init__(database, "content_items", ContentItemDocument, profile_id, tenant=tenant)
-        self._versions = database["content_versions"]
+        self._versions = scoped_collection(database, "content_versions", self._require_tenant)
         self._search_kind = "item"
 
     async def create(self, document: ContentItemDocument) -> ContentItemDocument:
@@ -558,6 +558,7 @@ class MongoContentItemRepository(_ContentSearchRepository[ContentItemDocument]):
             "org_id",
             "identity_version",
             "legacy_adoption_id",
+            "resource_project_ids",
         ):
             changes.pop(immutable_field, None)
         changes["updated_at"] = utc_now()
@@ -742,8 +743,9 @@ class MongoContentMetricRepository(_ProfileRepository[ContentMetricDocument]):
             filters["captured_at"] = capture_bounds
 
         query_parts: list[MongoDocument] = [filters]
+        cursor_scope = binding(self._collection_name, filters)
         if cursor is not None:
-            captured_at, document_id = decode_page_cursor(cursor)
+            captured_at, document_id = decode_cursor(cursor, cursor_scope)
             query_parts.append(
                 {
                     "$or": [
@@ -759,7 +761,7 @@ class MongoContentMetricRepository(_ProfileRepository[ContentMetricDocument]):
         raw_documents = await mongo_cursor.limit(limit + 1).to_list(length=limit + 1)
         documents = tuple(self._validate(raw) for raw in raw_documents[:limit])
         next_cursor = (
-            encode_page_cursor(documents[-1].captured_at, documents[-1].id)
+            encode_cursor(documents[-1].captured_at, documents[-1].id, cursor_scope)
             if len(raw_documents) > limit and documents
             else None
         )

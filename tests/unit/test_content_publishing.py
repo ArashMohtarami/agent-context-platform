@@ -348,3 +348,9 @@ async def test_manual_publisher_status_is_local_and_credential_free() -> None:
 
     assert result.published is True
     assert result.external_id is None
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

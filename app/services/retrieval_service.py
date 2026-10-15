@@ -56,6 +56,7 @@ from app.retrieval.types import (
     SourceMatches,
     SourceType,
 )
+from app.security.tenant_service import tenant_service
 from app.skills.chunker import estimate_tokens
 from app.skills.types import (
     RetrievalMethod,
@@ -187,6 +188,7 @@ class QueryEmbedder(Protocol):
     async def embed_query(self, text: str) -> EmbeddingVector: ...
 
 
+@tenant_service
 class RetrievalService:
     """Turn a query into scored, filtered skill chunks, or budgeted context.
 

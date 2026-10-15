@@ -451,3 +451,9 @@ async def test_content_link_and_campaign_require_profile_owned_content() -> None
     )
     assert link.content_id == draft.content_id
     assert campaign.content_ids == [draft.content_id]
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

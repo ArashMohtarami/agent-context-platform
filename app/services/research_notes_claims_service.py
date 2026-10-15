@@ -34,6 +34,7 @@ from app.research.errors import (
     ResearchProjectNotFoundError,
     ResearchSourceReferenceNotFoundError,
 )
+from app.security.tenant_service import tenant_service
 
 
 class ResearchProjectLookup(Protocol):
@@ -117,6 +118,7 @@ SourceSnapshotRepositoryFactory = Callable[[str], SourceSnapshotLookup]
 ResearchCitationRepositoryFactory = Callable[[str], ResearchCitationStore]
 
 
+@tenant_service
 class ResearchNotesClaimsService:
     """Keep notes, claims, provenance links, and assessments explicitly authored."""
 

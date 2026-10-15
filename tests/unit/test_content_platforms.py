@@ -116,3 +116,9 @@ def test_medium_long_content_is_not_truncated_or_published() -> None:
     assert len(exported.text) > len(body)
     assert item.status.value == "drafting"
     assert item.external_url is None
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Manual exports operate inside an admitted tenant."""
+    yield

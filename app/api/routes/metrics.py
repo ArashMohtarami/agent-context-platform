@@ -4,7 +4,7 @@ One endpoint, rendering the in-process registry in the Prometheus text format.
 Nothing is pushed anywhere and no collector is required: a self-hosted scraper
 reads this, and a person with `curl` reads the same thing.
 
-It is behind `system:read` rather than open. A metrics body is not knowledge —
+It requires a separate installation-operator credential. A metrics body is not knowledge —
 there is no query, no document, and no project in it — but it does describe the
 shape and health of a deployment, and an endpoint that answers anybody is an
 endpoint that tells anybody when the platform is struggling.
@@ -15,9 +15,10 @@ happen every fifteen seconds forever, so the readiness gauges are written by
 one dictionary walk.
 """
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from hmac import compare_digest
 
-from app.api.security import requires
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+
 from app.core.config import Settings
 from app.observability.instruments import snapshot
 from app.observability.metrics import CONTENT_TYPE
@@ -25,22 +26,21 @@ from app.observability.metrics import CONTENT_TYPE
 router = APIRouter(tags=["observability"])
 
 
-@router.get(
-    "/metrics",
-    dependencies=[Depends(requires("system:read"))],
-    response_class=Response,
-    responses={
-        200: {"content": {CONTENT_TYPE: {}}, "description": "The Prometheus text exposition."},
-        404: {"description": "This deployment publishes no metrics."},
-    },
-)
-async def metrics(request: Request) -> Response:
-    """Render every metric this process holds.
+async def installation_operator(request: Request) -> None:
+    """A separate operator credential; tenant system:read never grants raw metrics."""
+    settings: Settings = request.app.state.settings
+    path = settings.operator_metrics_token_file
+    token = request.headers.get("authorization", "").removeprefix("Bearer ")
+    if path is None:
+        raise HTTPException(status_code=403, detail="installation operator required")
+    expected = path.read_text(encoding="utf-8").strip()
+    if len(expected) < 32 or not compare_digest(token, expected):
+        raise HTTPException(status_code=403, detail="installation operator required")
 
-    A deployment with metrics switched off answers 404 rather than an empty
-    body, so a scraper configured against it fails visibly instead of recording
-    that everything is quiet.
-    """
+
+@router.get("/metrics", dependencies=[Depends(installation_operator)], response_class=Response)
+async def metrics(request: Request) -> Response:
+    """Render installation-wide measurements to the installation operator."""
     settings: Settings = request.app.state.settings
     if not settings.metrics_enabled:
         return Response(status_code=status.HTTP_404_NOT_FOUND)

@@ -36,6 +36,7 @@ from app.research.errors import (
     ResearchProjectNotFoundError,
     RevalidationNotNeededError,
 )
+from app.security.tenant_service import tenant_service
 
 _MAX_PAGE_SIZE = 50
 
@@ -163,6 +164,7 @@ class RevalidationProposal:
     stale_knowledge: StaleKnowledge
 
 
+@tenant_service
 class RevalidationService:
     """Compare pinned source snapshots and propose, but never apply, updates."""
 

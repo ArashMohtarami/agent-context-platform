@@ -49,6 +49,7 @@ def _agent(client_id: str, client_type: str) -> Principal:
 async def test_agent_identity_overrides_spoofed_actor_for_v1_v2_and_v3_writes() -> None:
     collection = MagicMock()
     collection.insert_one = AsyncMock()
+    collection.find_one = AsyncMock(return_value=None)
     database = _database(collection)
     spoofed = ActorProvenance(
         actor_type=ActorType.AGENT,
@@ -123,6 +124,7 @@ async def test_human_and_unattributed_audit_writes_have_explicit_actor_types() -
     service = AuditService(records)
     collection = MagicMock()
     collection.insert_one = AsyncMock()
+    collection.find_one = AsyncMock(return_value=None)
     database = _database(collection)
     actor_token = provenance.begin()
     try:
@@ -154,3 +156,9 @@ async def test_actor_model_rejects_incomplete_or_non_agent_client_identity() -> 
         ActorProvenance(actor_type=ActorType.AGENT)
     with pytest.raises(ValueError, match="only an agent"):
         ActorProvenance(actor_type=ActorType.HUMAN, client_id="codex-main")
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

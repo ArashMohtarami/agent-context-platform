@@ -124,7 +124,7 @@ def content_vector_definition(kind: ContentCollectionKind, dimensions: int) -> M
                 "numDimensions": dimensions,
                 "similarity": VECTOR_SIMILARITY,
             },
-            *({"type": "filter", "path": path} for path in _FILTER_PATHS[kind]),
+            *({"type": "filter", "path": path} for path in ("org_id", "_id", *_FILTER_PATHS[kind])),
         ]
     }
 
@@ -133,6 +133,8 @@ def content_text_definition(kind: ContentCollectionKind) -> MongoDocument:
     """Build one collection's lexical mapping, including all filter paths."""
     _require_kind(kind)
     fields: MongoDocument = {
+        "org_id": {"type": "token"},
+        "_id": {"type": "objectId"},
         _PRIMARY_TEXT_PATHS[kind]: searchable_text_field(exact=True),
         _PROFILE_PATH: {"type": "token"},
         _PLATFORM_PATHS[kind]: {"type": "token"},

@@ -12,6 +12,7 @@ from typing import Protocol
 from app.content.novelty import ContentOverlap, NoveltyClassification, compare_content
 from app.db.content_indexes import ContentQueryFilters
 from app.models.content import ContentPlatform
+from app.security.tenant_service import tenant_service
 from app.services.content_retrieval_service import (
     ContentRetrievalProfileName,
     ContentSearchItem,
@@ -69,6 +70,7 @@ class ContentNoveltyResult:
     advisory: bool = True
 
 
+@tenant_service
 class ContentNoveltyService:
     """Search history and return transparent overlap evidence without a model call."""
 

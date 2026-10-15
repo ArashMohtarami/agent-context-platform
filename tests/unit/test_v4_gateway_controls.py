@@ -273,6 +273,9 @@ async def test_mcp_rate_refusal_uses_the_stable_error_code(monkeypatch: pytest.M
         long_running_timeout_seconds=1.0,
     )
     context = ClientRequestContext(
+        org_id="org-test",
+        key_id="a" * 16,
+        allowed_profile_ids=None,
         request_id="request-1",
         client_id="claude-main",
         client_type=AgentClientType.CLAUDE_CODE,
@@ -315,3 +318,9 @@ def test_existing_v3_ingestion_remains_the_declared_long_running_job_path() -> N
 
     assert definition.execution_class == "long_running"
     assert definition.writes is True
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

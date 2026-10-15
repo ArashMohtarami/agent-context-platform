@@ -32,6 +32,7 @@ from app.research.errors import (
     ResearchBriefNotFoundError,
     ResearchProjectNotFoundError,
 )
+from app.security.tenant_service import tenant_service
 
 
 class ResearchProjectLookup(Protocol):
@@ -94,6 +95,7 @@ SourceSnapshotRepositoryFactory = Callable[[str], SourceSnapshotStore]
 ResearchBriefRepositoryFactory = Callable[[str], ResearchBriefStore]
 
 
+@tenant_service
 class ResearchBriefService:
     """Build explicit, bounded brief structure from authorized persistent evidence."""
 

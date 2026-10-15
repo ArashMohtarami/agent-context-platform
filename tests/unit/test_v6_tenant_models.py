@@ -103,9 +103,8 @@ def test_complete_storage_catalog_and_compound_indexes():
             assert next(iter(index["key"])) == "org_id"
 
 
-def test_registry_has_no_activation_or_owner_claim():
-    with pytest.raises(ValidationError):
-        OrganizationDocument(org_id="org-a", slug="a", name="A", status="active")
+def test_registry_starts_sealed_and_has_no_owner_claim():
+    assert OrganizationDocument(org_id="org-a", slug="a", name="A").status == "sealed"
     with pytest.raises(ValidationError):
         OrganizationDocument(org_id="org-a", slug="a", name="A", owner_email="owner@example.test")
 

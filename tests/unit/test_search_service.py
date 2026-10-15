@@ -811,3 +811,9 @@ async def test_a_search_with_nothing_to_search_embeds_nothing() -> None:
     await service.search_knowledge("anything", sources=["active_skill"], skill_id="absent-skill")
 
     assert embedder.texts == []
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield

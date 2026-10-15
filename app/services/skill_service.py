@@ -8,6 +8,7 @@ from app.embeddings.types import EmbeddingVector
 from app.models.common import Page, utc_now
 from app.models.skill import LifecycleStatus, SkillDocument, SkillTrustLevel
 from app.models.skill_chunk import SkillChunkDocument
+from app.security.tenant_service import tenant_service
 from app.skills.errors import SkillChunkingError, SkillNotFoundError, SkillVersionConflictError
 from app.skills.types import (
     ParsedSkill,
@@ -81,6 +82,7 @@ class ChunkEmbedder(Protocol):
     async def embed_chunks(self, contents: Sequence[str]) -> tuple[EmbeddingVector, ...]: ...
 
 
+@tenant_service
 class SkillService:
     """Keep skill lifecycle decisions outside HTTP, CLI, and MongoDB details."""
 

@@ -88,3 +88,9 @@ def test_duplicate_canonical_skill_ids_are_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(SkillParseError, match="multiple canonical files"):
         make_importer(MagicMock()).prepare_directory(root)
+
+
+@pytest.fixture(autouse=True)
+def admitted_tenant_for_domain_regression(tenant_runtime):
+    """Existing behavior runs inside one explicitly admitted organization."""
+    yield
