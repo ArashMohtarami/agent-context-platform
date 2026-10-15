@@ -40,7 +40,9 @@ V6 setup requires explicit [legacy adoption](docs/tenant-adoption.md) and
 V6 Phase 3 optionally adds [invitation-only local identity](docs/local-identity.md),
 MFA and a separate session-only browser API after that isolation gate. It remains
 disabled by default. Human sessions grant no corpus access until the later policy
-engine; OIDC and management/dashboard UI are outside this phase.
+engine. V6 Phase 4 optionally adds [approved OIDC providers, identity linking and
+organization switching](docs/sso-identity.md), also disabled by default.
+Management/dashboard UI remains unavailable.
 The workflows below assume completed setup and organization-bound credentials.
 Provisioning, import, and administrative commands require `--org-id`; human
 management dashboards remain disabled.

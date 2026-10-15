@@ -131,11 +131,11 @@ def test_pending_root_tuples_are_explicit_and_do_not_create_effective_grants():
 
 def test_private_collection_inventory_and_schema_are_complete():
     from app.db.migrations.runner import MIGRATIONS
-    from app.identity.repository import COLLECTION_OWNERSHIP, IdentityStore
+    from app.identity.repository import LOCAL_COLLECTION_OWNERSHIP, IdentityStore
     from app.identity.schema import VALIDATORS
 
-    assert set(COLLECTION_OWNERSHIP) == set(VALIDATORS)
-    assert MIGRATIONS[-1].version == 38
+    assert set(LOCAL_COLLECTION_OWNERSHIP) == set(VALIDATORS)
+    assert any(migration.version == 38 for migration in MIGRATIONS)
     assert not {"permission_assignments", "delegations", "teams"} & set(VALIDATORS)
     with pytest.raises(ValueError, match="unclassified"):
         IdentityStore(Mock())._collection("permission_assignments")

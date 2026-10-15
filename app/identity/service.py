@@ -1,7 +1,7 @@
 """Invitation-only local identity; no corpus grants or machine-key adapter."""
 
 from datetime import timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from pymongo.asynchronous.client_session import AsyncClientSession
@@ -25,6 +25,9 @@ from app.models.common import utc_now
 
 type Row = dict[str, Any]
 
+if TYPE_CHECKING:
+    from app.identity.sso import SSOIdentity
+
 
 def local_subject(value: str) -> str:
     subject = value.strip().casefold()
@@ -47,10 +50,12 @@ class LocalIdentity:
         self.passwords = PasswordWork()
         self.sessions = BrowserSessions(store)
         self.mfa = LocalMFA(store, vault)
+        self.sso: SSOIdentity | None = None
 
     async def enabled(self) -> None:
         marker = await self.store.find(
-            "_local_identity_control", {"_id": "installation", "schema_version": 38}
+            "_local_identity_control",
+            {"_id": "installation", "schema_version": 39 if self.sso else 38},
         )
         control = await self.store.find(
             "_tenant_control",
@@ -64,6 +69,8 @@ class LocalIdentity:
         )
         if not marker or not control:
             raise AuthRejected("local identity is unavailable")
+        if self.sso:
+            await self.sso.enabled()
 
     async def throttle(self, namespace: str, value: str, maximum: int) -> None:
         now = utc_now()
@@ -448,7 +455,6 @@ class LocalIdentity:
                 {
                     "org_id": org_id,
                     "status": "active",
-                    "auth_policy": {"$in": ["local_only", "sso_preferred"]},
                 },
                 tx,
             )
@@ -465,6 +471,19 @@ class LocalIdentity:
                 or current_credential["password_hash"] != credential["password_hash"]
             ):
                 raise AuthRejected("credentials were not accepted")
+            if org["auth_policy"] == "sso_required":
+                if not self.sso or not await self.store.find(
+                    "organization_break_glass",
+                    {
+                        "org_id": org_id,
+                        "user_id": user["_id"],
+                        "membership_revision": member["revision"],
+                        "policy_version": org["policy_version"],
+                        "expires_at": {"$gt": utc_now()},
+                    },
+                    tx,
+                ):
+                    raise AuthRejected("credentials were not accepted")
             await self.store.update(
                 "users",
                 {"_id": user["_id"], "auth_epoch": user["auth_epoch"]},
@@ -508,6 +527,12 @@ class LocalIdentity:
                 "org_id": challenge["org_id"],
                 "policy_version": challenge["policy_version"],
             }
+            factor = await self.store.find(
+                "mfa_factors", {"_id": challenge["user_id"], "status": "active"}, tx
+            )
+            if factor:
+                await self.mfa.consume(challenge["user_id"], code, tx, recovery=recovery)
+                snapshot["mfa_at"] = utc_now()
             user, member, org = await self.sessions.authority(snapshot, tx)
             await self.store.update(
                 "users",
@@ -521,11 +546,6 @@ class LocalIdentity:
                 {"$inc": {"fence": 1}},
                 tx,
             )
-            factor = await self.store.find(
-                "mfa_factors", {"_id": user["_id"], "status": "active"}, tx
-            )
-            if factor:
-                await self.mfa.consume(user["_id"], code, tx, recovery=recovery)
             amr = ["password", "recovery" if recovery else "totp"] if factor else ["password"]
             issued = await self.sessions.issue(
                 user,
@@ -605,17 +625,25 @@ class LocalIdentity:
 
     async def me(self, row: Row) -> Row:
         user, member, _ = await self.sessions.authority(row)
-        return {
+        result = {
             "user_id": user["_id"],
             "display_name": user["display_name"],
             "membership": member_dto(member),
             "session_id": row["public_id"],
-            "auth_method": "local",
-            "assurance": "mfa" if row["mfa_at"] else "password",
+            "auth_method": (row.get("authentication") or {}).get("method", "local"),
+            "assurance": self.assurance(row),
             "mfa_enrollment_required": row["mfa_at"] is None,
             "effective_corpus_access": [],
             "policy_engine_available": False,
+            **({"policy_context": self.policy_context(row)} if self.sso else {}),
         }
+        if self.sso:
+            factor = await self.store.find("mfa_factors", {"_id": user["_id"], "status": "active"})
+            result["mfa_enrollment_required"] = factor is None and row["mfa_at"] is None
+            result["step_up_required"] = row["mfa_at"] is None or not (
+                timedelta(0) <= utc_now() - row["mfa_at"] <= timedelta(minutes=10)
+            )
+        return result
 
     async def begin_mfa(self, row: Row) -> tuple[str, str]:
         self.sessions.recent(row, mfa=False)
@@ -628,13 +656,29 @@ class LocalIdentity:
         return result
 
     @staticmethod
+    def policy_context(row: Row) -> Row:
+        from app.identity.sso import policy_context
+
+        return policy_context(row)
+
+    @staticmethod
+    def assurance(row: Row) -> str:
+        if row["mfa_at"]:
+            return "mfa"
+        return (
+            "authenticated"
+            if (row.get("authentication") or {}).get("method") == "oidc"
+            else "password"
+        )
+
+    @staticmethod
     def actor(row: Row) -> Row:
         return {
             "actor_type": "human",
             "user_id": row["user_id"],
             "org_id": row["org_id"],
-            "auth_method": "local",
-            "assurance": "mfa" if row["mfa_at"] else "password",
+            "auth_method": (row.get("authentication") or {}).get("method", "local"),
+            "assurance": LocalIdentity.assurance(row),
         }
 
     async def confirm_mfa(self, row: Row, code: str) -> tuple[IssuedSession, list[str]]:

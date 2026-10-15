@@ -49,7 +49,7 @@ def current() -> ActorProvenance:
     return _current.get() or system_actor()
 
 
-def set_human(user_id: str, org_id: str, assurance: str) -> ActorProvenance:
+def set_human(user_id: str, org_id: str, assurance: str, method: str = "local") -> ActorProvenance:
     """Bind a verified browser user without manufacturing a machine key/client."""
     from typing import Literal, cast
 
@@ -57,8 +57,8 @@ def set_human(user_id: str, org_id: str, assurance: str) -> ActorProvenance:
         actor_type=ActorType.HUMAN,
         user_id=user_id,
         org_id=org_id,
-        auth_method="local",
-        assurance=cast(Literal["password", "mfa"], assurance),
+        auth_method=cast(Literal["local", "oidc"], method),
+        assurance=cast(Literal["password", "mfa", "authenticated"], assurance),
     )
     _current.set(actor)
     return actor

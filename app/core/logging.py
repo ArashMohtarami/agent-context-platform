@@ -81,7 +81,9 @@ _REDACTION_PATTERNS = (
     (re.compile(r"(?i)\b(bearer)\s+[a-z0-9._~+/=-]+"), r"\1 [REDACTED]"),
     (
         re.compile(
-            r"(?i)\b(password|secret|api[_-]?key|token|authorization|credential)\s*([=:])\s*([^\s,;]+)"
+            r"(?i)\b(password|secret|api[_-]?key|token|authorization|credential|code|state|nonce|"
+            r"code_verifier|client_secret|id_token|refresh_token|access_token|cookie)"
+            r"\s*([=:])\s*([^\s,;]+)"
         ),
         r"\1\2[REDACTED]",
     ),

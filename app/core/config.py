@@ -173,17 +173,23 @@ class Settings(McpSettings):
     v6_tenant_foundation: bool = False
     v6_tenant_isolation: bool = False
     v6_local_identity: bool = False
+    v6_sso: bool = False
+    v6_oidc_registrations_file: Path | None = None
     v6_browser_origin: str | None = None
     v6_mfa_keyring_file: Path | None = None
     v6_mail_sink_directory: Path | None = None
 
-    @field_validator("v6_mfa_keyring_file", "v6_mail_sink_directory", mode="before")
+    @field_validator(
+        "v6_mfa_keyring_file", "v6_mail_sink_directory", "v6_oidc_registrations_file", mode="before"
+    )
     @classmethod
     def optional_identity_path(cls, value: object) -> object:
         return None if value == "" else value
 
     @model_validator(mode="after")
     def local_identity_configuration(self) -> "Settings":
+        if self.v6_sso and (not self.v6_local_identity or self.v6_oidc_registrations_file is None):
+            raise ValueError("SSO requires local identity and mounted approved registrations")
         if not self.v6_local_identity:
             return self
         if not (self.v6_tenant_foundation and self.v6_tenant_isolation and self.api_auth_enabled):

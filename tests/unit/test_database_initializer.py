@@ -149,6 +149,7 @@ def test_migrations_are_ordered_and_uniquely_versioned() -> None:
         36,
         37,
         38,
+        39,
     ]
     assert len(set(versions)) == len(versions)
     assert all(migration.description for migration in MIGRATIONS)

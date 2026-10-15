@@ -10,7 +10,12 @@ report_dir="${V6_REPORT_DIR:-$(mktemp -d /tmp/acp-v6-evidence.XXXXXXXX)}"
 mkdir -p "$report_dir"
 python="${V6_TEST_PYTHON:-$V6_REPOSITORY_ROOT/.venv/bin/python}"
 compose=(docker compose -f tests/infrastructure/v6-isolation.compose.yml)
+oidc_compose=(docker compose -f tests/infrastructure/v6-oidc.compose.yml)
 cleanup() {
+    if [[ "${V6_OIDC_TESTS:-0}" == "1" ]]; then
+        docker logs "acp-v6-oidc-keycloak-$V6_TEST_RUN" >"$report_dir/provider.log" 2>&1 || true
+        "${oidc_compose[@]}" down --remove-orphans >/dev/null 2>&1 || true
+    fi
     "${compose[@]}" down --remove-orphans >/dev/null 2>&1 || true
     rm -rf -- "$V6_TEST_DIR"
 }
@@ -65,6 +70,40 @@ fresh_stack() {
 }
 
 start_stack
+if [[ "${V6_OIDC_TESTS:-0}" == "1" ]]; then
+    export V6_OIDC_PORT
+    V6_OIDC_PORT="$("$python" - <<'PY'
+import socket
+with socket.socket() as listener:
+    listener.bind(('127.0.0.1', 0))
+    print(listener.getsockname()[1])
+PY
+    )"
+    "$python" tests/infrastructure/v6_oidc_prepare.py
+    "${oidc_compose[@]}" up -d >/dev/null
+    export V6_OIDC_REGISTRATIONS_FILE="$V6_TEST_DIR/oidc/registrations.json"
+    "$python" - <<'PY'
+import os, ssl, time, urllib.request
+from pathlib import Path
+root = Path(os.environ['V6_TEST_DIR']) / 'oidc'
+context = ssl.create_default_context(cafile=root / 'server.crt')
+url = 'https://127.0.0.1:' + os.environ['V6_OIDC_PORT'] + '/realms/v6-org-a/.well-known/openid-configuration'
+for attempt in range(180):
+    try:
+        with urllib.request.urlopen(url, context=context, timeout=2) as response:
+            assert response.status == 200
+        break
+    except Exception:
+        if attempt == 179:
+            raise SystemExit('Disposable HTTPS Keycloak did not become ready (secrets withheld).')
+        time.sleep(1)
+PY
+    if [[ "${V6_SSO_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
+        "$python" -m pytest -q tests/integration/test_v6_oidc_provider.py \
+            tests/integration/test_v6_org_switch.py --junitxml="$report_dir/sso-development.xml" "$@"
+        exit 0
+    fi
+fi
 export V6_UNIT_EVIDENCE_XML="$report_dir/unit.xml"
 export V6_REAL_EVIDENCE_XML="$report_dir/real-rehearsal.xml"
 if [[ "${V6_IDENTITY_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
@@ -90,5 +129,10 @@ if [[ "${V6_LOCAL_IDENTITY_TESTS:-0}" == "1" ]]; then
     fresh_stack
     "$python" -m pytest -q tests/integration/test_v6_local_identity.py \
         --junitxml="$report_dir/identity.xml"
+fi
+if [[ "${V6_OIDC_TESTS:-0}" == "1" ]]; then
+    fresh_stack
+    "$python" -m pytest -q tests/integration/test_v6_oidc_provider.py \
+        tests/integration/test_v6_org_switch.py --junitxml="$report_dir/sso.xml"
 fi
 printf 'V6 isolation reports: %s\n' "$report_dir"

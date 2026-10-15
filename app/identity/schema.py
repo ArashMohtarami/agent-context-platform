@@ -4,7 +4,7 @@ from typing import Any
 
 from pymongo import IndexModel
 
-from app.identity.repository import COLLECTION_OWNERSHIP
+from app.identity.repository import LOCAL_COLLECTION_OWNERSHIP
 
 STRING = {"bsonType": "string", "minLength": 1, "maxLength": 4096}
 INTEGER = {"bsonType": ["int", "long"], "minimum": 0}
@@ -116,7 +116,7 @@ VALIDATORS = {
     ),
     "_local_identity_control": schema(schema_version={"enum": [38]}, created_at=DATE),
 }
-if set(VALIDATORS) != set(COLLECTION_OWNERSHIP):
+if set(VALIDATORS) != set(LOCAL_COLLECTION_OWNERSHIP):
     raise RuntimeError("identity collection ownership inventory is incomplete")
 
 INDEXES = {

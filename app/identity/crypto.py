@@ -113,25 +113,29 @@ class SeedVault:
         )
 
     @staticmethod
-    def _aad(user_id: str, factor_id: str) -> bytes:
-        return json.dumps(["acp-mfa", 1, user_id, factor_id], separators=(",", ":")).encode()
+    def _aad(user_id: str, factor_id: str, purpose: str = "mfa") -> bytes:
+        return json.dumps(["acp-" + purpose, 1, user_id, factor_id], separators=(",", ":")).encode()
 
-    def encrypt(self, seed: str, user_id: str, factor_id: str) -> dict[str, str]:
+    def encrypt(
+        self, seed: str, user_id: str, factor_id: str, *, purpose: str = "mfa"
+    ) -> dict[str, str]:
         nonce = secrets.token_bytes(12)
         ciphertext = self._keys[self.active].encrypt(
-            nonce, seed.encode(), self._aad(user_id, factor_id)
+            nonce, seed.encode(), self._aad(user_id, factor_id, purpose)
         )
         return {
             "key_id": self.active,
             "ciphertext": base64.urlsafe_b64encode(nonce + ciphertext).decode(),
         }
 
-    def decrypt(self, value: dict[str, str], user_id: str, factor_id: str) -> str:
+    def decrypt(
+        self, value: dict[str, str], user_id: str, factor_id: str, *, purpose: str = "mfa"
+    ) -> str:
         try:
             raw = base64.urlsafe_b64decode(value["ciphertext"])
             return (
                 self._keys[value["key_id"]]
-                .decrypt(raw[:12], raw[12:], self._aad(user_id, factor_id))
+                .decrypt(raw[:12], raw[12:], self._aad(user_id, factor_id, purpose))
                 .decode()
             )
         except Exception:

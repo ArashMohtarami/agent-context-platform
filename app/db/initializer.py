@@ -14,6 +14,7 @@ async def initialize_database(
     tenant_foundation: bool = False,
     tenant_isolation: bool = False,
     local_identity: bool = False,
+    sso: bool = False,
 ) -> None:
     """Apply schema migrations and reconcile standard indexes."""
     if not tenant_foundation:
@@ -25,6 +26,7 @@ async def initialize_database(
         tenant_foundation=True,
         tenant_isolation=tenant_isolation,
         local_identity=local_identity,
+        sso=sso,
     )
     control = await database["_tenant_control"].find_one({"_id": "installation"})
     if control is not None and control.get("stage") != "not_adopted":

@@ -19,8 +19,21 @@ def build_local_identity(
         or settings.v6_mail_sink_directory is None
     ):
         raise ValueError("local identity is not configured")
-    return LocalIdentity(
+    vault = SeedVault.from_file(settings.v6_mfa_keyring_file)
+    service = LocalIdentity(
         IdentityStore(database),
-        SeedVault.from_file(settings.v6_mfa_keyring_file),
+        vault,
         LocalMailSink(settings.v6_mail_sink_directory),
     )
+    if settings.v6_sso:
+        from app.identity.providers import Registry
+        from app.identity.sso import SSOIdentity
+
+        if settings.v6_oidc_registrations_file is None or settings.v6_browser_origin is None:
+            raise ValueError("SSO requires approved registrations and browser origin")
+        service.sso = SSOIdentity(
+            service,
+            Registry.from_file(settings.v6_oidc_registrations_file, settings.v6_browser_origin),
+            vault,
+        )
+    return service

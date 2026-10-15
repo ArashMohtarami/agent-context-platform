@@ -42,9 +42,34 @@ async def operate(arguments: argparse.Namespace, settings: Settings) -> Result:
     service = None
     try:
         await initialize_database(
-            mongodb.database, tenant_foundation=True, tenant_isolation=True, local_identity=True
+            mongodb.database,
+            tenant_foundation=True,
+            tenant_isolation=True,
+            local_identity=True,
+            sso=settings.v6_sso,
         )
         service = build_local_identity(settings, mongodb.database)
+        if arguments.action in {"configure-sso", "break-glass"}:
+            if service.sso is None:
+                raise UsageError("SSO must be configured explicitly")
+            if arguments.action == "configure-sso":
+                await service.sso.configure(
+                    context.org_id,
+                    arguments.registration_id,
+                    arguments.policy,
+                    arguments.approval_reference,
+                )
+            else:
+                await service.sso.break_glass(
+                    context.org_id,
+                    arguments.user_id,
+                    arguments.minutes,
+                    arguments.approval_reference,
+                )
+            return Result(
+                data={"org_id": context.org_id, "action": arguments.action},
+                lines=["Operator identity policy updated; no effective grants created."],
+            )
         await service.operator_invite(
             context.org_id,
             arguments.email,
@@ -86,3 +111,19 @@ def add_arguments(subparsers: SubParsers) -> None:
             command.add_argument("--root-delegation-file", type=Path, required=True)
             command.add_argument("--approve-project-bootstrap", action="store_true")
         command.set_defaults(handler=operate, needs_platform=False)
+    command = actions.add_parser(
+        "configure-sso", help="approve one mounted provider and org policy"
+    )
+    command.add_argument("--registration-id", required=True)
+    command.add_argument(
+        "--policy", choices=["local_only", "sso_preferred", "sso_required"], required=True
+    )
+    command.add_argument("--approval-reference", required=True)
+    command.set_defaults(handler=operate, needs_platform=False)
+    command = actions.add_parser(
+        "break-glass", help="explicit local MFA exception, at most 60 minutes"
+    )
+    command.add_argument("--user-id", required=True)
+    command.add_argument("--minutes", type=int, required=True)
+    command.add_argument("--approval-reference", required=True)
+    command.set_defaults(handler=operate, needs_platform=False)

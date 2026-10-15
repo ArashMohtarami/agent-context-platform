@@ -41,6 +41,7 @@ from app.api.routes.revalidation import router as revalidation_router
 from app.api.routes.search import router as search_router
 from app.api.routes.skill_update_proposals import router as skill_update_proposals_router
 from app.api.routes.skills import router as skills_router
+from app.api.routes.sso_identity import router as sso_identity_router
 from app.core.config import Settings, get_settings
 from app.core.logging import RequestLoggingMiddleware, configure_logging
 from app.db.client import MongoDBClient
@@ -214,6 +215,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 tenant_foundation=True,
                 tenant_isolation=True,
                 local_identity=resolved_settings.v6_local_identity,
+                sso=resolved_settings.v6_sso,
             )
         elif resolved_settings.v6_tenant_foundation:
             await initialize_database(mongodb.database, tenant_foundation=True)
@@ -297,6 +299,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.add_middleware(RequestLoggingMiddleware)
     application.include_router(health_router)
     application.include_router(local_identity_router)
+    application.include_router(sso_identity_router)
     application.include_router(metrics_router)
     application.include_router(skills_router)
     application.include_router(projects_router)

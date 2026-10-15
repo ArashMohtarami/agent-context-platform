@@ -34,8 +34,8 @@ class ActorProvenance(BaseModel):
     client_type: AgentClientType | None = None
     user_id: Identifier | None = None
     org_id: Identifier | None = None
-    auth_method: Literal["local"] | None = None
-    assurance: Literal["password", "mfa"] | None = None
+    auth_method: Literal["local", "oidc"] | None = None
+    assurance: Literal["password", "mfa", "authenticated"] | None = None
 
     @model_serializer(mode="wrap")
     def preserve_legacy_shape(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:

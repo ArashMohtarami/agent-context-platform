@@ -22,8 +22,8 @@ ACTOR_PROVENANCE: Final[MongoDocument] = {
         "client_id": IDENTIFIER,
         "user_id": IDENTIFIER,
         "org_id": IDENTIFIER,
-        "auth_method": {"enum": [None, "local"]},
-        "assurance": {"enum": [None, "password", "mfa"]},
+        "auth_method": {"enum": [None, "local", "oidc"]},
+        "assurance": {"enum": [None, "password", "mfa", "authenticated"]},
         "client_type": {
             "bsonType": ["string", "null"],
             "enum": [None, *[value.value for value in AgentClientType]],

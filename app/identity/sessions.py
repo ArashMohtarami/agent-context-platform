@@ -8,6 +8,7 @@ from uuid import uuid4
 from pymongo.asynchronous.client_session import AsyncClientSession
 
 from app.identity.crypto import AuthBusy, AuthRejected, csrf, digest, random_token, valid_token
+from app.identity.providers import Registry
 from app.identity.repository import IdentityStore
 from app.models.common import utc_now
 
@@ -27,6 +28,7 @@ class IssuedSession:
 class BrowserSessions:
     def __init__(self, store: IdentityStore) -> None:
         self.store = store
+        self.providers: Registry | None = None
 
     async def preauth(self) -> IssuedSession:
         return await self.issue(None, None, None, [], None, None)
@@ -41,6 +43,7 @@ class BrowserSessions:
         mfa_at: datetime | None,
         *,
         expires_at: datetime | None = None,
+        authentication: Row | None = None,
         tx: AsyncClientSession | None = None,
     ) -> IssuedSession:
         now = utc_now()
@@ -61,7 +64,7 @@ class BrowserSessions:
                 raise AuthBusy("authentication is temporarily busy")
         token = random_token()
         expiry = expires_at or now + timedelta(hours=8 if user else 0, minutes=0 if user else 15)
-        row = {
+        row: Row = {
             "_id": digest("session", token),
             "public_id": "sess_" + uuid4().hex,
             "kind": "human" if user else "preauth",
@@ -80,6 +83,36 @@ class BrowserSessions:
             "mfa_at": mfa_at,
             "amr": amr,
         }
+        if self.providers:
+            if user and authentication is None:
+                identity = await self.store.find(
+                    "user_identities",
+                    {"user_id": user["_id"], "provider": "local", "verified_at": {"$ne": None}},
+                    tx,
+                )
+                if not identity:
+                    raise AuthRejected("authentication was not accepted")
+                authentication = {
+                    "method": "local",
+                    "identity_id": identity["_id"],
+                    "registration_id": None,
+                    "registration_version": None,
+                    "issuer": None,
+                    "client_id": None,
+                    "auth_time": password_at or now,
+                    "valid_until": expiry,
+                    "assurance_version": 0,
+                    "acr": None,
+                    "verified_amr": [],
+                }
+            row["authentication"] = authentication
+            if authentication:
+                row["expires_at"] = min(expiry, authentication["valid_until"])
+                row["idle_expires_at"] = min(row["idle_expires_at"], row["expires_at"])
+        if user and org:
+            from app.identity.org_policy import check_policy
+
+            await check_policy(self.store, self.providers, row, org, tx)
         await self.store.insert("browser_sessions", row, tx)
         return IssuedSession(token, row)
 
@@ -105,6 +138,8 @@ class BrowserSessions:
         if row is None:
             raise AuthRejected("authentication was not accepted")
         if kind == "human":
+            if self.providers and not row.get("authentication"):
+                raise AuthRejected("authentication was not accepted")
             await self.authority(row, tx)
         if touch:
             updated = await self.store.update(
@@ -149,12 +184,14 @@ class BrowserSessions:
                 "org_id": row["org_id"],
                 "status": "active",
                 "policy_version": row["policy_version"],
-                "auth_policy": {"$in": ["local_only", "sso_preferred"]},
             },
             tx,
         )
         if not user or not member or not org:
             raise AuthRejected("authentication was not accepted")
+        from app.identity.org_policy import check_policy
+
+        await check_policy(self.store, self.providers, row, org, tx)
         return user, member, org
 
     async def fence(self, row: Row, tx: AsyncClientSession) -> tuple[Row, Row, Row]:
@@ -217,9 +254,10 @@ class BrowserSessions:
             user,
             member,
             org,
-            ["password", method] if strong else row["amr"],
+            list(dict.fromkeys([*row["amr"], method])) if strong else row["amr"],
             row["password_at"],
             utc_now() if strong else row["mfa_at"],
             expires_at=row["expires_at"],
+            authentication=row.get("authentication"),
             tx=tx,
         )

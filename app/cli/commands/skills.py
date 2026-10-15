@@ -136,6 +136,8 @@ async def reindex(arguments: argparse.Namespace, settings: Settings) -> Result:
             mongodb.database,
             tenant_foundation=settings.v6_tenant_foundation or current_tenant() is not None,
             tenant_isolation=settings.v6_tenant_isolation,
+            local_identity=settings.v6_local_identity,
+            sso=settings.v6_sso,
         )
         actions["mongodb_schema_and_indexes"] = "verified"
         if arguments.database_only:

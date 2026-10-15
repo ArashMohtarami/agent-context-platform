@@ -35,6 +35,10 @@ def authenticated(
 ) -> dict[str, Any]:
     set_cookie(response, issued.token)
     result: dict[str, Any] = {"authenticated": True, "csrf_token": issued.csrf_token}
+    if issued.row.get("authentication"):
+        from app.identity.sso import policy_context
+
+        result["policy_context"] = policy_context(issued.row)
     if codes is not None:
         result["recovery_codes"] = codes
     return result

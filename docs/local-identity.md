@@ -1,8 +1,9 @@
 # Local human identity and browser security
 
-Phase 3 adds an optional invitation-only local identity API. The dashboard,
-OIDC, organization switching, team management and effective permission engine
-remain unavailable. A browser session has no corpus access in this phase.
+Phase 3 adds an optional invitation-only local identity API. Optional
+[Phase 4 SSO and organization switching](sso-identity.md) build on these sessions.
+The dashboard, team management and effective permission engine remain unavailable.
+A browser session has no corpus access in these phases.
 Existing V1–V5 APIs and MCP continue to require organization-bound bearer keys.
 
 Complete the [real Phase 2 isolation gate](tenant-isolation.md) and its explicit

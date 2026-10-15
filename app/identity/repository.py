@@ -13,7 +13,7 @@ from app.db.client_types import MongoDocument
 
 type Row = dict[str, Any]
 
-COLLECTION_OWNERSHIP = {
+LOCAL_COLLECTION_OWNERSHIP = {
     "users": "private global human identity",
     "user_identities": "private global human identity",
     "local_credentials": "private global human identity",
@@ -25,6 +25,13 @@ COLLECTION_OWNERSHIP = {
     "organization_memberships": "tenant owned; self-only identity boundary or explicit operator",
     "_local_identity_control": "installation metadata",
 }
+SSO_COLLECTION_OWNERSHIP = {
+    "organization_oidc": "tenant owned; explicit installation operator configuration",
+    "oidc_transactions": "private global human security state; browser and purpose bound",
+    "organization_break_glass": "tenant owned; explicit time bounded operator exception",
+    "_sso_identity_control": "installation metadata",
+}
+COLLECTION_OWNERSHIP = {**LOCAL_COLLECTION_OWNERSHIP, **SSO_COLLECTION_OWNERSHIP}
 
 
 class IdentityStore:

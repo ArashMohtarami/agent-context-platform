@@ -47,8 +47,22 @@ class BrowserBoundaryMiddleware:
                         scope, receive, send
                     )
                     return
+
+        async def private_send(message: Any) -> None:
+            if scope["type"] == "http" and scope["path"].startswith("/api/v6/"):
+                # Uvicorn's access logger reads the scope when sending the response.
+                # OAuth callback codes/state must not become access-log query strings.
+                scope["query_string"] = b""
+                if message["type"] == "http.response.start":
+                    message["headers"] = [
+                        (k, v)
+                        for k, v in message["headers"]
+                        if k.lower() not in {b"cache-control", b"referrer-policy"}
+                    ] + [(b"cache-control", b"no-store"), (b"referrer-policy", b"no-referrer")]
+            await send(message)
+
         try:
-            await self.app(scope, receive, send)
+            await self.app(scope, receive, private_send)
         except Exception as error:
             if scope["type"] != "http" or not scope["path"].startswith("/api/v6/"):
                 raise
@@ -56,7 +70,7 @@ class BrowserBoundaryMiddleware:
                 "identity_request_failed", extra={"error_type": type(error).__name__}
             )
             await JSONResponse({"detail": "the request could not be completed"}, status_code=500)(
-                scope, receive, send
+                scope, receive, private_send
             )
 
 
@@ -106,10 +120,21 @@ async def preauth(request: Request, service: IdentityBoundary) -> BrowserContext
 async def current_browser(request: Request, service: IdentityBoundary) -> BrowserContext:
     token = request.cookies.get(SESSION_COOKIE, "")
     row = await service.sessions.authenticate(token)
+    if request.path_params.get("org_id", row["org_id"]) != row["org_id"]:
+        raise HTTPException(403, "organization context was not accepted")
+    context_id = request.headers.get("x-session-context")
+    if service.sso and (context_id is not None or "org_id" in request.path_params):
+        if context_id != service.policy_context(row)["context_id"]:
+            raise HTTPException(409, "session context is stale")
     if request.method not in {"GET", "HEAD", "OPTIONS"}:
         check_csrf(request, token)
         await service.throttle("security-action", row["user_id"], 10)
-    provenance.set_human(row["user_id"], row["org_id"], "mfa" if row["mfa_at"] else "password")
+    provenance.set_human(
+        row["user_id"],
+        row["org_id"],
+        service.assurance(row),
+        (row.get("authentication") or {}).get("method", "local"),
+    )
     establish_tenant(TenantContext(row["org_id"]))
     return BrowserContext(service, row, token)
 

@@ -1,0 +1,21 @@
+name: acp-v6-oidc-test-${V6_TEST_RUN:?}
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1@sha256:79c623a22abacf3fe6c00a5fb30f5b7843d717b234033b80995891c06116d244
+    container_name: acp-v6-oidc-keycloak-${V6_TEST_RUN:?}
+    restart: 'no'
+    mem_limit: 1g
+    cpus: 2
+    ports:
+    - 127.0.0.1:${V6_OIDC_PORT:?}:8443
+    entrypoint: ['/bin/bash', '/fixture/start.sh']
+    volumes:
+    - ${V6_TEST_DIR:?}/oidc:/fixture:ro
+    - ${V6_TEST_DIR:?}/oidc/realms:/opt/keycloak/data/import:ro
+    environment:
+      KC_HOSTNAME: https://127.0.0.1:${V6_OIDC_PORT:?}
+      KC_HTTPS_CERTIFICATE_FILE: /fixture/server.crt
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /fixture/server.key
+      KC_HTTP_ENABLED: 'false'
+      KC_BOOTSTRAP_ADMIN_USERNAME: v6-test-operator
+      JAVA_OPTS_KC_HEAP: '-Xms128m -Xmx512m'
