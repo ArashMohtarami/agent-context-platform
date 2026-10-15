@@ -13,13 +13,19 @@ async def initialize_database(
     *,
     tenant_foundation: bool = False,
     tenant_isolation: bool = False,
+    local_identity: bool = False,
 ) -> None:
     """Apply schema migrations and reconcile standard indexes."""
     if not tenant_foundation:
         await run_migrations(database)
         await ensure_indexes(database)
         return
-    await run_migrations(database, tenant_foundation=True, tenant_isolation=tenant_isolation)
+    await run_migrations(
+        database,
+        tenant_foundation=True,
+        tenant_isolation=tenant_isolation,
+        local_identity=local_identity,
+    )
     control = await database["_tenant_control"].find_one({"_id": "installation"})
     if control is not None and control.get("stage") != "not_adopted":
         # Never resurrect global unique indexes over a migrated database.

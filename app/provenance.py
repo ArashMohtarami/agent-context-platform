@@ -49,6 +49,21 @@ def current() -> ActorProvenance:
     return _current.get() or system_actor()
 
 
+def set_human(user_id: str, org_id: str, assurance: str) -> ActorProvenance:
+    """Bind a verified browser user without manufacturing a machine key/client."""
+    from typing import Literal, cast
+
+    actor = ActorProvenance(
+        actor_type=ActorType.HUMAN,
+        user_id=user_id,
+        org_id=org_id,
+        auth_method="local",
+        assurance=cast(Literal["password", "mfa"], assurance),
+    )
+    _current.set(actor)
+    return actor
+
+
 def attribute[TDocument: MongoDocumentModel](document: TDocument) -> TDocument:
     """Replace a provenance-enabled document's actor with trusted request identity."""
     if "actor" not in type(document).model_fields:

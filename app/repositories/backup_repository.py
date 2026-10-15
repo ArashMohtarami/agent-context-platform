@@ -3,12 +3,13 @@
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.db.client_types import MongoDocument
+from app.provenance import current as current_actor
 from app.security.tenant_policy import current_policy
 
 
 def _operator() -> None:
     policy = current_policy()
-    if policy is not None and not policy.operator:
+    if current_actor().user_id is not None or (policy is not None and not policy.operator):
         raise ValueError("whole-database backup is installation-operator-only")
 
 

@@ -36,6 +36,11 @@ The repository includes a [skill catalog](docs/skill-catalog.md), a fictional
 
 V6 setup requires explicit [legacy adoption](docs/tenant-adoption.md) and
 [tenant isolation cutover](docs/tenant-isolation.md) before domain traffic is enabled.
+
+V6 Phase 3 optionally adds [invitation-only local identity](docs/local-identity.md),
+MFA and a separate session-only browser API after that isolation gate. It remains
+disabled by default. Human sessions grant no corpus access until the later policy
+engine; OIDC and management/dashboard UI are outside this phase.
 The workflows below assume completed setup and organization-bound credentials.
 Provisioning, import, and administrative commands require `--org-id`; human
 management dashboards remain disabled.

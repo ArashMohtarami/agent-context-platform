@@ -172,6 +172,39 @@ class Settings(McpSettings):
 
     v6_tenant_foundation: bool = False
     v6_tenant_isolation: bool = False
+    v6_local_identity: bool = False
+    v6_browser_origin: str | None = None
+    v6_mfa_keyring_file: Path | None = None
+    v6_mail_sink_directory: Path | None = None
+
+    @field_validator("v6_mfa_keyring_file", "v6_mail_sink_directory", mode="before")
+    @classmethod
+    def optional_identity_path(cls, value: object) -> object:
+        return None if value == "" else value
+
+    @model_validator(mode="after")
+    def local_identity_configuration(self) -> "Settings":
+        if not self.v6_local_identity:
+            return self
+        if not (self.v6_tenant_foundation and self.v6_tenant_isolation and self.api_auth_enabled):
+            raise ValueError("local identity requires authenticated tenant isolation")
+        origin = urlsplit(self.v6_browser_origin or "")
+        if (
+            origin.scheme != "https"
+            or not origin.hostname
+            or origin.path
+            or origin.query
+            or origin.fragment
+            or origin.username
+            or origin.password
+        ):
+            raise ValueError("local identity requires an exact HTTPS browser origin")
+        if self.v6_mfa_keyring_file is None or self.v6_mail_sink_directory is None:
+            raise ValueError(
+                "local identity requires mounted MFA keys and an explicit local mail sink"
+            )
+        return self
+
     operator_metrics_token_file: Path | None = None
 
     @field_validator("operator_metrics_token_file", mode="before")

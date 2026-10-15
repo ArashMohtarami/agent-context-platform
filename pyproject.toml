@@ -13,6 +13,8 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
+    "argon2-cffi==25.1.0",
+    "cryptography==50.0.2",
     "fastapi==0.116.1",
     # The MCP server calls the Context API over HTTP rather than the database,
     # so httpx is a runtime dependency of the MCP process, not only a test one.
@@ -22,6 +24,7 @@ dependencies = [
     "mcp==1.19.0",
     "pydantic-settings==2.10.1",
     "pymongo==4.14.1",
+    "PyOTP==2.10.0",
     "PyYAML==6.0.2",
     "sentence-transformers==6.0.1",
     "uvicorn[standard]==0.35.0",

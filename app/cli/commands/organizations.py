@@ -49,6 +49,7 @@ async def operate(arguments: argparse.Namespace, settings: Settings) -> Result:
                 mongodb.database,
                 tenant_foundation=True,
                 tenant_isolation=settings.v6_tenant_isolation,
+                local_identity=settings.v6_local_identity,
             )
         if arguments.action == "provision":
             organization = OrganizationDocument(

@@ -51,6 +51,7 @@ from app.db.migrations.v034_client_profile_lifecycle import ClientProfileLifecyc
 from app.db.migrations.v035_gemini_client_type import GeminiClientTypeMigration
 from app.db.migrations.v036_tenant_foundation import TenantFoundationMigration
 from app.db.migrations.v037_tenant_isolation import TenantIsolationMigration
+from app.db.migrations.v038_local_identity import LocalIdentityMigration
 
 MIGRATIONS: Final[tuple[Migration, ...]] = (
     InitialSchemaMigration(),
@@ -90,6 +91,7 @@ MIGRATIONS: Final[tuple[Migration, ...]] = (
     GeminiClientTypeMigration(),
     TenantFoundationMigration(),
     TenantIsolationMigration(),
+    LocalIdentityMigration(),
 )
 
 
@@ -98,6 +100,7 @@ async def run_migrations(
     *,
     tenant_foundation: bool = False,
     tenant_isolation: bool = False,
+    local_identity: bool = False,
 ) -> None:
     """Apply each unapplied migration and record its version once."""
     history = database["_schema_migrations"]
@@ -107,11 +110,17 @@ async def run_migrations(
         async for document in history.find({}, {"version": 1, "_id": 0})
         if isinstance(document.get("version"), int)
     }
+    if 38 in applied and not local_identity:
+        raise RuntimeError("private identity schema requires the local identity runtime")
+    if local_identity and not (tenant_isolation and tenant_foundation):
+        raise RuntimeError("local identity requires tenant isolation")
     if 37 in applied and not tenant_isolation:
         raise RuntimeError("tenant isolation requires the scoped schema-37 runtime")
     if 36 in applied and not tenant_foundation:
         raise RuntimeError("tenant schema requires the tenant-aware maintenance binary")
     for migration in MIGRATIONS:
+        if migration.version >= 38 and not local_identity:
+            continue
         if migration.version >= 37 and not tenant_isolation:
             continue
         if migration.version >= 36 and not tenant_foundation:
