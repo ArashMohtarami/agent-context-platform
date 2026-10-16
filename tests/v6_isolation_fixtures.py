@@ -46,8 +46,26 @@ async def archive(database, tmp_path):
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    output, _ = await process.communicate()
-    assert process.returncode == 0, "disposable backup failed (credentials withheld)"
+    output, diagnostics = await process.communicate()
+    # Fixed classifications aid disposable infrastructure diagnosis without
+    # putting credentials or arbitrary process output into reports.
+    categories = [
+        name
+        for name in (
+            "Authentication failed",
+            "not primary",
+            "connection refused",
+            "context deadline exceeded",
+            "Failed",
+            "OCI runtime",
+            "permission denied",
+            "not found",
+        )
+        if name.lower().encode() in diagnostics.lower()
+    ]
+    assert process.returncode == 0, "disposable backup failed (credentials withheld): " + ", ".join(
+        categories
+    )
     backup = tmp_path / "pre-v6.archive"
     backup.write_bytes(output)
     manifest = tmp_path / "pre-v6.manifest.json"

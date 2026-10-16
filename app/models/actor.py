@@ -32,6 +32,10 @@ class ActorProvenance(BaseModel):
     actor_type: ActorType
     client_id: Identifier | None = None
     client_type: AgentClientType | None = None
+    sponsor_id: Identifier | None = None
+    sponsor_team_id: Identifier | None = None
+    service_account_id: Identifier | None = None
+    sponsorship_revision: int | None = None
     user_id: Identifier | None = None
     org_id: Identifier | None = None
     auth_method: Literal["local", "oidc"] | None = None
@@ -40,7 +44,16 @@ class ActorProvenance(BaseModel):
     @model_serializer(mode="wrap")
     def preserve_legacy_shape(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         data: dict[str, Any] = handler(self)
-        for field in ("user_id", "org_id", "auth_method", "assurance"):
+        for field in (
+            "user_id",
+            "org_id",
+            "auth_method",
+            "assurance",
+            "sponsor_id",
+            "sponsor_team_id",
+            "service_account_id",
+            "sponsorship_revision",
+        ):
             if data.get(field) is None:
                 data.pop(field, None)
         return data
@@ -55,7 +68,20 @@ class ActorProvenance(BaseModel):
                 raise ValueError("an agent actor requires client_id and client_type")
         elif has_client or has_type:
             raise ValueError("only an agent actor may include client identity")
-        human = (self.user_id, self.org_id, self.auth_method, self.assurance)
+        sponsored = self.sponsor_id is not None
+        if sponsored and (
+            self.actor_type is not ActorType.AGENT
+            or self.org_id is None
+            or self.sponsorship_revision is None
+            or self.sponsorship_revision < 1
+        ):
+            raise ValueError("verified machine sponsor requires org and policy revision")
+        if not sponsored and any(
+            v is not None
+            for v in (self.sponsor_team_id, self.service_account_id, self.sponsorship_revision)
+        ):
+            raise ValueError("machine provenance requires verified sponsorship")
+        human = (self.user_id, None if sponsored else self.org_id, self.auth_method, self.assurance)
         if any(value is not None for value in human) and (
             self.actor_type is not ActorType.HUMAN or any(value is None for value in human)
         ):

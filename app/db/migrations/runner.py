@@ -55,6 +55,7 @@ from app.db.migrations.v038_local_identity import LocalIdentityMigration
 from app.db.migrations.v039_sso_identity import SSOIdentityMigration
 from app.db.migrations.v040_management_policy import ManagementPolicyMigration
 from app.db.migrations.v041_human_management import HumanManagementMigration
+from app.db.migrations.v042_managed_agents import ManagedAgentsMigration
 
 MIGRATIONS: Final[tuple[Migration, ...]] = (
     InitialSchemaMigration(),
@@ -98,6 +99,7 @@ MIGRATIONS: Final[tuple[Migration, ...]] = (
     SSOIdentityMigration(),
     ManagementPolicyMigration(),
     HumanManagementMigration(),
+    ManagedAgentsMigration(),
 )
 
 
@@ -110,6 +112,7 @@ async def run_migrations(
     sso: bool = False,
     management_policy: bool = False,
     human_management: bool = False,
+    managed_agents: bool = False,
     management_cutover: bool = False,
 ) -> None:
     """Apply each unapplied migration and record its version once."""
@@ -120,6 +123,10 @@ async def run_migrations(
         async for document in history.find({}, {"version": 1, "_id": 0})
         if isinstance(document.get("version"), int)
     }
+    if 42 in applied and not managed_agents:
+        raise RuntimeError("managed machine schema requires schema42 workers")
+    if managed_agents and (not human_management or (42 not in applied and not management_cutover)):
+        raise RuntimeError("managed agents require explicit stopped-writer Phase6 cutover")
     if 41 in applied and not human_management:
         raise RuntimeError("human management schema requires schema-41 workers")
     if human_management and (
@@ -145,6 +152,8 @@ async def run_migrations(
     if 36 in applied and not tenant_foundation:
         raise RuntimeError("tenant schema requires the tenant-aware maintenance binary")
     for migration in MIGRATIONS:
+        if migration.version >= 42 and not managed_agents:
+            continue
         if migration.version >= 41 and not human_management:
             continue
         if migration.version >= 40 and not management_policy:

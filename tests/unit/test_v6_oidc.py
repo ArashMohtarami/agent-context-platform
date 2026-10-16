@@ -210,14 +210,15 @@ def test_collection_and_schema_inventory_remains_explicit():
     from app.db.migrations.runner import MIGRATIONS
 
     assert set(LOCAL_COLLECTION_OWNERSHIP) == set(VALIDATORS)
+    from app.managed_agents.schema import VALIDATORS as MACHINE_VALIDATORS
     from app.management.schema import VALIDATORS as HUMAN_VALIDATORS
     from app.security.policy.schema import NEW_VALIDATORS as POLICY_VALIDATORS
 
     assert set(COLLECTION_OWNERSHIP) == set(VALIDATORS) | set(NEW_VALIDATORS) | set(
         POLICY_VALIDATORS
-    ) | set(HUMAN_VALIDATORS)
-    assert MIGRATIONS[-1].version == 41
-    assert MIGRATIONS[-2].version == 40
+    ) | set(HUMAN_VALIDATORS) | set(MACHINE_VALIDATORS)
+    assert MIGRATIONS[-1].version == 42
+    assert MIGRATIONS[-2].version == 41
 
 
 def test_registration_file_failures_and_oauth_logs_do_not_echo_secrets(tmp_path):

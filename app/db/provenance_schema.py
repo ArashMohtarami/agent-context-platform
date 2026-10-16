@@ -20,6 +20,10 @@ ACTOR_PROVENANCE: Final[MongoDocument] = {
     "properties": {
         "actor_type": {"enum": [value.value for value in ActorType]},
         "client_id": IDENTIFIER,
+        "sponsor_id": IDENTIFIER,
+        "sponsor_team_id": IDENTIFIER,
+        "service_account_id": IDENTIFIER,
+        "sponsorship_revision": {"bsonType": ["int", "long", "null"], "minimum": 1},
         "user_id": IDENTIFIER,
         "org_id": IDENTIFIER,
         "auth_method": {"enum": [None, "local", "oidc"]},

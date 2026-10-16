@@ -48,6 +48,10 @@ def fenced(method: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any
                 engine = PolicyEngine(IdentityStore(self.raw.database))
         if engine is None:
             return await method(self, *args, **kwargs)
+        if policy is not None and policy.managed and self.collection in AUTHORITY_COLLECTIONS:
+            raise PolicyDenied(
+                "managed authority changes require the verified machine governance API"
+            )
         if self.collection == "api_keys" and method.__name__ in {"insert_one", "insert_many"}:
             raise PolicyDenied("managed credential issuance requires verified Phase 7 sponsorship")
         boundary = (
@@ -106,7 +110,11 @@ async def review_gate(
         },
         session=session,
     )
-    if not authors or not authors["sponsor_ids"] or policy.subject_id in authors["sponsor_ids"]:
+    if (
+        not authors
+        or not authors["sponsor_ids"]
+        or set(policy.sponsor_ids or (policy.subject_id,)) & set(authors["sponsor_ids"])
+    ):
         raise PolicyDenied("independent verified authorship is required")
     return True
 
@@ -117,17 +125,23 @@ async def record_authorship(
     policy = current_policy()
     if policy is None or not policy.managed or collection not in AUTHORED_COLLECTIONS:
         return
-    if policy.subject_kind != "human" or policy.client_id is not None:
+    if policy.subject_kind == "machine":
+        if not policy.sponsor_ids or not policy.machine_key_id:
+            raise PolicyDenied("managed machine sponsorship is not verified")
+        sponsor_ids = list(policy.sponsor_ids)
+    elif policy.subject_kind == "human" and policy.client_id is None:
+        sponsor_ids = [policy.subject_id]
+    else:
         raise PolicyDenied("managed machine sponsorship is not verified")
     query = {"org_id": policy.org_id, "collection": collection, "document_id": str(document["_id"])}
     row = await database["review_authorship"].find_one(query, session=session)
     if row:
-        if policy.subject_id not in row["sponsor_ids"]:
+        if not set(sponsor_ids) <= set(row["sponsor_ids"]):
             if len(row["sponsor_ids"]) >= 100:
                 raise PolicyDenied("authorship history exceeds its bounded capacity")
             await database["review_authorship"].update_one(
                 {"_id": row["_id"]},
-                {"$addToSet": {"sponsor_ids": policy.subject_id}},
+                {"$addToSet": {"sponsor_ids": {"$each": sponsor_ids}}},
                 session=session,
             )
     elif new:
@@ -135,7 +149,7 @@ async def record_authorship(
             {
                 "_id": uuid4().hex,
                 **query,
-                "sponsor_ids": [policy.subject_id],
+                "sponsor_ids": sponsor_ids,
                 "created_at": utc_now(),
             },
             session=session,

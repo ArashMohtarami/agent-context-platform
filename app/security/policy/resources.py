@@ -74,6 +74,15 @@ def field_filter(policy: TenantPolicy, action: str, kind: str, field: str) -> di
 
 def _resource_filter(policy: TenantPolicy, action: str, collection: str) -> dict[str, Any]:
     kind, field = RESOURCE_PATHS[collection]  # unclassified additions fail closed
+    if policy.subject_kind == "machine" and collection in {"gateway_idempotency", "agent_activity"}:
+        # Operational metadata follows this exact key/client/subject policy,
+        # without inventing corpus permissions for a client resource dimension.
+        allowed = (
+            policy.client_id
+            if any(g.action == action and g.mode != "none" for g in policy.grants)
+            else None
+        )
+        return {"org_id": policy.org_id, "client_id": allowed or "__no_managed_client__"}
     if collection == "projects" and action not in {"projects:read", "projects:write"}:
         kind = "project"  # reference closure uses the domain action's boundary
     parts: list[dict[str, Any]] = [{"org_id": policy.org_id}]
@@ -121,6 +130,12 @@ def _resource_allows(
     if row.get("org_id") != policy.org_id:
         return False
     kind, field = RESOURCE_PATHS[collection]
+    if policy.subject_kind == "machine" and collection in {"gateway_idempotency", "agent_activity"}:
+        return (
+            policy.client_id is not None
+            and row.get("client_id") == policy.client_id
+            and any(g.action == action and g.mode != "none" for g in policy.grants)
+        )
     if collection == "projects" and action not in {"projects:read", "projects:write"}:
         kind = "project"
     global_allowed = permitted(policy, action, "organization_knowledge", policy.org_id)

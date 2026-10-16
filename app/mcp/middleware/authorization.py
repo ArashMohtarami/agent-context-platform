@@ -12,8 +12,10 @@ class GatewayAuthorization:
     def __init__(self, configured: Authorization, context: ClientRequestContext) -> None:
         self._configured = configured
         self._context = context
+        self._action: str | None = None
 
     def require_scope(self, scope: Scope) -> None:
+        self._action = scope
         if not self._context.allows_scope(scope):
             raise GatewayError(
                 GatewayErrorCode.FORBIDDEN, f"this client is not authorized for {scope}"
@@ -24,7 +26,14 @@ class GatewayAuthorization:
             raise GatewayError(GatewayErrorCode.FORBIDDEN, str(error)) from error
 
     def require_project(self, project_id: str | None) -> None:
-        if not self._context.allows_project(project_id):
+        if self._context.action_resources is not None and project_id is not None:
+            self.require_resource(
+                "project_directory"
+                if self._action and self._action.startswith("projects:")
+                else "project",
+                project_id,
+            )
+        elif not self._context.allows_project(project_id):
             raise GatewayError(
                 GatewayErrorCode.PROJECT_FORBIDDEN,
                 "this client is not authorized for that project",
@@ -35,7 +44,9 @@ class GatewayAuthorization:
             raise GatewayError(GatewayErrorCode.PROJECT_FORBIDDEN, str(error)) from error
 
     def require_profile(self, profile_id: str | None) -> None:
-        if (
+        if self._context.action_resources is not None and profile_id is not None:
+            self.require_resource("creator_profile", profile_id)
+        elif (
             profile_id is not None
             and self._context.allowed_profile_ids is not None
             and profile_id not in self._context.allowed_profile_ids
@@ -47,6 +58,17 @@ class GatewayAuthorization:
             self._configured.require_profile(profile_id)
         except AuthorizationError as error:
             raise GatewayError(GatewayErrorCode.FORBIDDEN, str(error)) from error
+
+    def require_resource(self, kind: str, identifier: str) -> None:
+        if self._context.action_resources is not None and not any(
+            g.action == self._action
+            and g.resource_kind == kind
+            and g.selection().contains(identifier)
+            for g in self._context.action_resources
+        ):
+            raise GatewayError(
+                GatewayErrorCode.FORBIDDEN, "operation is outside the current action/resource grant"
+            )
 
     def describe(self) -> dict[str, object]:
         """Return the effective intersection without exposing credential details.
@@ -80,9 +102,16 @@ class GatewayAuthorization:
             if credential_profiles is None
             else tuple(p for p in configured_profiles if p in credential_profiles)
         )
-        return {
+        result: dict[str, object] = {
             "org_id": self._context.org_id,
             "scopes": scopes,
             "projects": projects,
             "profiles": ("all" if profiles is None else list(profiles)),
         }
+        if self._context.action_resources is not None:
+            result["projects"] = []
+            result["profiles"] = []
+            result["action_resources"] = [
+                g.model_dump() for g in self._context.action_resources if g.action in scopes
+            ]
+        return result

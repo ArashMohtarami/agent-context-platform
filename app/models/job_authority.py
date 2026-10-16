@@ -17,8 +17,11 @@ class JobAuthority(BaseModel):
     profile_ids: tuple[str, ...] | None
     research_project_id: Identifier
     source_id: Identifier
-    worker_schema_version: Literal[37, 40, 41] = 37
-    subject_kind: Literal["legacy", "human", "operator"] = "legacy"
+    worker_schema_version: Literal[37, 40, 41, 42] = 37
+    subject_kind: Literal["legacy", "human", "machine", "operator"] = "legacy"
+    sponsor_id: Identifier | None = None
+    client_policy_revision: int | None = Field(default=None, ge=1)
+    policy_context: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     user_id: Identifier | None = None
     membership_revision: int | None = Field(default=None, ge=1)
     session_id: Identifier | None = None
@@ -26,8 +29,23 @@ class JobAuthority(BaseModel):
     @model_validator(mode="after")
     def subject(self) -> "JobAuthority":
         human = self.subject_kind == "human"
+        machine = self.subject_kind == "machine"
+        if machine and (
+            self.worker_schema_version != 42
+            or self.key_id is None
+            or self.client_id is None
+            or self.sponsor_id is None
+            or self.client_policy_revision is None
+            or self.policy_context is None
+        ):
+            raise ValueError("machine work requires verified schema42 sponsorship context")
+        if not machine and any(
+            v is not None
+            for v in (self.sponsor_id, self.client_policy_revision, self.policy_context)
+        ):
+            raise ValueError("machine sponsorship cannot be attached to another subject kind")
         if human and (
-            self.worker_schema_version != 41
+            self.worker_schema_version not in {41, 42}
             or self.key_id is not None
             or self.client_id is not None
             or self.user_id is None

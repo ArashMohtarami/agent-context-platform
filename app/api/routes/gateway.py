@@ -22,6 +22,7 @@ from app.schemas.gateway import (
     GatewaySessionEndRequest,
     GatewaySessionUpdateRequest,
 )
+from app.security.policy.models import Grant
 from app.security.principal import AuthenticationError, Principal
 from app.security.scopes import Scope
 from app.security.tenant_policy import bind_principal, select_action
@@ -177,6 +178,25 @@ async def identity(
         ),
         scopes=principal.scopes,
         allowed_project_ids=principal.project_selector(),
+        subject_id=principal.managed_policy.subject_id
+        if principal.managed_policy and principal.managed_policy.managed
+        else None,
+        policy_context=principal.managed_policy.fingerprint
+        if principal.managed_policy and principal.managed_policy.managed
+        else None,
+        action_resources=tuple(
+            Grant.model_validate(
+                {
+                    "action": g.action,
+                    "resource_kind": g.resource_kind,
+                    "selector": g.mode,
+                    "ids": list(g.ids),
+                }
+            )
+            for g in principal.managed_policy.grants
+        )
+        if principal.managed_policy and principal.managed_policy.managed
+        else None,
     )
 
 

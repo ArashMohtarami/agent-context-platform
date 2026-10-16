@@ -23,6 +23,7 @@ async def check_operator_context(
     enabled: bool = False,
     management_policy: bool = False,
     human_management: bool = False,
+    managed_agents: bool = False,
 ) -> None:
     control = await database["_tenant_control"].find_one({"_id": "installation"})
     context = current_tenant()
@@ -33,7 +34,8 @@ async def check_operator_context(
     if (
         control
         and control.get("stage") == "managed"
-        and control.get("worker_schema_versions") != ([41] if human_management else [40])
+        and control.get("worker_schema_versions")
+        != ([42] if managed_agents else [41] if human_management else [40])
     ):
         raise TenantContextRequired(
             "operator worker schema does not match the managed installation"
@@ -62,7 +64,9 @@ async def check_operator_context(
                 "installation_operator",
                 (),
                 operator=True,
-                engine=PolicyEngine(IdentityStore(database), human_management=True),
+                engine=PolicyEngine(
+                    IdentityStore(database), human_management=True, managed_agents=managed_agents
+                ),
             )
         )
 
@@ -97,7 +101,13 @@ class TenantMaintenanceMiddleware:
                         and control.get("worker_schema_versions")
                         == (
                             [
-                                41
+                                42
+                                if getattr(
+                                    getattr(request.app.state, "settings", None),
+                                    "v6_managed_agents",
+                                    False,
+                                )
+                                else 41
                                 if getattr(
                                     getattr(request.app.state, "settings", None),
                                     "v6_human_management",

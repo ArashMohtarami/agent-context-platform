@@ -19,17 +19,18 @@ from app.security.tenant import current_tenant
 
 async def operate(arguments: argparse.Namespace, settings: Settings) -> Result:
     context = current_tenant()
+    expected_worker = 42 if settings.v6_managed_agents else 41
     if (
         context is None
         or not arguments.approval_reference.strip()
         or len(arguments.approval_reference) > 512
         or not settings.v6_human_management
         or not arguments.writers_stopped
-        or arguments.worker_schema_version != [41]
+        or arguments.worker_schema_version != [expected_worker]
     ):
         raise UsageError(
             "human management requires --org-id, enabled Phase 6, stopped writers "
-            "and only schema-41 workers"
+            f"and only schema-{expected_worker} workers"
         )
     mongodb = MongoDBClient(settings)
     await mongodb.connect(require_search=False)
@@ -42,6 +43,7 @@ async def operate(arguments: argparse.Namespace, settings: Settings) -> Result:
             sso=True,
             management_policy=True,
             human_management=True,
+            managed_agents=settings.v6_managed_agents,
             management_cutover=True,
         )
         if arguments.action == "approve-root":
@@ -49,12 +51,20 @@ async def operate(arguments: argparse.Namespace, settings: Settings) -> Result:
                 raise UsageError("bounded reviewed policy file is required")
             command = RootApproval.model_validate_json(arguments.policy_file.read_text())
             data = await Memberships(
-                PolicyEngine(IdentityStore(mongodb.database), human_management=True)
+                PolicyEngine(
+                    IdentityStore(mongodb.database),
+                    human_management=True,
+                    managed_agents=settings.v6_managed_agents,
+                )
             ).operator_approve_root(
                 context.org_id, arguments.user_id, command, arguments.approval_reference
             )
         else:
-            engine = PolicyEngine(IdentityStore(mongodb.database), human_management=True)
+            engine = PolicyEngine(
+                IdentityStore(mongodb.database),
+                human_management=True,
+                managed_agents=settings.v6_managed_agents,
+            )
             async with engine.transaction() as tx:
                 anchor = await engine.anchor(context.org_id, tx)
                 await engine.fence(anchor, tx, mutation=True)
@@ -66,7 +76,11 @@ async def operate(arguments: argparse.Namespace, settings: Settings) -> Result:
                     tx,
                     approval=arguments.approval_reference,
                 )
-            data = {"org_id": context.org_id, "schema_version": 41, "automatic_grants": False}
+            data = {
+                "org_id": context.org_id,
+                "schema_version": engine.schema_version,
+                "automatic_grants": False,
+            }
         return Result(data=data, lines=fields(data))
     except (PolicyDenied, ValueError):
         raise CliError(

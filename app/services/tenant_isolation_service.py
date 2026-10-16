@@ -145,7 +145,7 @@ class TenantIsolationService:
         from app.identity.repository import LOCAL_COLLECTION_OWNERSHIP, SSO_COLLECTION_OWNERSHIP
 
         identity_marker = await db["_local_identity_control"].find_one(
-            {"_id": "installation", "schema_version": {"$in": [38, 39, 40, 41]}}
+            {"_id": "installation", "schema_version": {"$in": [38, 39, 40, 41, 42]}}
         )
         identity_migration = await db["_schema_migrations"].find_one({"version": 38})
         # A reserved spelling alone never classifies formerly unknown data.
@@ -153,21 +153,27 @@ class TenantIsolationService:
             set(LOCAL_COLLECTION_OWNERSHIP) if identity_marker and identity_migration else set()
         )
         if await db["_sso_identity_control"].find_one(
-            {"_id": "installation", "schema_version": {"$in": [39, 40, 41]}}
+            {"_id": "installation", "schema_version": {"$in": [39, 40, 41, 42]}}
         ) and await db["_schema_migrations"].find_one({"version": 39}):
             identity_collections |= set(SSO_COLLECTION_OWNERSHIP)
         if await db["_management_policy_control"].find_one(
-            {"_id": "installation", "schema_version": {"$in": [40, 41]}}
+            {"_id": "installation", "schema_version": {"$in": [40, 41, 42]}}
         ) and await db["_schema_migrations"].find_one({"version": 40}):
             from app.security.policy.inventory import COLLECTION_OWNERSHIP
 
             identity_collections |= set(COLLECTION_OWNERSHIP)
         if await db["_human_management_control"].find_one(
-            {"_id": "installation", "schema_version": 41}
+            {"_id": "installation", "schema_version": {"$in": [41, 42]}}
         ) and await db["_schema_migrations"].find_one({"version": 41}):
             from app.management.inventory import COLLECTION_OWNERSHIP as HUMAN_OWNERSHIP
 
             identity_collections |= set(HUMAN_OWNERSHIP)
+        if await db["_managed_agents_control"].find_one(
+            {"_id": "installation", "schema_version": 42}
+        ) and await db["_schema_migrations"].find_one({"version": 42}):
+            from app.managed_agents.inventory import COLLECTION_OWNERSHIP as MACHINE_OWNERSHIP
+
+            identity_collections |= set(MACHINE_OWNERSHIP)
         unknown = (
             actual - set(TENANT_COLLECTIONS) - set(INSTALLATION_COLLECTIONS) - identity_collections
         )

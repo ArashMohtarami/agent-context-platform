@@ -1,5 +1,7 @@
 """Business rules for safe client-scoped MCP write retries."""
 
+import json
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from hashlib import sha256
@@ -126,6 +128,9 @@ class GatewayIdempotencyService:
         result_data: dict[str, object],
     ) -> None:
         """Persist a replay result once, refusing an uncertain duplicate completion."""
+        encoded = result_text + json.dumps(result_data, sort_keys=True)
+        if re.search(r"acp_[0-9a-f]{16}_[A-Za-z0-9_-]{32,}", encoded):
+            raise IdempotencyConflictError("credential material cannot be retained for replay")
         completed = await self._repository.complete(
             document,
             result_text=result_text,

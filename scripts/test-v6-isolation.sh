@@ -70,6 +70,13 @@ fresh_stack() {
 }
 
 start_stack
+if [[ "${V6_MANAGED_AGENTS_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
+    for target in managed_client_revocation credential_delivery service_account_reviews; do
+        "$python" -m pytest -q "tests/integration/test_v6_${target}.py" --junitxml="$report_dir/${target}.xml" "$@"
+        fresh_stack
+    done
+    exit 0
+fi
 if [[ "${V6_MANAGEMENT_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
     "$python" -m pytest -q tests/integration/test_v6_membership_lifecycle.py --junitxml="$report_dir/membership-development.xml" "$@"
     fresh_stack
@@ -154,5 +161,11 @@ if [[ "${V6_MANAGEMENT_TESTS:-0}" == "1" ]]; then
     "$python" -m pytest -q tests/integration/test_v6_membership_lifecycle.py --junitxml="$report_dir/membership.xml"
     fresh_stack
     "$python" -m pytest -q tests/integration/test_v6_access_request_races.py --junitxml="$report_dir/access-requests.xml"
+fi
+if [[ "${V6_MANAGED_AGENTS_TESTS:-0}" == "1" ]]; then
+    for target in managed_client_revocation credential_delivery service_account_reviews; do
+        fresh_stack
+        "$python" -m pytest -q "tests/integration/test_v6_${target}.py" --junitxml="$report_dir/${target}.xml" "$@"
+    done
 fi
 printf 'V6 isolation reports: %s\n' "$report_dir"

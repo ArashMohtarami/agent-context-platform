@@ -24,10 +24,12 @@ class MongoCredentialResolver:
         *,
         management_policy: bool = False,
         human_management: bool = False,
+        managed_agents: bool = False,
     ) -> None:
         self._database = database
         self.management_policy = management_policy
         self.human_management = human_management
+        self.managed_agents = managed_agents
 
     async def get_by_key_id(self, key_id: str) -> ApiKeyDocument | None:
         raw = await self._database["api_keys"].find_one({"key_id": key_id})
@@ -46,7 +48,7 @@ class MongoCredentialResolver:
             and (
                 not self.management_policy
                 or control.get("worker_schema_versions")
-                == ([41] if self.human_management else [40])
+                == ([42] if self.managed_agents else [41] if self.human_management else [40])
             )
             and control.get("domain_traffic_enabled") is True
             and organization
@@ -67,7 +69,9 @@ class MongoCredentialResolver:
         from app.security.policy.engine import PolicyEngine
 
         return await PolicyEngine(
-            IdentityStore(self._database), human_management=self.human_management
+            IdentityStore(self._database),
+            human_management=self.human_management,
+            managed_agents=self.managed_agents,
         ).credential(principal)
 
     async def touch(self, key_id: str, used_at: datetime) -> None:

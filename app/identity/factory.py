@@ -40,7 +40,9 @@ def build_local_identity(
         from app.security.policy.engine import PolicyEngine
 
         service.policy_engine = PolicyEngine(
-            service.store, human_management=settings.v6_human_management
+            service.store,
+            human_management=settings.v6_human_management,
+            managed_agents=settings.v6_managed_agents,
         )
         service.sessions.policy_engine = service.policy_engine
     return service

@@ -85,6 +85,7 @@ async def import_skills(
             enabled=settings.v6_tenant_foundation,
             management_policy=settings.v6_management_policy,
             human_management=settings.v6_human_management,
+            managed_agents=settings.v6_managed_agents,
         )
         await initialize_database(
             mongodb.database,
@@ -94,6 +95,7 @@ async def import_skills(
             sso=settings.v6_sso,
             management_policy=settings.v6_management_policy,
             human_management=settings.v6_human_management,
+            managed_agents=settings.v6_managed_agents,
         )
         await ensure_text_indexes(mongodb.database)
         if embedding_service is not None:

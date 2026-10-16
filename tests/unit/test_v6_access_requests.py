@@ -17,7 +17,7 @@ from tests.unit.test_v6_invites import policy
 
 
 def test_each_new_collection_is_classified_strict_and_indexed_with_org_first():
-    assert [m.version for m in MIGRATIONS][-2:] == [40, 41]
+    assert [m.version for m in MIGRATIONS][-3:] == [40, 41, 42]
     assert set(VALIDATORS) == set(HUMAN_OWNERSHIP) <= set(COLLECTION_OWNERSHIP)
     for name, validator in VALIDATORS.items():
         assert validator["$jsonSchema"]["additionalProperties"] is False

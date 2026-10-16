@@ -42,6 +42,13 @@ class TenantPolicy:
     revision: int = 0
     subject_revision: int = 0
     session_id: str | None = None
+    machine_key_id: str | None = None
+    sponsor_ids: tuple[str, ...] = ()
+    team_id: str | None = None
+    service_account_id: str | None = None
+    sponsorship_revision: int = 0
+    reviewer: bool = False
+    reviewer_grants: tuple[ResourceGrant, ...] = ()
     engine: Any = field(default=None, repr=False, compare=False)
     refresh: Callable[[], Awaitable[None]] | None = field(default=None, repr=False, compare=False)
     transaction_check: Callable[[Any], Awaitable[None]] | None = field(
@@ -76,8 +83,19 @@ class TenantPolicy:
             self.operator,
             self.managed,
             self.subject_kind,
-            self.revision,
+            # A copied template or unrelated member's metadata is not a change
+            # to this machine's authority. Actual grant/sponsor generations are
+            # below; every operation still rechecks current policy and shares
+            # the live org anchor fence before persistence.
+            0 if self.subject_kind == "machine" else self.revision,
             self.subject_revision,
+            self.machine_key_id,
+            self.sponsor_ids,
+            self.team_id,
+            self.service_account_id,
+            self.sponsorship_revision,
+            self.reviewer,
+            [(g.action, g.resource_kind, g.mode, g.ids) for g in self.reviewer_grants],
             [(g.action, g.resource_kind, g.mode, g.ids) for g in self.grants],
         )
         return sha256(dumps(material, separators=(",", ":")).encode()).hexdigest()

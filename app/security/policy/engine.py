@@ -23,10 +23,13 @@ MAX_ASSIGNMENTS = 1000
 
 
 class PolicyEngine:
-    def __init__(self, store: IdentityStore, *, human_management: bool = False) -> None:
+    def __init__(
+        self, store: IdentityStore, *, human_management: bool = False, managed_agents: bool = False
+    ) -> None:
         self.store = store
-        self.human_management = human_management
-        self.schema_version = 41 if human_management else 40
+        self.human_management = human_management or managed_agents
+        self.managed_agents = managed_agents
+        self.schema_version = 42 if managed_agents else 41 if human_management else 40
 
     async def enabled(self) -> None:
         if not await self.store.find(
@@ -35,9 +38,15 @@ class PolicyEngine:
         ):
             raise PolicyDenied("management policy is unavailable")
         if self.human_management and not await self.store.find(
-            "_human_management_control", {"_id": "installation", "schema_version": 41}
+            "_human_management_control",
+            {"_id": "installation", "schema_version": self.schema_version},
         ):
             raise PolicyDenied("human management migration is incomplete")
+
+        if self.managed_agents and not await self.store.find(
+            "_managed_agents_control", {"_id": "installation", "schema_version": 42}
+        ):
+            raise PolicyDenied("managed agents migration is incomplete")
 
     async def validate_resources(self, org_id: str, tuples: tuple[Grant, ...], tx: Any) -> None:
         boundaries = {
@@ -281,6 +290,10 @@ class PolicyEngine:
             if anchor["revision"] != policy.revision:
                 raise PolicyConflict("policy changed; refresh effective access")
             return {"anchor": anchor}
+        if policy.subject_kind == "machine":
+            if tx is None or policy.transaction_check is None:
+                raise PolicyDenied("current machine transaction check is required")
+            return {"anchor": await self.anchor(policy.org_id, tx)}
         snapshot = await self.snapshot(policy.org_id, policy.subject_id, tx)
         if (
             snapshot["anchor"]["revision"] != policy.revision
@@ -328,13 +341,17 @@ class PolicyEngine:
         ).hexdigest()
 
     async def credential(self, principal: Principal) -> Principal:
-        """Phase 7 managed sponsors are deliberately unimplemented and denied.
+        """Resolve current verified machines, or the sealed earlier-phase adapter.
 
-        Only an explicit, unchanged, expiring adoption-operator adapter survives.
-        This decision is shared by ordinary REST, HTTP/stdio MCP and job rechecks.
+        The schema42 path never falls back to a legacy admin adapter. Ordinary
+        REST, HTTP/stdio MCP and job rechecks share this decision.
         """
         from app.security.tenant_policy import policy_of
 
+        if self.managed_agents:
+            from app.managed_agents.service import ManagedAgents
+
+            return await ManagedAgents(self).resolve(principal)
         row = await self._credential_valid(principal)
         anchor = await self.anchor(str(principal.org_id))
 
@@ -387,6 +404,10 @@ class PolicyEngine:
         return row
 
     async def approve_legacy(self, principal: Principal, approval: str, expires_at: Any) -> None:
+        if self.managed_agents:
+            raise PolicyDenied(
+                "legacy adapters are disabled; claim or revoke through machine cutover"
+            )
         if not approval or not utc_now() < expires_at <= utc_now() + timedelta(days=30):
             raise PolicyDenied("bounded operator approval is required")
         async with self.transaction() as tx:

@@ -10,6 +10,7 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.db.client_types import MongoDocument
+from app.managed_agents.inventory import COLLECTION_OWNERSHIP as MACHINE_COLLECTION_OWNERSHIP
 from app.management.inventory import COLLECTION_OWNERSHIP as MANAGEMENT_COLLECTION_OWNERSHIP
 from app.security.policy.inventory import COLLECTION_OWNERSHIP as POLICY_COLLECTION_OWNERSHIP
 
@@ -38,6 +39,7 @@ COLLECTION_OWNERSHIP = {
     **SSO_COLLECTION_OWNERSHIP,
     **POLICY_COLLECTION_OWNERSHIP,
     **MANAGEMENT_COLLECTION_OWNERSHIP,
+    **MACHINE_COLLECTION_OWNERSHIP,
 }
 
 

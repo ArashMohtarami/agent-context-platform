@@ -234,6 +234,8 @@ class ResearchIngestionService:
             worker_schema_version=policy.engine.schema_version if policy and policy.engine else 37,
             subject_kind="human"
             if policy and policy.managed and policy.subject_kind == "human"
+            else "machine"
+            if policy and policy.subject_kind == "machine"
             else "operator"
             if policy is None or policy.operator
             else "legacy",
@@ -246,12 +248,19 @@ class ResearchIngestionService:
             session_id=policy.session_id
             if policy and policy.managed and policy.subject_kind == "human"
             else None,
+            sponsor_id=policy.subject_id if policy and policy.subject_kind == "machine" else None,
+            client_policy_revision=policy.sponsorship_revision
+            if policy and policy.subject_kind == "machine"
+            else None,
+            policy_context=policy.fingerprint
+            if policy and policy.subject_kind == "machine"
+            else None,
             org_id=require_tenant().org_id,
             key_id=None
             if policy is None
             or policy.operator
             or (policy.managed and policy.subject_kind == "human")
-            else policy.subject_id,
+            else policy.machine_key_id or policy.subject_id,
             client_id=policy.client_id if policy else None,
             project_ids=policy.selector("research:write", "project") if policy else None,
             profile_ids=policy.selector("research:write", "creator_profile") if policy else None,

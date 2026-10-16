@@ -76,6 +76,9 @@ class AgentSessionService:
         now = self._clock()
         return await self._sessions.create(
             AgentSessionDocument(
+                policy_hash=principal.managed_policy.fingerprint
+                if principal.managed_policy and principal.managed_policy.managed
+                else None,
                 session_id=uuid4().hex,
                 client_id=client_id,
                 client_type=AgentClientType(client_type),
@@ -171,6 +174,12 @@ class AgentSessionService:
         session = await self._sessions.get(session_id)
         if session is None:
             raise AgentSessionNotFoundError("agent session was not found")
+        if (
+            principal.managed_policy
+            and principal.managed_policy.subject_kind == "machine"
+            and session.policy_hash != principal.managed_policy.fingerprint
+        ):
+            raise AgentSessionAccessError("session policy context changed")
         client_id, _ = _client_identity(principal)
         is_elevated = permit_admin and principal.allows_scope("agent:manage")
         if session.client_id != client_id and not is_elevated:

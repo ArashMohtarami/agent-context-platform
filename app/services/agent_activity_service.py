@@ -58,6 +58,18 @@ class AgentActivityService:
             return
         await self._activities.create(
             AgentActivityDocument(
+                sponsor_id=principal.managed_policy.subject_id
+                if principal.managed_policy and principal.managed_policy.subject_kind == "machine"
+                else None,
+                sponsor_team_id=principal.managed_policy.team_id
+                if principal.managed_policy
+                else None,
+                service_account_id=principal.managed_policy.service_account_id
+                if principal.managed_policy
+                else None,
+                sponsorship_revision=principal.managed_policy.sponsorship_revision
+                if principal.managed_policy and principal.managed_policy.subject_kind == "machine"
+                else None,
                 event_id=uuid4().hex,
                 client_id=principal.client_id,
                 client_type=AgentClientType(principal.client_type),

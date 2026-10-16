@@ -255,7 +255,24 @@ class TenantCollection:
         for reference in references(self.collection, document):
             if reference.target not in TENANT_COLLECTIONS:
                 raise ValueError("unclassified reference is refused")
-            query = {"$and": [reference.query, policy_filter(reference.target)]}
+            scope = policy_filter(reference.target)
+            policy = current_policy()
+            if (
+                self.collection == "gateway_idempotency"
+                and reference.target == "agent_clients"
+                and policy is not None
+                and policy.managed
+                and policy.subject_kind == "machine"
+                and policy.client_id is not None
+                and reference.query == {"client_id": policy.client_id}
+                and document.get("client_id") == policy.client_id
+                and document.get("org_id") == policy.org_id
+            ):
+                # A retry receipt references only the already verified calling
+                # client. This operational identity check grants no client
+                # administration or private corpus/memory permission.
+                scope = {"org_id": policy.org_id, "status": "active"}
+            query = {"$and": [reference.query, scope]}
             rows = (
                 await self.raw.database[reference.target]
                 .find(query, {"_id": 1}, session=session)

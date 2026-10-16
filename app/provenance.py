@@ -27,10 +27,18 @@ def actor_from_principal(principal: Principal) -> ActorProvenance:
     if principal.client_id is not None or principal.client_type is not None:
         if principal.client_id is None or principal.client_type is None:
             raise ValueError("principal has incomplete client identity")
+        policy = principal.managed_policy
         return ActorProvenance(
             actor_type=ActorType.AGENT,
             client_id=principal.client_id,
             client_type=AgentClientType(principal.client_type),
+            org_id=principal.org_id if policy and policy.subject_kind == "machine" else None,
+            sponsor_id=policy.subject_id if policy and policy.subject_kind == "machine" else None,
+            sponsor_team_id=policy.team_id if policy else None,
+            service_account_id=policy.service_account_id if policy else None,
+            sponsorship_revision=policy.sponsorship_revision
+            if policy and policy.subject_kind == "machine"
+            else None,
         )
     return ActorProvenance(
         actor_type=ActorType.HUMAN if principal.authenticated else ActorType.SYSTEM

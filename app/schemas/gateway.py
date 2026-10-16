@@ -1,11 +1,20 @@
 """Narrow, credential-free contracts between the MCP gateway and Context API."""
 
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from app.models.agent import AgentActivityStatus, AgentClientType, validate_session_metadata
 from app.models.common import Identifier, Metadata
+from app.security.policy.models import Grant
 from app.security.scopes import Scope
 
 
@@ -19,6 +28,17 @@ class GatewayIdentityResponse(BaseModel):
     client_type: AgentClientType | None
     scopes: tuple[Scope, ...]
     allowed_project_ids: tuple[str, ...] | None
+    action_resources: tuple[Grant, ...] | None = None
+    subject_id: Identifier | None = None
+    policy_context: str | None = None
+
+    @model_serializer(mode="wrap")
+    def preserve_legacy_identity(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        result: dict[str, Any] = handler(self)
+        for key in ("action_resources", "subject_id", "policy_context"):
+            if result.get(key) is None:
+                result.pop(key, None)
+        return result
 
 
 class GatewayActivityRequest(BaseModel):

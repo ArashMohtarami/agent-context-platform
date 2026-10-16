@@ -42,7 +42,7 @@ class MongoJobAuthorityChecker:
     def __init__(
         self, database: Any, *, worker_schema_version: int | None = None, human_sessions: Any = None
     ) -> None:
-        if worker_schema_version not in {None, 37, 40, 41}:
+        if worker_schema_version not in {None, 37, 40, 41, 42}:
             raise JobAuthorityError("mixed or unscoped worker schema is refused")
         self._database = database
         self._human_sessions = human_sessions
@@ -55,9 +55,15 @@ class MongoJobAuthorityChecker:
         managed = bool(control and control.get("stage") == "managed")
         versions = control.get("worker_schema_versions") if control else None
         expected = (
-            41 if managed and versions == [41] else 40 if managed and versions == [40] else 37
+            42
+            if managed and versions == [42]
+            else 41
+            if managed and versions == [41]
+            else 40
+            if managed and versions == [40]
+            else 37
         )
-        if managed and versions not in ([40], [41]):
+        if managed and versions not in ([40], [41], [42]):
             raise JobAuthorityError("mixed policy workers are refused")
         if authority.worker_schema_version != expected or (
             self._worker_schema_version is not None and self._worker_schema_version != expected
@@ -104,11 +110,23 @@ class MongoJobAuthorityChecker:
             from app.security.policy.evaluation import PolicyDenied
 
             try:
-                await PolicyEngine(
-                    IdentityStore(self._database), human_management=expected == 41
+                principal = await PolicyEngine(
+                    IdentityStore(self._database),
+                    human_management=expected >= 41,
+                    managed_agents=expected == 42,
                 ).credential(principal)
             except PolicyDenied:
                 raise JobAuthorityError("initiating sponsorship is unavailable") from None
+        if expected == 42:
+            policy = principal.managed_policy
+            if (
+                authority.subject_kind != "machine"
+                or policy is None
+                or authority.sponsor_id != policy.subject_id
+                or authority.client_policy_revision != policy.sponsorship_revision
+                or authority.policy_context != policy.fingerprint
+            ):
+                raise JobAuthorityError("initiating machine policy context changed")
         if authority.action not in principal.scopes or principal.client_id != authority.client_id:
             raise JobAuthorityError("initiating capability was revoked")
         source = await self._database["research_sources"].find_one(
@@ -121,6 +139,13 @@ class MongoJobAuthorityChecker:
         )
         if source is None:
             raise JobAuthorityError("job source is unavailable")
+        if principal.managed_policy is not None and principal.managed_policy.managed:
+            from app.security.policy.resources import resource_allows
+
+            if not resource_allows(
+                principal.managed_policy, authority.action, source, "research_sources"
+            ):
+                raise JobAuthorityError("current machine policy no longer covers the job source")
         projects = source.get("authorization", {}).get("project_ids", [])
         if (principal.projects is not None and not set(projects).issubset(principal.projects)) or (
             authority.project_ids is not None and not set(projects).issubset(authority.project_ids)
@@ -155,7 +180,9 @@ class MongoJobAuthorityChecker:
         # standalone checker without it deliberately refuses SSO authority.
         try:
             await (self._human_sessions or BrowserSessions(store)).authority(row)
-            engine = PolicyEngine(store, human_management=True)
+            engine = PolicyEngine(
+                store, human_management=True, managed_agents=authority.worker_schema_version == 42
+            )
             snapshot = await engine.snapshot(authority.org_id, str(authority.user_id))
             source = await self._database["research_sources"].find_one(
                 {

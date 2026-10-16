@@ -256,3 +256,6 @@ result is claimed by these API tests. There is a bounded evaluation capacity of
 it fails closed rather than silently truncating authorization. Directory pages
 are at most 100 rows. Scaling those limits requires measured representative
 performance and a separately reviewed policy-resolution design.
+
+Verified human-sponsored clients and service custody are documented in
+[Managed agents](managed-agents.md).

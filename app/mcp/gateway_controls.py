@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from time import monotonic
 from typing import Literal, Protocol
+from uuid import uuid4
 
 from app.core.config import McpSettings
 from app.security.tenant import require_tenant
@@ -38,6 +39,8 @@ class LimitRequest:
     writes: bool
     execution_class: ExecutionClass
     research_ingestion: bool
+    subject_id: str | None = None
+    policy_context: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +50,9 @@ class LimitLease:
     org_id: str
     client_id: str
     long_running: bool
+    subject_id: str | None = None
+    policy_context: str | None = None
+    reservation_id: str | None = None
 
 
 class ClientLimitBackend(Protocol):
@@ -79,6 +85,7 @@ class InMemoryClientLimitBackend:
         self._clock = clock
         self._lock = asyncio.Lock()
         self._windows: dict[tuple[str, str], _ClientWindow] = {}
+        self._leases: dict[str, LimitLease] = {}
 
     async def acquire(self, request: LimitRequest, policy: ClientLimitPolicy) -> LimitLease:
         """Atomically check and consume one client's independent budgets."""
@@ -108,13 +115,23 @@ class InMemoryClientLimitBackend:
             window.active_calls += 1
             if long_running:
                 window.active_long_running += 1
-            return LimitLease(
-                org_id=request.org_id, client_id=request.client_id, long_running=long_running
+            lease = LimitLease(
+                org_id=request.org_id,
+                client_id=request.client_id,
+                long_running=long_running,
+                subject_id=request.subject_id,
+                policy_context=request.policy_context,
+                reservation_id=uuid4().hex,
             )
+            self._leases[str(lease.reservation_id)] = lease
+            return lease
 
     async def release(self, lease: LimitLease) -> None:
         """Release only the active-count portion of a completed reservation."""
         async with self._lock:
+            if lease.reservation_id is None or self._leases.get(lease.reservation_id) != lease:
+                return
+            self._leases.pop(lease.reservation_id)
             window = self._windows.get((lease.org_id, lease.client_id))
             if window is None:  # pragma: no cover - defensive against a custom reset
                 return
@@ -164,6 +181,14 @@ class GatewayRateLimiter:
     ) -> AsyncIterator[None]:
         """Reserve a client budget; legacy unlinked keys retain existing behavior."""
         org_id = require_tenant().org_id
+        from app.mcp.middleware.client_context import current_client_context
+
+        context = current_client_context()
+        if context is not None and (
+            context.org_id != org_id
+            or (client_id is not None and (context.client_id or context.key_id) != client_id)
+        ):
+            raise ValueError("limit reservation context does not match verified subject")
         if client_id is None:
             from app.mcp.middleware.client_context import current_client_context
 
@@ -178,6 +203,8 @@ class GatewayRateLimiter:
                 writes=writes,
                 execution_class=execution_class,
                 research_ingestion=research_ingestion,
+                subject_id=context.subject_id if context else None,
+                policy_context=context.policy_context if context else None,
             ),
             self._policy,
         )

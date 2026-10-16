@@ -28,6 +28,7 @@ from app.api.routes.health import router as health_router
 from app.api.routes.human_management import router as human_management_router
 from app.api.routes.knowledge_candidates import router as knowledge_candidates_router
 from app.api.routes.local_identity import router as local_identity_router
+from app.api.routes.managed_agents import router as managed_agents_router
 from app.api.routes.management_policy import router as management_policy_router
 from app.api.routes.memory import router as memory_router
 from app.api.routes.metrics import router as metrics_router
@@ -198,6 +199,7 @@ def start_authentication(
             database,
             management_policy=settings.v6_management_policy,
             human_management=getattr(settings, "v6_human_management", False),
+            managed_agents=getattr(settings, "v6_managed_agents", False),
         ),
         MongoAgentClientRepository(database),
     )
@@ -228,6 +230,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 sso=resolved_settings.v6_sso,
                 management_policy=resolved_settings.v6_management_policy,
                 human_management=resolved_settings.v6_human_management,
+                managed_agents=resolved_settings.v6_managed_agents,
             )
         elif resolved_settings.v6_tenant_foundation:
             await initialize_database(mongodb.database, tenant_foundation=True)
@@ -318,6 +321,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(sso_identity_router)
     application.include_router(management_policy_router)
     application.include_router(human_management_router)
+    application.include_router(managed_agents_router)
     application.include_router(metrics_router)
     application.include_router(skills_router)
     application.include_router(projects_router)
