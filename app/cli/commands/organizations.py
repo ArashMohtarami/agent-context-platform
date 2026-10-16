@@ -51,6 +51,7 @@ async def operate(arguments: argparse.Namespace, settings: Settings) -> Result:
                 tenant_isolation=settings.v6_tenant_isolation,
                 local_identity=settings.v6_local_identity,
                 sso=settings.v6_sso,
+                management_policy=settings.v6_management_policy,
             )
         if arguments.action == "provision":
             organization = OrganizationDocument(

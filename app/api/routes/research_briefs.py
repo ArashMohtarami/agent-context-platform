@@ -74,7 +74,7 @@ async def build_research_brief(
             next_questions=request.next_questions,
             status=request.status,
             created_by=principal.key_id if principal.authenticated else None,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except ResearchBriefAlreadyExistsError as error:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
@@ -101,7 +101,7 @@ async def get_research_brief(
         brief = await service.get_brief(
             research_project_id=research_project_id,
             brief_id=brief_id,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except ResearchBriefNotFoundError as error:
         raise HTTPException(

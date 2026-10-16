@@ -5,6 +5,10 @@ No caller-supplied organization/filter or list/export operation is exposed.
 """
 
 from datetime import datetime
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.security.principal import Principal
 
 from pymongo.asynchronous.database import AsyncDatabase
 
@@ -14,8 +18,11 @@ from app.security.tenant import TenantContext, tenant_scope
 
 
 class MongoCredentialResolver:
-    def __init__(self, database: AsyncDatabase[MongoDocument]) -> None:
+    def __init__(
+        self, database: AsyncDatabase[MongoDocument], *, management_policy: bool = False
+    ) -> None:
         self._database = database
+        self.management_policy = management_policy
 
     async def get_by_key_id(self, key_id: str) -> ApiKeyDocument | None:
         raw = await self._database["api_keys"].find_one({"key_id": key_id})
@@ -30,7 +37,7 @@ class MongoCredentialResolver:
         return bool(
             control
             and control.get("schema_version") == 37
-            and control.get("stage") == "isolated"
+            and control.get("stage") == ("managed" if self.management_policy else "isolated")
             and control.get("domain_traffic_enabled") is True
             and organization
             and organization.get("status") == "active"
@@ -42,6 +49,14 @@ class MongoCredentialResolver:
         if not isinstance(value, bytes) or len(value) < 32:
             raise ValueError("tenant cursor secret is not configured")
         return value
+
+    async def resolve_policy(self, principal: "Principal") -> "Principal":
+        if not self.management_policy:
+            return principal
+        from app.identity.repository import IdentityStore
+        from app.security.policy.engine import PolicyEngine
+
+        return await PolicyEngine(IdentityStore(self._database)).credential(principal)
 
     async def touch(self, key_id: str, used_at: datetime) -> None:
         from app.security.tenant import require_tenant

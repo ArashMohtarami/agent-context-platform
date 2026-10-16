@@ -29,6 +29,9 @@ class BrowserSessions:
     def __init__(self, store: IdentityStore) -> None:
         self.store = store
         self.providers: Registry | None = None
+        from app.security.policy.engine import PolicyEngine
+
+        self.policy_engine: PolicyEngine | None = None
 
     async def preauth(self) -> IssuedSession:
         return await self.issue(None, None, None, [], None, None)
@@ -197,6 +200,24 @@ class BrowserSessions:
     async def fence(self, row: Row, tx: AsyncClientSession) -> tuple[Row, Row, Row]:
         user, member, org = await self.authority(row, tx)
         now = utc_now()
+        if self.policy_engine:
+            anchor = await self.store.find(
+                "policy_anchors", {"_id": row["org_id"], "status": "active"}, tx
+            )
+            if anchor:
+                await self.policy_engine.fence(anchor, tx)
+            if not await self.store.update(
+                "browser_sessions",
+                {
+                    "_id": row["_id"],
+                    "revoked": False,
+                    "expires_at": {"$gt": now},
+                    "idle_expires_at": {"$gt": now},
+                },
+                {"$inc": {"policy_fence": 1}},
+                tx,
+            ):
+                raise AuthRejected("authentication was not accepted")
         if not await self.store.find(
             "browser_sessions",
             {

@@ -66,6 +66,9 @@ class ContentPublicationService:
     ) -> tuple[ContentItemDocument, PublicationReview]:
         """Approve a reviewed, current item only after a fresh safety scan."""
         item = await self._content.get_content(profile_id, content_id)
+        from app.security.policy.reviews import require_review
+
+        require_review(item.model_dump(), "content_items", "content:write")
         if item.status is not ContentStatus.REVIEW:
             raise ContentApprovalStateError("content must be in review before it can be approved")
         if item.revision != expected_revision:

@@ -70,6 +70,10 @@ fresh_stack() {
 }
 
 start_stack
+if [[ "${V6_POLICY_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
+    "$python" -m pytest -q tests/integration/test_v6_policy_fencing.py --junitxml="$report_dir/policy-development.xml" "$@"
+    exit 0
+fi
 if [[ "${V6_OIDC_TESTS:-0}" == "1" ]]; then
     export V6_OIDC_PORT
     V6_OIDC_PORT="$("$python" - <<'PY'
@@ -134,5 +138,9 @@ if [[ "${V6_OIDC_TESTS:-0}" == "1" ]]; then
     fresh_stack
     "$python" -m pytest -q tests/integration/test_v6_oidc_provider.py \
         tests/integration/test_v6_org_switch.py --junitxml="$report_dir/sso.xml"
+fi
+if [[ "${V6_POLICY_TESTS:-0}" == "1" ]]; then
+    fresh_stack
+    "$python" -m pytest -q tests/integration/test_v6_policy_fencing.py --junitxml="$report_dir/policy.xml"
 fi
 printf 'V6 isolation reports: %s\n' "$report_dir"

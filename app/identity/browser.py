@@ -136,6 +136,30 @@ async def current_browser(request: Request, service: IdentityBoundary) -> Browse
         (row.get("authentication") or {}).get("method", "local"),
     )
     establish_tenant(TenantContext(row["org_id"]))
+    if service.policy_engine:
+        from app.security.tenant_policy import TenantPolicy, bind_policy
+
+        async def refresh() -> None:
+            await service.sessions.authenticate(token, touch=False)
+
+        async def transaction_check(tx: Any) -> None:
+            # Privileged commands and domain mutations require current MFA,
+            # plus a write fence on the actual browser session/user/member.
+            service.sessions.recent(row)
+            await service.sessions.fence(row, tx)
+
+        anchor = await service.store.find(
+            "policy_anchors", {"_id": row["org_id"], "status": "active"}
+        )
+        if anchor:
+            snapshot = await service.policy_engine.snapshot(row["org_id"], row["user_id"])
+            bind_policy(
+                service.policy_engine.policy(
+                    snapshot, refresh=refresh, transaction_check=transaction_check
+                )
+            )
+        else:
+            bind_policy(TenantPolicy(row["org_id"], row["user_id"], (), managed=True))
     return BrowserContext(service, row, token)
 
 

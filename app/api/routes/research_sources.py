@@ -294,7 +294,7 @@ async def list_research_sources(
     selected_status = ResearchRecordStatus(status_filter) if status_filter is not None else None
     page = await source_service.list_sources(
         research_project_id=research_project_id,
-        allowed_project_ids=principal.projects,
+        allowed_project_ids=principal.project_selector(),
         status=selected_status,
         source_class=source_class,
         limit=limit,

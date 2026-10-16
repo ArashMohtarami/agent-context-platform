@@ -12,6 +12,7 @@ from typing import Any, cast
 from pymongo.asynchronous.collection import AsyncCollection
 
 from app.db.client_types import MongoDocument
+from app.security.policy.hooks import fenced
 from app.security.tenant import TenantContext, TenantContextRequired, current_tenant, require_tenant
 from app.security.tenant_policy import current_policy, policy_allows, policy_filter
 
@@ -283,11 +284,26 @@ class TenantCollection:
         if not policy_allows(document, self.collection):
             raise TenantContextRequired("record lies outside the action/resource envelope")
         await self._references(document, session)
+        from app.security.policy.hooks import record_authorship
 
+        policy = current_policy()
+        if policy is not None and (policy.managed or policy.engine is not None):
+            from app.security.policy.evaluation import PolicyDenied
+            from app.security.policy.hooks import is_decision
+
+            if is_decision(self.collection, dict(document)):
+                raise PolicyDenied("new authored records cannot start with an approved review")
+            if policy.managed:
+                await record_authorship(
+                    self.raw.database, self.collection, document, session, new=True
+                )
+
+    @fenced
     async def insert_one(self, document: MongoDocument, **kwargs: Any) -> Any:
         await self._insert(document, kwargs.get("session"))
         return await self.raw.insert_one(document, **kwargs)
 
+    @fenced
     async def insert_many(self, documents: Sequence[MongoDocument], **kwargs: Any) -> Any:
         for document in documents:
             await self._insert(document, kwargs.get("session"))
@@ -307,8 +323,32 @@ class TenantCollection:
                 str(k).split(".", 1)[0] in _IMMUTABLE for k in fields
             ):
                 raise ValueError("ownership and identity are immutable")
+        policy = current_policy()
+        if (
+            policy is not None
+            and (policy.managed or policy.engine is not None)
+            and self.collection in {"content_items", "knowledge_candidates"}
+        ):
+            if any(
+                "status" in cast(Mapping[str, object], fields)
+                for operation, fields in update.items()
+                if operation != "$set"
+            ):
+                raise ValueError("review state requires an explicit operation")
         existing = await self.raw.find_one(query, session=session)
         if existing is not None:
+            from app.security.policy.hooks import record_authorship, review_gate
+
+            policy = current_policy()
+            decision = False
+            if policy is not None and (policy.managed or policy.engine is not None):
+                decision = await review_gate(
+                    self.raw.database,
+                    self.collection,
+                    existing,
+                    dict(cast(Mapping[str, Any], update.get("$set", {}))),
+                    session,
+                )
             candidate = deepcopy(existing)
             for key, value in cast(Mapping[str, object], update.get("$set", {})).items():
                 target = candidate
@@ -334,8 +374,11 @@ class TenantCollection:
             if not policy_allows(candidate, self.collection):
                 raise TenantContextRequired("mutation leaves the resource envelope")
             await self._references(candidate, session)
+            if policy is not None and policy.managed and not decision:
+                await record_authorship(self.raw.database, self.collection, candidate, session)
         return query
 
+    @fenced
     async def update_one(
         self, filters: Mapping[str, object], update: MongoDocument, **kwargs: Any
     ) -> Any:
@@ -345,6 +388,7 @@ class TenantCollection:
             await self._update(filters, update, kwargs.get("session")), update, **kwargs
         )
 
+    @fenced
     async def find_one_and_update(
         self, filters: Mapping[str, object], update: MongoDocument, **kwargs: Any
     ) -> Any:
@@ -353,9 +397,11 @@ class TenantCollection:
         query = await self._update(filters, update, kwargs.get("session"))
         return await self._verify(await self.raw.find_one_and_update(query, update, **kwargs))
 
+    @fenced
     async def delete_one(self, filters: Mapping[str, object], **kwargs: Any) -> Any:
         return await self.raw.delete_one(await self._prepared_query(filters), **kwargs)
 
+    @fenced
     async def delete_many(self, filters: Mapping[str, object], **kwargs: Any) -> Any:
         return await self.raw.delete_many(await self._prepared_query(filters), **kwargs)
 

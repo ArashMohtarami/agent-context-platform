@@ -70,7 +70,7 @@ async def list_creator_profiles(
 ) -> CreatorProfileListResponse:
     """Page only profiles admitted by the caller's profile grant."""
     page = await service.list_profiles(
-        allowed_profile_ids=principal.profiles,
+        allowed_profile_ids=principal.profile_selector(),
         limit=limit,
         cursor=cursor,
     )

@@ -253,8 +253,8 @@ async def check_content_novelty(
             limit=request.limit,
             token_budget=request.token_budget,
             allowed_project_ids=None
-            if principal.projects is None
-            else frozenset(principal.projects),
+            if principal.project_selector() is None
+            else frozenset(principal.project_selector() or ()),
         )
     except ContentRetrievalUnavailableError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
@@ -398,7 +398,7 @@ async def create_content_brief(
         )
     try:
         brief = await service.create_brief(
-            **request.model_dump(), allowed_project_ids=principal.projects
+            **request.model_dump(), allowed_project_ids=principal.project_selector()
         )
     except CreatorProfileNotFoundError as error:
         raise HTTPException(status_code=404, detail="creator profile was not found") from error
@@ -557,7 +557,7 @@ async def review_content_facts(
             research_project_id=research_project_id,
             claim_ids=request.claim_ids,
             claim_statements=request.claim_statements,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except ValueError as error:
         raise HTTPException(
@@ -803,8 +803,8 @@ async def prepare_repurpose_plan(
             limit=request.limit,
             token_budget=request.token_budget,
             allowed_project_ids=None
-            if principal.projects is None
-            else frozenset(principal.projects),
+            if principal.project_selector() is None
+            else frozenset(principal.project_selector() or ()),
         )
     except ContentRetrievalUnavailableError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error

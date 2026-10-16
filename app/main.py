@@ -27,6 +27,7 @@ from app.api.routes.gateway import router as gateway_router
 from app.api.routes.health import router as health_router
 from app.api.routes.knowledge_candidates import router as knowledge_candidates_router
 from app.api.routes.local_identity import router as local_identity_router
+from app.api.routes.management_policy import router as management_policy_router
 from app.api.routes.memory import router as memory_router
 from app.api.routes.metrics import router as metrics_router
 from app.api.routes.project_bindings import router as project_bindings_router
@@ -73,6 +74,7 @@ from app.repositories.audit_repository import MongoAuditRepository
 from app.repositories.client_profile_repository import MongoClientProfileRepository
 from app.repositories.credential_repository import MongoCredentialResolver
 from app.repositories.idempotency_repository import MongoGatewayIdempotencyRepository
+from app.security.policy.evaluation import PolicyConflict, PolicyDenied
 from app.security.tenant_maintenance import TenantMaintenanceMiddleware
 from app.services.agent_activity_service import AgentActivityService
 from app.services.agent_client_service import AgentClientService
@@ -190,7 +192,10 @@ def start_authentication(
     """
     if not settings.api_auth_enabled:
         raise RuntimeError("tenant domain traffic requires authentication and organization context")
-    return AuthService(MongoCredentialResolver(database), MongoAgentClientRepository(database))
+    return AuthService(
+        MongoCredentialResolver(database, management_policy=settings.v6_management_policy),
+        MongoAgentClientRepository(database),
+    )
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -216,6 +221,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 tenant_isolation=True,
                 local_identity=resolved_settings.v6_local_identity,
                 sso=resolved_settings.v6_sso,
+                management_policy=resolved_settings.v6_management_policy,
             )
         elif resolved_settings.v6_tenant_foundation:
             await initialize_database(mongodb.database, tenant_foundation=True)
@@ -280,6 +286,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # the security headers nor the shape the rest of the API uses.
     application.add_exception_handler(Exception, unhandled_error)
     application.add_exception_handler(RevisionConflict, revision_conflict_handler)
+    from app.identity.http_errors import policy_denied
+
+    application.add_exception_handler(PolicyDenied, policy_denied)
+    application.add_exception_handler(PolicyConflict, policy_denied)
     application.add_exception_handler(AuthRejected, auth_rejected)
     application.add_exception_handler(AuthBusy, auth_busy)
     application.add_exception_handler(RequestValidationError, private_validation_error)
@@ -300,6 +310,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(health_router)
     application.include_router(local_identity_router)
     application.include_router(sso_identity_router)
+    application.include_router(management_policy_router)
     application.include_router(metrics_router)
     application.include_router(skills_router)
     application.include_router(projects_router)

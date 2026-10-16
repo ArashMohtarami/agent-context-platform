@@ -174,6 +174,7 @@ class Settings(McpSettings):
     v6_tenant_isolation: bool = False
     v6_local_identity: bool = False
     v6_sso: bool = False
+    v6_management_policy: bool = False
     v6_oidc_registrations_file: Path | None = None
     v6_browser_origin: str | None = None
     v6_mfa_keyring_file: Path | None = None
@@ -188,6 +189,8 @@ class Settings(McpSettings):
 
     @model_validator(mode="after")
     def local_identity_configuration(self) -> "Settings":
+        if self.v6_management_policy and not self.v6_sso:
+            raise ValueError("management policy requires verified Phase 4 configuration")
         if self.v6_sso and (not self.v6_local_identity or self.v6_oidc_registrations_file is None):
             raise ValueError("SSO requires local identity and mounted approved registrations")
         if not self.v6_local_identity:

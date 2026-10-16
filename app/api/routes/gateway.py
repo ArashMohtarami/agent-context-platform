@@ -170,13 +170,13 @@ async def identity(
     return GatewayIdentityResponse(
         org_id=cast(str, principal.org_id),
         key_id=principal.key_id,
-        allowed_profile_ids=principal.profiles,
+        allowed_profile_ids=principal.profile_selector(),
         client_id=principal.client_id,
         client_type=(
             AgentClientType(principal.client_type) if principal.client_type is not None else None
         ),
         scopes=principal.scopes,
-        allowed_project_ids=principal.projects,
+        allowed_project_ids=principal.project_selector(),
     )
 
 

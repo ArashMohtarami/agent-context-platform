@@ -47,7 +47,7 @@ class ChangePassword(Input):
     new_password: SecretStr = Field(min_length=12, max_length=1024)
 
 
-# These are approval records, never executable Phase 3 permissions.
+# Names shared by recorded bootstrap approvals and the Phase 5 catalog.
 MANAGEMENT_ACTIONS = frozenset(
     {
         "org:read",

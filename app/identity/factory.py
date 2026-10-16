@@ -36,4 +36,9 @@ def build_local_identity(
             Registry.from_file(settings.v6_oidc_registrations_file, settings.v6_browser_origin),
             vault,
         )
+    if settings.v6_management_policy:
+        from app.security.policy.engine import PolicyEngine
+
+        service.policy_engine = PolicyEngine(service.store)
+        service.sessions.policy_engine = service.policy_engine
     return service

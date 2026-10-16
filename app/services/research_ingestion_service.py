@@ -231,6 +231,7 @@ class ResearchIngestionService:
     def _authority(self, source: ResearchSourceDocument) -> JobAuthority:
         policy = current_policy()
         return JobAuthority(
+            worker_schema_version=40 if policy and policy.engine else 37,
             org_id=require_tenant().org_id,
             key_id=None if policy is None or policy.operator else policy.subject_id,
             client_id=policy.client_id if policy else None,

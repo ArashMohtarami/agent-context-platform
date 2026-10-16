@@ -7,7 +7,10 @@ endpoint cannot forget half of one.
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from app.security.tenant_policy import TenantPolicy
 
 from app.security.scopes import ALL_SCOPES, ANY_PROJECT, Scope, canonical
 
@@ -51,6 +54,8 @@ class Principal:
     authenticated: bool = True
     org_id: str | None = None
     cursor_secret: bytes | None = field(default=None, repr=False, compare=False)
+    managed_policy: "TenantPolicy | None" = field(default=None, repr=False)
+    legacy_policy_revision: int = 0
 
     def __post_init__(self) -> None:
         """Reject a principal that could not be enforced as written."""
@@ -67,7 +72,28 @@ class Principal:
 
     def allows_scope(self, scope: Scope) -> bool:
         """Report whether this caller may perform one kind of operation."""
+        if self.managed_policy is not None and self.managed_policy.managed:
+            return any(g.action == scope and g.mode != "none" for g in self.managed_policy.grants)
         return scope in self.scopes
+
+    def project_selector(self, action: str | None = None) -> tuple[str, ...] | None:
+        if self.managed_policy is None or not self.managed_policy.managed:
+            return self.projects
+        from app.security.tenant_policy import current_action
+
+        action = action or current_action()
+        if action is None:
+            return ()
+        kind = "project_directory" if action.startswith("projects:") else "project"
+        return self.managed_policy.selector(action, kind)
+
+    def profile_selector(self, action: str | None = None) -> tuple[str, ...] | None:
+        if self.managed_policy is None or not self.managed_policy.managed:
+            return self.profiles
+        from app.security.tenant_policy import current_action
+
+        action = action or current_action()
+        return () if action is None else self.managed_policy.selector(action, "creator_profile")
 
     def allows_project(self, project_id: str | None) -> bool:
         """Report whether this caller may reach one project.
@@ -77,12 +103,37 @@ class Principal:
         that would infer an identity from an absence, and would turn an
         omitted argument into a wider grant than the caller holds.
         """
+        if self.managed_policy is not None and self.managed_policy.managed:
+            from app.security.tenant_policy import current_action
+
+            action = current_action()
+            if action is None:
+                return False
+            if project_id is None and action == "search:read":
+                # No project selector constrains a multi-source search. Each
+                # source still enforces BOTH search and its own read tuples.
+                return True
+            kind = (
+                "organization_knowledge"
+                if project_id is None
+                else ("project_directory" if action.startswith("projects:") else "project")
+            )
+            ids = self.managed_policy.selector(action, kind)
+            return ids is None or (project_id or self.org_id) in ids
         if project_id is None:
             return True
         return self.projects is None or project_id in self.projects
 
     def allows_profile(self, profile_id: str) -> bool:
         """Report whether this caller may reach one creator profile."""
+        if self.managed_policy is not None and self.managed_policy.managed:
+            from app.security.tenant_policy import current_action
+
+            action = current_action()
+            if action is None:
+                return False
+            ids = self.managed_policy.selector(action, "creator_profile")
+            return ids is None or profile_id in ids
         return self.profiles is None or profile_id in self.profiles
 
     def require_scope(self, scope: Scope) -> None:
@@ -113,6 +164,18 @@ class Principal:
         }
         if self.client_id is not None:
             description["client_id"] = self.client_id
+        if self.managed_policy is not None and self.managed_policy.managed:
+            description["projects"] = []
+            description["profiles"] = []
+            description["action_resources"] = [
+                {
+                    "action": g.action,
+                    "resource_kind": g.resource_kind,
+                    "selector": g.mode,
+                    "ids": list(g.ids),
+                }
+                for g in self.managed_policy.grants
+            ]
         return description
 
 

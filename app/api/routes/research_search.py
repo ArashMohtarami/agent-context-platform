@@ -81,7 +81,7 @@ async def search_research(
             limit=request.limit,
             token_budget=request.token_budget,
             cursor=request.cursor,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except ResearchSearchUnavailableError as error:
         raise HTTPException(

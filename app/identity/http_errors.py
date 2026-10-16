@@ -24,3 +24,16 @@ async def private_validation_error(request: Request, exception: Exception) -> Re
     if not isinstance(exception, RequestValidationError):
         return JSONResponse({"detail": "invalid request"}, status_code=422)
     return await request_validation_exception_handler(request, exception)
+
+
+async def policy_denied(request: Request, exception: Exception) -> JSONResponse:
+    from app.security.policy.evaluation import PolicyConflict
+
+    return JSONResponse(
+        {
+            "detail": "policy changed; refresh effective access"
+            if isinstance(exception, PolicyConflict)
+            else "operation is outside effective access"
+        },
+        status_code=409 if isinstance(exception, PolicyConflict) else 403,
+    )

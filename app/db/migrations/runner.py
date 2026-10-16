@@ -53,6 +53,7 @@ from app.db.migrations.v036_tenant_foundation import TenantFoundationMigration
 from app.db.migrations.v037_tenant_isolation import TenantIsolationMigration
 from app.db.migrations.v038_local_identity import LocalIdentityMigration
 from app.db.migrations.v039_sso_identity import SSOIdentityMigration
+from app.db.migrations.v040_management_policy import ManagementPolicyMigration
 
 MIGRATIONS: Final[tuple[Migration, ...]] = (
     InitialSchemaMigration(),
@@ -94,6 +95,7 @@ MIGRATIONS: Final[tuple[Migration, ...]] = (
     TenantIsolationMigration(),
     LocalIdentityMigration(),
     SSOIdentityMigration(),
+    ManagementPolicyMigration(),
 )
 
 
@@ -104,6 +106,8 @@ async def run_migrations(
     tenant_isolation: bool = False,
     local_identity: bool = False,
     sso: bool = False,
+    management_policy: bool = False,
+    management_cutover: bool = False,
 ) -> None:
     """Apply each unapplied migration and record its version once."""
     history = database["_schema_migrations"]
@@ -113,6 +117,12 @@ async def run_migrations(
         async for document in history.find({}, {"version": 1, "_id": 0})
         if isinstance(document.get("version"), int)
     }
+    if 40 in applied and not management_policy:
+        raise RuntimeError("managed schema requires the policy-aware runtime")
+    if management_policy and 40 not in applied and not management_cutover:
+        raise RuntimeError("explicit stopped-writer operator policy cutover is required")
+    if management_policy and not sso:
+        raise RuntimeError("management policy requires Phase 4 identity")
     if 39 in applied and not sso:
         raise RuntimeError("SSO schema requires the SSO-aware runtime")
     if sso and not local_identity:
@@ -126,6 +136,8 @@ async def run_migrations(
     if 36 in applied and not tenant_foundation:
         raise RuntimeError("tenant schema requires the tenant-aware maintenance binary")
     for migration in MIGRATIONS:
+        if migration.version >= 40 and not management_policy:
+            continue
         if migration.version >= 39 and not sso:
             continue
         if migration.version >= 38 and not local_identity:

@@ -17,4 +17,4 @@ class JobAuthority(BaseModel):
     profile_ids: tuple[str, ...] | None
     research_project_id: Identifier
     source_id: Identifier
-    worker_schema_version: Literal[37] = 37
+    worker_schema_version: Literal[37, 40] = 37

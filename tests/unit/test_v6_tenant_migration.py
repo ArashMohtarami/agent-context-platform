@@ -13,7 +13,7 @@ from app.services.tenant_adoption_service import adoption_candidate, check_worke
 
 def test_version_is_allocated_from_actual_v5_head():
     versions = [migration.version for migration in MIGRATIONS]
-    assert versions == list(range(1, 40))
+    assert versions == list(range(1, 41))
     assert versions[versions.index(TENANT_SCHEMA_VERSION) - 1] + 1 == TENANT_SCHEMA_VERSION == 36
 
 

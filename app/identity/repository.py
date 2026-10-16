@@ -10,6 +10,7 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.db.client_types import MongoDocument
+from app.security.policy.inventory import COLLECTION_OWNERSHIP as POLICY_COLLECTION_OWNERSHIP
 
 type Row = dict[str, Any]
 
@@ -31,7 +32,11 @@ SSO_COLLECTION_OWNERSHIP = {
     "organization_break_glass": "tenant owned; explicit time bounded operator exception",
     "_sso_identity_control": "installation metadata",
 }
-COLLECTION_OWNERSHIP = {**LOCAL_COLLECTION_OWNERSHIP, **SSO_COLLECTION_OWNERSHIP}
+COLLECTION_OWNERSHIP = {
+    **LOCAL_COLLECTION_OWNERSHIP,
+    **SSO_COLLECTION_OWNERSHIP,
+    **POLICY_COLLECTION_OWNERSHIP,
+}
 
 
 class IdentityStore:

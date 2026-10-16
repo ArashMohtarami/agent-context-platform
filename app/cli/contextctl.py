@@ -33,6 +33,7 @@ from app.cli.commands import (
     memory,
     note,
     organizations,
+    policy,
     project,
     projects,
     research,
@@ -123,6 +124,7 @@ def build_parser() -> argparse.ArgumentParser:
         integration,
         backup,
         organizations,
+        policy,
     ):
         module.add_arguments(groups)
     return parser

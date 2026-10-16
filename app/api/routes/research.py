@@ -82,7 +82,7 @@ async def list_research_projects(
     """Page research projects after filtering by the caller's full V1 project grant."""
     selected_status = ResearchProjectStatus(status_filter) if status_filter is not None else None
     page = await service.list_projects(
-        allowed_project_ids=principal.projects,
+        allowed_project_ids=principal.project_selector(),
         status=selected_status,
         limit=limit,
         cursor=cursor,

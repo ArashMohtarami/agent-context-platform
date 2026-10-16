@@ -22,6 +22,7 @@ from app.identity.models import RootTuple
 from app.identity.repository import IdentityStore
 from app.identity.sessions import BrowserSessions, IssuedSession
 from app.models.common import utc_now
+from app.security.scopes import ALL_SCOPES
 
 type Row = dict[str, Any]
 
@@ -51,20 +52,26 @@ class LocalIdentity:
         self.sessions = BrowserSessions(store)
         self.mfa = LocalMFA(store, vault)
         self.sso: SSOIdentity | None = None
+        from app.security.policy.engine import PolicyEngine
+
+        self.policy_engine: PolicyEngine | None = None
 
     async def enabled(self) -> None:
         marker = await self.store.find(
             "_local_identity_control",
-            {"_id": "installation", "schema_version": 39 if self.sso else 38},
+            {
+                "_id": "installation",
+                "schema_version": 40 if self.policy_engine else 39 if self.sso else 38,
+            },
         )
         control = await self.store.find(
             "_tenant_control",
             {
                 "_id": "installation",
-                "stage": "isolated",
+                "stage": "managed" if self.policy_engine else "isolated",
                 "domain_traffic_enabled": True,
                 "schema_version": 37,
-                "worker_schema_versions": [37],
+                "worker_schema_versions": [40] if self.policy_engine else [37],
             },
         )
         if not marker or not control:
@@ -110,6 +117,20 @@ class LocalIdentity:
             },
             tx,
         )
+        if self.policy_engine and org_id and action in {"oidc_configured", "break_glass_approved"}:
+            anchor = await self.store.find(
+                "policy_anchors", {"_id": org_id, "status": "active"}, tx
+            )
+            if anchor:
+                await self.policy_engine.fence(anchor, tx, mutation=True)
+            await self.policy_engine.audit(
+                org_id,
+                "installation_operator",
+                action,
+                target_id or org_id,
+                tx,
+                approval=approval_reference,
+            )
 
     async def challenge(
         self,
@@ -643,6 +664,17 @@ class LocalIdentity:
             result["step_up_required"] = row["mfa_at"] is None or not (
                 timedelta(0) <= utc_now() - row["mfa_at"] <= timedelta(minutes=10)
             )
+        if self.policy_engine:
+            result["policy_engine_available"] = True
+            anchor = await self.store.find(
+                "policy_anchors", {"_id": row["org_id"], "status": "active"}
+            )
+            if anchor:
+                snapshot = await self.policy_engine.snapshot(row["org_id"], row["user_id"])
+                result["effective_corpus_access"] = [
+                    g.model_dump() for g in snapshot["tuples"] if g.action in ALL_SCOPES
+                ]
+                result["policy_revision"] = anchor["revision"]
         return result
 
     async def begin_mfa(self, row: Row) -> tuple[str, str]:

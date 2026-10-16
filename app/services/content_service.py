@@ -330,6 +330,10 @@ class ContentService:
         current = await self.get_idea(profile_id, idea_id)
         if current.revision != expected_revision:
             raise ConcurrencyConflictError("content idea changed after it was read")
+        if changes.get("status") in {ContentStatus.APPROVED, ContentStatus.APPROVED.value}:
+            from app.security.policy.reviews import require_review
+
+            require_review(current.model_dump(), "content_items", "content:write")
         _validate_status_change(current.status, changes.get("status"))
         payload = current.model_dump(by_alias=True, mode="python")
         payload.update(changes)
@@ -513,6 +517,10 @@ class ContentService:
         current = await self.get_content(profile_id, content_id)
         if current.revision != expected_revision:
             raise ConcurrencyConflictError("content item changed after it was read")
+        if changes.get("status") in {ContentStatus.APPROVED, ContentStatus.APPROVED.value}:
+            from app.security.policy.reviews import require_review
+
+            require_review(current.model_dump(), "content_items", "content:write")
         _validate_status_change(current.status, changes.get("status"))
         payload = current.model_dump(by_alias=True, mode="python")
         payload.update(changes)

@@ -47,6 +47,7 @@ async def operate(arguments: argparse.Namespace, settings: Settings) -> Result:
             tenant_isolation=True,
             local_identity=True,
             sso=settings.v6_sso,
+            management_policy=settings.v6_management_policy,
         )
         service = build_local_identity(settings, mongodb.database)
         if arguments.action in {"configure-sso", "break-glass"}:

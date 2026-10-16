@@ -18,7 +18,10 @@ from app.security.tenant_policy import policy_request_boundary
 
 
 async def check_operator_context(
-    database: AsyncDatabase[MongoDocument], *, enabled: bool = False
+    database: AsyncDatabase[MongoDocument],
+    *,
+    enabled: bool = False,
+    management_policy: bool = False,
 ) -> None:
     control = await database["_tenant_control"].find_one({"_id": "installation"})
     context = current_tenant()
@@ -26,7 +29,9 @@ async def check_operator_context(
         if control is not None or enabled:
             raise TenantContextRequired("explicit --org-id is required on a V6 installation")
         return
-    if control is None or control.get("stage") not in {"prepared", "isolated"}:
+    if control and control.get("stage") == "managed" and not management_policy:
+        raise TenantContextRequired("managed installation requires a policy-aware operator command")
+    if control is None or control.get("stage") not in {"prepared", "isolated", "managed"}:
         raise TenantContextRequired("tenant operator writes require completed adoption")
     organization = await MongoOrganizationRepository(database).get(context.org_id)
     if organization is None or organization.status not in {"sealed", "active"}:
@@ -55,12 +60,18 @@ class TenantMaintenanceMiddleware:
             database = getattr(request.app.state, "tenant_control_database", None)
             if database is not None:
                 control = await database["_tenant_control"].find_one({"_id": "installation"})
+                managed = bool(
+                    getattr(
+                        getattr(request.app.state, "settings", None), "v6_management_policy", False
+                    )
+                )
                 if (
                     control is not None
                     and control.get("stage") != "not_adopted"
                     and not (
                         control.get("schema_version") == 37
-                        and control.get("stage") == "isolated"
+                        and control.get("stage") == ("managed" if managed else "isolated")
+                        and control.get("worker_schema_versions") == ([40] if managed else [37])
                         and control.get("domain_traffic_enabled") is True
                     )
                 ):
