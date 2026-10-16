@@ -9,7 +9,7 @@ services:
     image: mongo:8.3.9-noble@sha256:1cd50aca58bb5f84ca6bb32b69a75ad67b23867fc8454bd1ff288822e4599219
     container_name: acp-v6-phase2-mongodb-${V6_TEST_RUN:?}
     hostname: mongodb
-    mem_limit: 2g
+    mem_limit: ${V6_TEST_MONGODB_MEMORY_LIMIT:-2g}
     cpus: 2
     tmpfs:
     - /data/db:size=1610612736

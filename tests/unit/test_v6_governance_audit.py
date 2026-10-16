@@ -18,7 +18,7 @@ from app.security.policy.schema import NEW_VALIDATORS
 
 def test_new_storage_is_classified_strict_and_migration_allocated_from_actual_head():
     assert set(POLICY_OWNERSHIP) == set(NEW_VALIDATORS) <= set(COLLECTION_OWNERSHIP)
-    assert [m.version for m in MIGRATIONS][-2:] == [39, 40]
+    assert [m.version for m in MIGRATIONS][-3:] == [39, 40, 41]
     for validation in NEW_VALIDATORS.values():
         assert validation["$jsonSchema"]["additionalProperties"] is False
     with pytest.raises(ValueError, match="unclassified"):

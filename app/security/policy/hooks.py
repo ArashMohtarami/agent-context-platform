@@ -42,6 +42,9 @@ def fenced(method: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any
                 from app.identity.repository import IdentityStore
                 from app.security.policy.engine import PolicyEngine
 
+                # An old worker must never silently adopt the newer policy semantics.
+                if control.get("worker_schema_versions") != [40]:
+                    raise PolicyDenied("explicit schema-41 operator policy context is required")
                 engine = PolicyEngine(IdentityStore(self.raw.database))
         if engine is None:
             return await method(self, *args, **kwargs)
@@ -49,7 +52,7 @@ def fenced(method: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any
             raise PolicyDenied("managed credential issuance requires verified Phase 7 sponsorship")
         boundary = (
             engine.domain_fence(policy, kwargs.get("session"))
-            if policy is not None and policy.engine
+            if policy is not None and policy.engine and not policy.operator
             else engine.operator_fence(kwargs.get("session"))
         )
         async with boundary as tx:

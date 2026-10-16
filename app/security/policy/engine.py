@@ -23,17 +23,25 @@ MAX_ASSIGNMENTS = 1000
 
 
 class PolicyEngine:
-    def __init__(self, store: IdentityStore) -> None:
+    def __init__(self, store: IdentityStore, *, human_management: bool = False) -> None:
         self.store = store
+        self.human_management = human_management
+        self.schema_version = 41 if human_management else 40
 
     async def enabled(self) -> None:
         if not await self.store.find(
-            "_management_policy_control", {"_id": "installation", "schema_version": 40}
+            "_management_policy_control",
+            {"_id": "installation", "schema_version": self.schema_version},
         ):
             raise PolicyDenied("management policy is unavailable")
+        if self.human_management and not await self.store.find(
+            "_human_management_control", {"_id": "installation", "schema_version": 41}
+        ):
+            raise PolicyDenied("human management migration is incomplete")
 
     async def validate_resources(self, org_id: str, tuples: tuple[Grant, ...], tx: Any) -> None:
         boundaries = {
+            **({"team": ("teams", "team_id")} if self.human_management else {}),
             "project_directory": ("projects", "project_id"),
             "project": ("projects", "project_id"),
             "creator_profile": ("creator_profiles", "profile_id"),
@@ -59,6 +67,14 @@ class PolicyEngine:
             )
             if set(identifiers) != set(grant.ids):
                 raise PolicyDenied("resource is unavailable in the organization")
+
+    async def validate_targets(self, org_id: str, identifiers: tuple[str, ...], tx: Any) -> None:
+        if identifiers:
+            found = await self.store._collection("organization_memberships").distinct(
+                "user_id", {"org_id": org_id, "user_id": {"$in": list(identifiers)}}, session=tx
+            )
+            if set(found) != set(identifiers):
+                raise PolicyDenied("delegation target is outside the organization")
 
     @asynccontextmanager
     async def transaction(self) -> AsyncIterator[Any]:
@@ -129,9 +145,38 @@ class PolicyEngine:
             or user["status"] != "active"
         ):
             raise PolicyDenied("verified active membership is required")
-        tuples, explanations = effective(org_id, subject_id, assignments, members, users, utc_now())
+        teams: dict[str, Row] = {}
+        links: dict[tuple[str, str], Row] = {}
+        if self.human_management:
+            team_records = (
+                await self.store._collection("teams")
+                .find({"org_id": org_id}, session=tx)
+                .limit(MAX_ASSIGNMENTS + 1)
+                .to_list(MAX_ASSIGNMENTS + 1)
+            )
+            link_records = (
+                await self.store._collection("team_memberships")
+                .find({"org_id": org_id}, session=tx)
+                .limit(MAX_ASSIGNMENTS + 1)
+                .to_list(MAX_ASSIGNMENTS + 1)
+            )
+            if max(len(team_records), len(link_records)) > MAX_ASSIGNMENTS:
+                raise PolicyDenied("organization directory exceeds bounded policy capacity")
+            teams = {r["team_id"]: r for r in team_records}
+            links = {(r["team_id"], r["user_id"]): r for r in link_records}
+        tuples, explanations = effective(
+            org_id,
+            subject_id,
+            assignments,
+            members,
+            users,
+            utc_now(),
+            teams if self.human_management else None,
+            links if self.human_management else None,
+        )
         return {
             "anchor": anchor,
+            **({"teams": teams, "team_links": links} if self.human_management else {}),
             "member": member,
             "user": user,
             "assignments": assignments,
@@ -147,6 +192,7 @@ class PolicyEngine:
         *,
         refresh: Callable[[], Awaitable[None]] | None = None,
         transaction_check: Callable[[Any], Awaitable[None]] | None = None,
+        session_id: str | None = None,
     ) -> TenantPolicy:
         member, anchor = snapshot["member"], snapshot["anchor"]
         return TenantPolicy(
@@ -160,6 +206,7 @@ class PolicyEngine:
             subject_kind="human",
             revision=anchor["revision"],
             subject_revision=member["revision"],
+            session_id=session_id,
             engine=self,
             refresh=refresh,
             transaction_check=transaction_check,
@@ -167,8 +214,24 @@ class PolicyEngine:
 
     @staticmethod
     def require(snapshot: Row, action: str, kind: str, identifier: str) -> None:
+        from app.management.boundaries import permits_member
+
+        if (
+            kind == "member"
+            and snapshot.get("teams") is not None
+            and "team_links" in snapshot
+            and permits_member(snapshot, action, identifier)
+        ):
+            return
         if not any(
-            g.action == action and g.resource_kind == kind and g.selection().contains(identifier)
+            g.action == action
+            and g.resource_kind == kind
+            and g.selection().contains(identifier)
+            and not (
+                kind == "member"
+                and "team_links" in snapshot
+                and self_scoped_lead(snapshot, action, identifier)
+            )
             for g in snapshot["tuples"]
         ):
             raise PolicyDenied("operation is outside effective access")
@@ -292,7 +355,8 @@ class PolicyEngine:
         if (
             not row
             or row["status"] != "active"
-            or row["mode"] != "legacy_adoption"
+            or row["mode"]
+            != ("legacy_adoption_v41" if self.human_management else "legacy_adoption")
             or row["expires_at"] <= utc_now()
         ):
             raise PolicyDenied("credential sponsorship is not verified")
@@ -337,6 +401,7 @@ class PolicyEngine:
                 "policy_credentials", {"org_id": principal.org_id, "key_id": principal.key_id}, tx
             )
             values = {
+                "mode": "legacy_adoption_v41" if self.human_management else "legacy_adoption",
                 "envelope_hash": self.credential_hash(principal),
                 "expires_at": expires_at,
                 "approval_reference": approval,
@@ -356,7 +421,6 @@ class PolicyEngine:
                         "_id": uuid4().hex,
                         "org_id": principal.org_id,
                         "key_id": principal.key_id,
-                        "mode": "legacy_adoption",
                         "revision": 1,
                         **values,
                     },
@@ -370,3 +434,11 @@ class PolicyEngine:
                 tx,
                 approval=approval,
             )
+
+
+def self_scoped_lead(snapshot: Row, action: str, identifier: str) -> bool:
+    return (
+        snapshot["member"]["role"] == "team_lead"
+        and action.startswith(("members:", "grants:"))
+        and not (action == "grants:read" and identifier == snapshot["member"]["user_id"])
+    )

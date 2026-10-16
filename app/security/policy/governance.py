@@ -280,7 +280,20 @@ class Governance:
 
     async def issue(self, org_id: str, issuer_id: str, request: Issue) -> Row:
         async def operation(snapshot: Row, tx: Any) -> Row:
-            self.engine.require(snapshot, "grants:delegate", "member", request.subject_id)
+            return await self.issue_in_transaction(snapshot, tx, request)
+
+        return await self.mutate(org_id, issuer_id, operation)
+
+    async def issue_in_transaction(self, snapshot: Row, tx: Any, request: Issue) -> Row:
+        org_id, issuer_id = snapshot["anchor"]["org_id"], snapshot["member"]["user_id"]
+        self.engine.require(snapshot, "grants:delegate", "member", request.subject_id)
+        if self.engine.human_management:
+            from app.management.boundaries import validate_parent
+
+            parent, team, link, alternate = validate_parent(snapshot, request)
+        else:
+            if request.team_id is not None:
+                raise PolicyDenied("team authority is not active")
             parent = snapshot["assignments"].get(request.parent_id)
             if not parent:
                 raise PolicyDenied("parent authority is unavailable")
@@ -288,53 +301,59 @@ class Governance:
                 parent, snapshot["assignments"], snapshot["members"], snapshot["users"], utc_now()
             )
             validate_issue(parent, request, issuer_id, utc_now())
-            await self.engine.validate_resources(org_id, request.tuples + request.ceiling, tx)
-            member = await self.store.find(
+            team, link, alternate = None, None, False
+        await self.engine.validate_resources(org_id, request.tuples + request.ceiling, tx)
+        member = await self.store.find(
+            "organization_memberships",
+            {"org_id": org_id, "user_id": request.subject_id, "status": "active"},
+            tx,
+        )
+        user = await self.store.find("users", {"_id": request.subject_id, "status": "active"}, tx)
+        if not member or not user or not member["verified_at"]:
+            raise PolicyDenied("verified organization target is required")
+        for target in request.targets.ids:
+            if not await self.store.find(
+                "organization_memberships", {"org_id": org_id, "user_id": target}, tx
+            ):
+                raise PolicyDenied("delegation target is outside the organization")
+        if not can_appoint(snapshot["member"]["role"], member["role"]):
+            raise PolicyDenied("current target role is outside the issuer's authority")
+        if member["role"] != request.role:
+            if member["role"] == "org_owner":
+                raise PolicyDenied("ownership requires an accepted transfer")
+            member = await self.store.update(
                 "organization_memberships",
-                {"org_id": org_id, "user_id": request.subject_id, "status": "active"},
+                {"_id": member["_id"], "revision": member["revision"]},
+                {"$set": {"role": request.role}, "$inc": {"revision": 1}},
                 tx,
             )
-            user = await self.store.find(
-                "users", {"_id": request.subject_id, "status": "active"}, tx
+            if member is None:
+                raise PolicyConflict("membership changed")
+        row = self.assignment(
+            "assignment_" + uuid4().hex,
+            org_id,
+            member,
+            issuer_id,
+            request.tuples,
+            request.ceiling,
+            request.targets,
+            request.allowed_roles,
+            request.remaining_depth,
+            request.expires_at,
+            parent,
+        )
+        if team and link:
+            row.update(
+                team_id=team["team_id"],
+                team_generation=team["generation"],
+                team_link_revision=link["revision"],
+                team_delegation=alternate,
             )
-            if not member or not user or not member["verified_at"]:
-                raise PolicyDenied("verified organization target is required")
-            for target in request.targets.ids:
-                if not await self.store.find(
-                    "organization_memberships", {"org_id": org_id, "user_id": target}, tx
-                ):
-                    raise PolicyDenied("delegation target is outside the organization")
-            if member["role"] != request.role:
-                if member["role"] == "org_owner":
-                    raise PolicyDenied("ownership requires an accepted transfer")
-                member = await self.store.update(
-                    "organization_memberships",
-                    {"_id": member["_id"], "revision": member["revision"]},
-                    {"$set": {"role": request.role}, "$inc": {"revision": 1}},
-                    tx,
-                )
-                if member is None:
-                    raise PolicyConflict("membership changed")
-            row = self.assignment(
-                "assignment_" + uuid4().hex,
-                org_id,
-                member,
-                issuer_id,
-                request.tuples,
-                request.ceiling,
-                request.targets,
-                request.allowed_roles,
-                request.remaining_depth,
-                request.expires_at,
-                parent,
-            )
-            await self.store.insert("policy_assignments", row, tx)
-            await self.engine.audit(
-                org_id, issuer_id, "assignment_issued", row["_id"], tx, change={"after": row}
-            )
-            return row
-
-        return await self.mutate(org_id, issuer_id, operation)
+        await self.store.insert("policy_assignments", row, tx)
+        await self.engine.audit(
+            org_id, issuer_id, "assignment_issued", row["_id"], tx, change={"after": row}
+        )
+        return row
 
     async def change(
         self,
@@ -351,10 +370,20 @@ class Governance:
             if not row or row["subject_id"] == issuer_id or row["revision"] != expected_revision:
                 raise PolicyDenied("assignment change was not accepted")
             self.engine.require(snapshot, "grants:delegate", "member", row["subject_id"])
+            if self.engine.human_management and snapshot["member"]["role"] == "team_lead":
+                if not row.get("team_id"):
+                    raise PolicyDenied("assignment is outside the delegated team")
+                self.engine.require(snapshot, "grants:delegate", "team", row["team_id"])
             # Only the issuer or an active ancestor may narrow/revoke. No widening
             # endpoint exists: regrant creates a new ID and fresh lineage.
             chain = active_chain(
-                row, snapshot["assignments"], snapshot["members"], snapshot["users"], utc_now()
+                row,
+                snapshot["assignments"],
+                snapshot["members"],
+                snapshot["users"],
+                utc_now(),
+                snapshot.get("teams"),
+                snapshot.get("team_links"),
             )
             if not any(p["subject_id"] == issuer_id for p in chain[1:]):
                 raise PolicyDenied("assignment is outside the current delegation lineage")
@@ -412,6 +441,18 @@ class Governance:
                 # Owners can only be demoted by accepted transfer, even when a
                 # second owner exists. This also enforces the last-owner rule.
                 raise PolicyDenied("membership authority change is refused")
+            if self.engine.human_management and snapshot["member"]["role"] == "team_lead":
+                from app.management.boundaries import has
+
+                if any(
+                    link["status"] == "active"
+                    and user == target_id
+                    and not has(snapshot, action, "team", team)
+                    for (team, user), link in snapshot["team_links"].items()
+                ):
+                    raise PolicyDenied(
+                        "organization suspension exceeds the delegated team boundary"
+                    )
             if (suspended and target["status"] != "active") or (
                 not suspended and target["status"] != "suspended"
             ):
@@ -425,6 +466,12 @@ class Governance:
                 },
                 tx,
             )
+            if self.engine.human_management:
+                await self.store._collection("browser_sessions").update_many(
+                    {"org_id": org_id, "user_id": target_id, "revoked": False},
+                    {"$set": {"revoked": True}},
+                    session=tx,
+                )
             await self.engine.audit(
                 org_id,
                 issuer_id,

@@ -41,7 +41,12 @@ class SSOIdentity:
     async def enabled(self) -> None:
         if not await self.store.find(
             "_sso_identity_control",
-            {"_id": "installation", "schema_version": 40 if self.local.policy_engine else 39},
+            {
+                "_id": "installation",
+                "schema_version": self.local.policy_engine.schema_version
+                if self.local.policy_engine
+                else 39,
+            },
         ):
             raise AuthRejected("SSO is unavailable")
 

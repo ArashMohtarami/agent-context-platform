@@ -39,10 +39,13 @@ def job_authority_scope(checker: Callable[[], Awaitable[None]]) -> Iterator[None
 
 
 class MongoJobAuthorityChecker:
-    def __init__(self, database: Any, *, worker_schema_version: int | None = None) -> None:
-        if worker_schema_version not in {None, 37, 40}:
+    def __init__(
+        self, database: Any, *, worker_schema_version: int | None = None, human_sessions: Any = None
+    ) -> None:
+        if worker_schema_version not in {None, 37, 40, 41}:
             raise JobAuthorityError("mixed or unscoped worker schema is refused")
         self._database = database
+        self._human_sessions = human_sessions
         self._worker_schema_version = worker_schema_version
 
     async def check(self, authority: JobAuthority) -> None:
@@ -50,11 +53,19 @@ class MongoJobAuthorityChecker:
             raise JobAuthorityError("job context is unavailable")
         control = await self._database["_tenant_control"].find_one({"_id": "installation"})
         managed = bool(control and control.get("stage") == "managed")
-        expected = 40 if managed else 37
+        versions = control.get("worker_schema_versions") if control else None
+        expected = (
+            41 if managed and versions == [41] else 40 if managed and versions == [40] else 37
+        )
+        if managed and versions not in ([40], [41]):
+            raise JobAuthorityError("mixed policy workers are refused")
         if authority.worker_schema_version != expected or (
             self._worker_schema_version is not None and self._worker_schema_version != expected
         ):
             raise JobAuthorityError("mixed policy workers are refused")
+        if authority.subject_kind == "human":
+            await self._human(authority)
+            return
         if authority.key_id is None:
             policy = current_policy()
             if policy is not None and not policy.operator:
@@ -93,7 +104,9 @@ class MongoJobAuthorityChecker:
             from app.security.policy.evaluation import PolicyDenied
 
             try:
-                await PolicyEngine(IdentityStore(self._database)).credential(principal)
+                await PolicyEngine(
+                    IdentityStore(self._database), human_management=expected == 41
+                ).credential(principal)
             except PolicyDenied:
                 raise JobAuthorityError("initiating sponsorship is unavailable") from None
         if authority.action not in principal.scopes or principal.client_id != authority.client_id:
@@ -113,3 +126,57 @@ class MongoJobAuthorityChecker:
             authority.project_ids is not None and not set(projects).issubset(authority.project_ids)
         ):
             raise JobAuthorityError("job source is outside initiating resource authority")
+
+    async def _human(self, authority: JobAuthority) -> None:
+        from app.identity.crypto import AuthRejected
+        from app.identity.repository import IdentityStore
+        from app.identity.sessions import BrowserSessions
+        from app.security.policy.engine import PolicyEngine
+        from app.security.policy.evaluation import PolicyDenied
+        from app.security.policy.resources import resource_allows
+
+        store = IdentityStore(self._database)
+        row = await store.find(
+            "browser_sessions",
+            {
+                "public_id": authority.session_id,
+                "org_id": authority.org_id,
+                "user_id": authority.user_id,
+                "kind": "human",
+                "revoked": False,
+                "membership_revision": authority.membership_revision,
+                "expires_at": {"$gt": utc_now()},
+                "idle_expires_at": {"$gt": utc_now()},
+            },
+        )
+        if not row:
+            raise JobAuthorityError("initiating human session is unavailable")
+        # Use the same mounted provider registry as browser requests. A
+        # standalone checker without it deliberately refuses SSO authority.
+        try:
+            await (self._human_sessions or BrowserSessions(store)).authority(row)
+            engine = PolicyEngine(store, human_management=True)
+            snapshot = await engine.snapshot(authority.org_id, str(authority.user_id))
+            source = await self._database["research_sources"].find_one(
+                {
+                    "org_id": authority.org_id,
+                    "research_project_id": authority.research_project_id,
+                    "source_id": authority.source_id,
+                    "status": "active",
+                }
+            )
+            if (
+                not source
+                or (
+                    authority.project_ids is not None
+                    and not set(source.get("authorization", {}).get("project_ids", [])).issubset(
+                        authority.project_ids
+                    )
+                )
+                or not resource_allows(
+                    engine.policy(snapshot), authority.action, source, "research_sources"
+                )
+            ):
+                raise JobAuthorityError("initiating human policy no longer covers the job source")
+        except (AuthRejected, PolicyDenied):
+            raise JobAuthorityError("initiating human authority is unavailable") from None

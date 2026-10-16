@@ -252,3 +252,6 @@ explicit target envelope; a template is not an effective assignment.
 | reviews:decide | deny | deny | deny | deny | deny | allow | deny | deny | deny |
 | teams:manage | deny | allow | allow | deny | deny | deny | deny | deny | deny |
 | teams:read | deny | allow | allow | allow | allow | deny | deny | deny | deny |
+
+Phase 6 human organization APIs and their explicit schema-41 cutover are described
+in [Human organization management](human-organization-management.md).

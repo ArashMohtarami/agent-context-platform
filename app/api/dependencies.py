@@ -161,7 +161,12 @@ def get_research_ingestion_service(request: Request) -> ResearchIngestionService
         lambda research_project_id: MongoIngestionJobRepository(database, research_project_id),
         request.app.state.embeddings,
         limiter=limiter,
-        authority_checker=MongoJobAuthorityChecker(database),
+        authority_checker=MongoJobAuthorityChecker(
+            database,
+            human_sessions=getattr(
+                getattr(request.app.state, "local_identity", None), "sessions", None
+            ),
+        ),
         max_chunks_per_ingestion=request.app.state.settings.research_max_chunks_per_ingestion,
     )
 

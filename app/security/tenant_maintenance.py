@@ -22,6 +22,7 @@ async def check_operator_context(
     *,
     enabled: bool = False,
     management_policy: bool = False,
+    human_management: bool = False,
 ) -> None:
     control = await database["_tenant_control"].find_one({"_id": "installation"})
     context = current_tenant()
@@ -29,6 +30,14 @@ async def check_operator_context(
         if control is not None or enabled:
             raise TenantContextRequired("explicit --org-id is required on a V6 installation")
         return
+    if (
+        control
+        and control.get("stage") == "managed"
+        and control.get("worker_schema_versions") != ([41] if human_management else [40])
+    ):
+        raise TenantContextRequired(
+            "operator worker schema does not match the managed installation"
+        )
     if control and control.get("stage") == "managed" and not management_policy:
         raise TenantContextRequired("managed installation requires a policy-aware operator command")
     if control is None or control.get("stage") not in {"prepared", "isolated", "managed"}:
@@ -42,6 +51,20 @@ async def check_operator_context(
     secret = control.get("cursor_secret")
     if isinstance(secret, bytes):
         establish_tenant(TenantContext(context.org_id, secret))
+    if human_management:
+        from app.identity.repository import IdentityStore
+        from app.security.policy.engine import PolicyEngine
+        from app.security.tenant_policy import TenantPolicy, bind_policy
+
+        bind_policy(
+            TenantPolicy(
+                context.org_id,
+                "installation_operator",
+                (),
+                operator=True,
+                engine=PolicyEngine(IdentityStore(database), human_management=True),
+            )
+        )
 
 
 class TenantMaintenanceMiddleware:
@@ -71,7 +94,20 @@ class TenantMaintenanceMiddleware:
                     and not (
                         control.get("schema_version") == 37
                         and control.get("stage") == ("managed" if managed else "isolated")
-                        and control.get("worker_schema_versions") == ([40] if managed else [37])
+                        and control.get("worker_schema_versions")
+                        == (
+                            [
+                                41
+                                if getattr(
+                                    getattr(request.app.state, "settings", None),
+                                    "v6_human_management",
+                                    False,
+                                )
+                                else 40
+                            ]
+                            if managed
+                            else [37]
+                        )
                         and control.get("domain_traffic_enabled") is True
                     )
                 ):

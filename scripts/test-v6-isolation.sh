@@ -70,6 +70,12 @@ fresh_stack() {
 }
 
 start_stack
+if [[ "${V6_MANAGEMENT_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
+    "$python" -m pytest -q tests/integration/test_v6_membership_lifecycle.py --junitxml="$report_dir/membership-development.xml" "$@"
+    fresh_stack
+    "$python" -m pytest -q tests/integration/test_v6_access_request_races.py --junitxml="$report_dir/access-requests-development.xml" "$@"
+    exit 0
+fi
 if [[ "${V6_POLICY_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
     "$python" -m pytest -q tests/integration/test_v6_policy_fencing.py --junitxml="$report_dir/policy-development.xml" "$@"
     exit 0
@@ -142,5 +148,11 @@ fi
 if [[ "${V6_POLICY_TESTS:-0}" == "1" ]]; then
     fresh_stack
     "$python" -m pytest -q tests/integration/test_v6_policy_fencing.py --junitxml="$report_dir/policy.xml"
+fi
+if [[ "${V6_MANAGEMENT_TESTS:-0}" == "1" ]]; then
+    fresh_stack
+    "$python" -m pytest -q tests/integration/test_v6_membership_lifecycle.py --junitxml="$report_dir/membership.xml"
+    fresh_stack
+    "$python" -m pytest -q tests/integration/test_v6_access_request_races.py --junitxml="$report_dir/access-requests.xml"
 fi
 printf 'V6 isolation reports: %s\n' "$report_dir"

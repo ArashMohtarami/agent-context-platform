@@ -29,6 +29,8 @@ def active_chain(
     members: Mapping[str, Row],
     users: Mapping[str, Row],
     now: datetime,
+    teams: Mapping[str, Row] | None = None,
+    team_links: Mapping[tuple[str, str], Row] | None = None,
 ) -> tuple[Row, ...]:
     """Generations and membership revisions never reattach old descendants."""
     chain: list[Row] = []
@@ -52,6 +54,22 @@ def active_chain(
             or row["ceiling_hash"] != ceiling_hash(grants(row, "ceiling"))
         ):
             raise PolicyDenied("assignment ancestry is unavailable")
+        if teams is not None and member["role"] == "team_lead" and not row.get("team_id"):
+            raise PolicyDenied("lead authority requires a reviewed named team")
+        if row.get("team_id"):
+            team = (teams or {}).get(row["team_id"])
+            link = (team_links or {}).get((row["team_id"], row["subject_id"]))
+            if (
+                not team
+                or not link
+                or team["org_id"] != row["org_id"]
+                or link["org_id"] != row["org_id"]
+                or team["status"] != "active"
+                or link["status"] != "active"
+                or team["generation"] != row.get("team_generation")
+                or link["revision"] != row.get("team_link_revision")
+            ):
+                raise PolicyDenied("team authority is unavailable")
         seen.add(row["_id"])
         chain.append(row)
         if row["parent_id"] is None:
@@ -67,7 +85,25 @@ def active_chain(
             or parent["subject_id"] == row["subject_id"]
             or row["expires_at"] > parent["expires_at"]
             or row["remaining_depth"] >= parent["remaining_depth"]
-            or not Selector.model_validate(parent["targets"]).contains(row["subject_id"])
+            or not (
+                (
+                    row.get("team_delegation")
+                    and row.get("team_id")
+                    and row["remaining_depth"] == 0
+                    and not row["allowed_roles"]
+                    and Selector.model_validate(row["targets"]).mode == "none"
+                    and any(
+                        g.action == "grants:delegate"
+                        and g.resource_kind == "team"
+                        and g.selection().contains(row["team_id"])
+                        for g in grants(parent)
+                    )
+                )
+                or (
+                    not row.get("team_delegation")
+                    and Selector.model_validate(parent["targets"]).contains(row["subject_id"])
+                )
+            )
             or not Selector.model_validate(row["targets"]).within(
                 Selector.model_validate(parent["targets"])
             )
@@ -83,14 +119,26 @@ def active_chain(
         row = parent
 
 
-def validate_issue(parent: Row, request: Issue, issuer_id: str, now: datetime) -> None:
+def validate_issue(
+    parent: Row, request: Issue, issuer_id: str, now: datetime, *, team_authorized: bool = False
+) -> None:
     if (
         request.subject_id == issuer_id
         or parent["subject_id"] != issuer_id
         or not any(
             g.action == "grants:delegate"
-            and g.resource_kind == "member"
-            and g.selection().contains(request.subject_id)
+            and (
+                (
+                    not team_authorized
+                    and g.resource_kind == "member"
+                    and g.selection().contains(request.subject_id)
+                )
+                or (
+                    team_authorized
+                    and g.resource_kind == "team"
+                    and g.selection().contains(str(request.team_id))
+                )
+            )
             for g in grants(parent)
         )
         or parent["generation"] != request.expected_parent_generation
@@ -99,7 +147,18 @@ def validate_issue(parent: Row, request: Issue, issuer_id: str, now: datetime) -
         or not now < request.expires_at <= parent["expires_at"]
         or request.role not in parent["allowed_roles"]
         or not can_appoint(parent["role"], request.role)
-        or not Selector.model_validate(parent["targets"]).contains(request.subject_id)
+        or (
+            not team_authorized
+            and not Selector.model_validate(parent["targets"]).contains(request.subject_id)
+        )
+        or (
+            team_authorized
+            and (
+                request.targets.mode != "none"
+                or request.remaining_depth != 0
+                or bool(request.allowed_roles)
+            )
+        )
         or not request.targets.within(Selector.model_validate(parent["targets"]))
         or not set(request.allowed_roles) <= set(parent["allowed_roles"])
         or any(not can_appoint(request.role, role) for role in request.allowed_roles)
@@ -154,6 +213,8 @@ def effective(
     members: Mapping[str, Row],
     users: Mapping[str, Row],
     now: datetime,
+    teams: Mapping[str, Row] | None = None,
+    team_links: Mapping[tuple[str, str], Row] | None = None,
 ) -> tuple[tuple[Grant, ...], list[Row]]:
     tuples: list[Grant] = []
     explanations: list[Row] = []
@@ -161,7 +222,7 @@ def effective(
         if row["org_id"] != org_id or row["subject_id"] != subject_id:
             continue
         try:
-            chain = active_chain(row, assignments, members, users, now)
+            chain = active_chain(row, assignments, members, users, now, teams, team_links)
         except PolicyDenied:
             explanations.append(
                 {

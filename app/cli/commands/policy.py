@@ -29,8 +29,10 @@ async def operate(arguments: argparse.Namespace, settings: Settings) -> Result:
         raise UsageError(
             "policy operations require explicit --org-id and enabled Phase 5 configuration"
         )
-    if not arguments.writers_stopped or arguments.worker_schema_version != [40]:
-        raise UsageError("policy cutover requires stopped writers and only schema-40 workers")
+    if not arguments.writers_stopped or arguments.worker_schema_version != [
+        41 if settings.v6_human_management else 40
+    ]:
+        raise UsageError("policy cutover requires stopped writers and matching policy workers")
     mongodb = MongoDBClient(settings)
     await mongodb.connect(require_search=False)
     try:
@@ -41,9 +43,12 @@ async def operate(arguments: argparse.Namespace, settings: Settings) -> Result:
             local_identity=True,
             sso=True,
             management_policy=True,
+            human_management=settings.v6_human_management,
             management_cutover=True,
         )
-        engine = PolicyEngine(IdentityStore(mongodb.database))
+        engine = PolicyEngine(
+            IdentityStore(mongodb.database), human_management=settings.v6_human_management
+        )
         if arguments.action == "activate-bootstrap":
             expiry = datetime.fromisoformat(arguments.expires_at)
             if expiry.tzinfo is None:

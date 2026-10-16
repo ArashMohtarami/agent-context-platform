@@ -54,6 +54,7 @@ from app.db.migrations.v037_tenant_isolation import TenantIsolationMigration
 from app.db.migrations.v038_local_identity import LocalIdentityMigration
 from app.db.migrations.v039_sso_identity import SSOIdentityMigration
 from app.db.migrations.v040_management_policy import ManagementPolicyMigration
+from app.db.migrations.v041_human_management import HumanManagementMigration
 
 MIGRATIONS: Final[tuple[Migration, ...]] = (
     InitialSchemaMigration(),
@@ -96,6 +97,7 @@ MIGRATIONS: Final[tuple[Migration, ...]] = (
     LocalIdentityMigration(),
     SSOIdentityMigration(),
     ManagementPolicyMigration(),
+    HumanManagementMigration(),
 )
 
 
@@ -107,6 +109,7 @@ async def run_migrations(
     local_identity: bool = False,
     sso: bool = False,
     management_policy: bool = False,
+    human_management: bool = False,
     management_cutover: bool = False,
 ) -> None:
     """Apply each unapplied migration and record its version once."""
@@ -117,6 +120,12 @@ async def run_migrations(
         async for document in history.find({}, {"version": 1, "_id": 0})
         if isinstance(document.get("version"), int)
     }
+    if 41 in applied and not human_management:
+        raise RuntimeError("human management schema requires schema-41 workers")
+    if human_management and (
+        not management_policy or (41 not in applied and not management_cutover)
+    ):
+        raise RuntimeError("human management requires explicit stopped-writer policy cutover")
     if 40 in applied and not management_policy:
         raise RuntimeError("managed schema requires the policy-aware runtime")
     if management_policy and 40 not in applied and not management_cutover:
@@ -136,6 +145,8 @@ async def run_migrations(
     if 36 in applied and not tenant_foundation:
         raise RuntimeError("tenant schema requires the tenant-aware maintenance binary")
     for migration in MIGRATIONS:
+        if migration.version >= 41 and not human_management:
+            continue
         if migration.version >= 40 and not management_policy:
             continue
         if migration.version >= 39 and not sso:

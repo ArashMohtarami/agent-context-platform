@@ -25,6 +25,7 @@ from app.api.routes.context import router as context_router
 from app.api.routes.creator import router as creator_router
 from app.api.routes.gateway import router as gateway_router
 from app.api.routes.health import router as health_router
+from app.api.routes.human_management import router as human_management_router
 from app.api.routes.knowledge_candidates import router as knowledge_candidates_router
 from app.api.routes.local_identity import router as local_identity_router
 from app.api.routes.management_policy import router as management_policy_router
@@ -193,7 +194,11 @@ def start_authentication(
     if not settings.api_auth_enabled:
         raise RuntimeError("tenant domain traffic requires authentication and organization context")
     return AuthService(
-        MongoCredentialResolver(database, management_policy=settings.v6_management_policy),
+        MongoCredentialResolver(
+            database,
+            management_policy=settings.v6_management_policy,
+            human_management=getattr(settings, "v6_human_management", False),
+        ),
         MongoAgentClientRepository(database),
     )
 
@@ -222,6 +227,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 local_identity=resolved_settings.v6_local_identity,
                 sso=resolved_settings.v6_sso,
                 management_policy=resolved_settings.v6_management_policy,
+                human_management=resolved_settings.v6_human_management,
             )
         elif resolved_settings.v6_tenant_foundation:
             await initialize_database(mongodb.database, tenant_foundation=True)
@@ -311,6 +317,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(local_identity_router)
     application.include_router(sso_identity_router)
     application.include_router(management_policy_router)
+    application.include_router(human_management_router)
     application.include_router(metrics_router)
     application.include_router(skills_router)
     application.include_router(projects_router)

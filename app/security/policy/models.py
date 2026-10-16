@@ -69,6 +69,8 @@ class Issue(BaseModel):
     allowed_roles: tuple[str, ...] = Field(default=(), max_length=8)
     remaining_depth: int = Field(default=0, ge=0, le=2)
     expires_at: datetime
+    team_id: Identifier | None = None
+    expected_team_generation: int | None = Field(default=None, ge=1)
 
     @model_validator(mode="after")
     def valid(self) -> Self:
@@ -78,6 +80,8 @@ class Issue(BaseModel):
             self.allowed_roles
         ):
             raise ValueError("ownership cannot be delegated")
+        if (self.team_id is None) != (self.expected_team_generation is None):
+            raise ValueError("team scope requires its reviewed generation")
         if self.expires_at.tzinfo is None:
             raise ValueError("expiry requires a timezone")
         return self

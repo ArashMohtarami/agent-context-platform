@@ -135,6 +135,7 @@ async def reindex(arguments: argparse.Namespace, settings: Settings) -> Result:
             mongodb.database,
             enabled=settings.v6_tenant_foundation,
             management_policy=settings.v6_management_policy,
+            human_management=settings.v6_human_management,
         )
         await initialize_database(
             mongodb.database,
@@ -143,6 +144,7 @@ async def reindex(arguments: argparse.Namespace, settings: Settings) -> Result:
             local_identity=settings.v6_local_identity,
             sso=settings.v6_sso,
             management_policy=settings.v6_management_policy,
+            human_management=settings.v6_human_management,
         )
         actions["mongodb_schema_and_indexes"] = "verified"
         if arguments.database_only:

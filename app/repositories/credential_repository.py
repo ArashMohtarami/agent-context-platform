@@ -19,10 +19,15 @@ from app.security.tenant import TenantContext, tenant_scope
 
 class MongoCredentialResolver:
     def __init__(
-        self, database: AsyncDatabase[MongoDocument], *, management_policy: bool = False
+        self,
+        database: AsyncDatabase[MongoDocument],
+        *,
+        management_policy: bool = False,
+        human_management: bool = False,
     ) -> None:
         self._database = database
         self.management_policy = management_policy
+        self.human_management = human_management
 
     async def get_by_key_id(self, key_id: str) -> ApiKeyDocument | None:
         raw = await self._database["api_keys"].find_one({"key_id": key_id})
@@ -38,6 +43,11 @@ class MongoCredentialResolver:
             control
             and control.get("schema_version") == 37
             and control.get("stage") == ("managed" if self.management_policy else "isolated")
+            and (
+                not self.management_policy
+                or control.get("worker_schema_versions")
+                == ([41] if self.human_management else [40])
+            )
             and control.get("domain_traffic_enabled") is True
             and organization
             and organization.get("status") == "active"
@@ -56,7 +66,9 @@ class MongoCredentialResolver:
         from app.identity.repository import IdentityStore
         from app.security.policy.engine import PolicyEngine
 
-        return await PolicyEngine(IdentityStore(self._database)).credential(principal)
+        return await PolicyEngine(
+            IdentityStore(self._database), human_management=self.human_management
+        ).credential(principal)
 
     async def touch(self, key_id: str, used_at: datetime) -> None:
         from app.security.tenant import require_tenant

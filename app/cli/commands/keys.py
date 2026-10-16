@@ -169,6 +169,7 @@ async def _platform(settings: Settings) -> AsyncIterator[tuple[ApiKeyService, Au
             mongodb.database,
             enabled=settings.v6_tenant_foundation,
             management_policy=settings.v6_management_policy,
+            human_management=settings.v6_human_management,
         )
         audit = MongoAuditRepository(mongodb.database) if settings.audit_log_enabled else None
         yield ApiKeyService(MongoApiKeyRepository(mongodb.database)), AuditService(audit)

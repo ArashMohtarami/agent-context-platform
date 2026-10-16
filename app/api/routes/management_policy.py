@@ -36,7 +36,15 @@ async def authorized(
 
 @router.get("/me/effective-access")
 async def effective_access(context: CurrentBrowser) -> Row:
-    service, snapshot = await authorized(context, "grants:read", "member", context.row["user_id"])
+    service = engine(context)
+    if service.human_management:
+        # Verified self metadata lets a NONE member identify an independent
+        # request parent. It confers no grant or other-subject authority.
+        snapshot = await service.snapshot(context.row["org_id"], context.row["user_id"])
+    else:
+        service, snapshot = await authorized(
+            context, "grants:read", "member", context.row["user_id"]
+        )
     return {
         "org_id": context.row["org_id"],
         "subject_id": context.row["user_id"],
@@ -58,6 +66,11 @@ async def organization(org_id: str, context: CurrentBrowser) -> Row:
 
 @router.get("/organizations/{org_id}/assignments")
 async def assignments(org_id: str, context: CurrentBrowser, subject_id: str) -> Row:
+    service = engine(context)
+    if service.human_management:
+        from app.management.directory import Directory
+
+        return await Directory(service).assignments(org_id, context.row["user_id"], subject_id)
     _, snapshot = await authorized(context, "grants:read", "member", subject_id)
     # Explicit target selection; never expose another org or raw identity DTOs.
     return {

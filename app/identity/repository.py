@@ -10,6 +10,7 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.db.client_types import MongoDocument
+from app.management.inventory import COLLECTION_OWNERSHIP as MANAGEMENT_COLLECTION_OWNERSHIP
 from app.security.policy.inventory import COLLECTION_OWNERSHIP as POLICY_COLLECTION_OWNERSHIP
 
 type Row = dict[str, Any]
@@ -23,7 +24,7 @@ LOCAL_COLLECTION_OWNERSHIP = {
     "auth_challenges": "private global human identity",
     "auth_throttles": "private global human security state",
     "identity_audit_events": "private global human security history",
-    "organization_memberships": "tenant owned; self-only identity boundary or explicit operator",
+    "organization_memberships": "tenant owned; self, authorized management, or operator",
     "_local_identity_control": "installation metadata",
 }
 SSO_COLLECTION_OWNERSHIP = {
@@ -36,6 +37,7 @@ COLLECTION_OWNERSHIP = {
     **LOCAL_COLLECTION_OWNERSHIP,
     **SSO_COLLECTION_OWNERSHIP,
     **POLICY_COLLECTION_OWNERSHIP,
+    **MANAGEMENT_COLLECTION_OWNERSHIP,
 }
 
 
@@ -65,6 +67,8 @@ class IdentityStore:
     async def update(
         self, name: str, query: Row, change: Row, session: AsyncClientSession | None = None
     ) -> Row | None:
+        if name == "access_decisions":
+            raise ValueError("access decisions are append only")
         return await self._collection(name).find_one_and_update(
             query, change, session=session, return_document=ReturnDocument.AFTER
         )

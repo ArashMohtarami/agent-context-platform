@@ -95,6 +95,7 @@ async def activity(args: argparse.Namespace, settings: Settings) -> Result:
             mongodb.database,
             enabled=settings.v6_tenant_foundation,
             management_policy=settings.v6_management_policy,
+            human_management=settings.v6_human_management,
         )
         page = await MongoAgentActivityRepository(mongodb.database).list(
             client_id=args.client_id,
@@ -135,6 +136,7 @@ async def _service(settings: Settings) -> AsyncIterator[AgentClientService]:
             mongodb.database,
             enabled=settings.v6_tenant_foundation,
             management_policy=settings.v6_management_policy,
+            human_management=settings.v6_human_management,
         )
         yield AgentClientService(
             MongoAgentClientRepository(mongodb.database),

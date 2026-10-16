@@ -41,6 +41,7 @@ class TenantPolicy:
     subject_kind: Literal["legacy", "human", "machine"] = "legacy"
     revision: int = 0
     subject_revision: int = 0
+    session_id: str | None = None
     engine: Any = field(default=None, repr=False, compare=False)
     refresh: Callable[[], Awaitable[None]] | None = field(default=None, repr=False, compare=False)
     transaction_check: Callable[[Any], Awaitable[None]] | None = field(

@@ -135,7 +135,13 @@ async def current_browser(request: Request, service: IdentityBoundary) -> Browse
         service.assurance(row),
         (row.get("authentication") or {}).get("method", "local"),
     )
-    establish_tenant(TenantContext(row["org_id"]))
+    control = (
+        await service.store.find("_tenant_control", {"_id": "installation"})
+        if service.policy_engine and service.policy_engine.human_management
+        else None
+    )
+    secret = (control or {}).get("cursor_secret")
+    establish_tenant(TenantContext(row["org_id"], secret if isinstance(secret, bytes) else None))
     if service.policy_engine:
         from app.security.tenant_policy import TenantPolicy, bind_policy
 
@@ -155,7 +161,10 @@ async def current_browser(request: Request, service: IdentityBoundary) -> Browse
             snapshot = await service.policy_engine.snapshot(row["org_id"], row["user_id"])
             bind_policy(
                 service.policy_engine.policy(
-                    snapshot, refresh=refresh, transaction_check=transaction_check
+                    snapshot,
+                    refresh=refresh,
+                    transaction_check=transaction_check,
+                    session_id=row["public_id"],
                 )
             )
         else:

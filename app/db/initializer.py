@@ -16,6 +16,7 @@ async def initialize_database(
     local_identity: bool = False,
     sso: bool = False,
     management_policy: bool = False,
+    human_management: bool = False,
     management_cutover: bool = False,
 ) -> None:
     """Apply schema migrations and reconcile standard indexes."""
@@ -30,6 +31,7 @@ async def initialize_database(
         local_identity=local_identity,
         sso=sso,
         management_policy=management_policy,
+        human_management=human_management,
         management_cutover=management_cutover,
     )
     control = await database["_tenant_control"].find_one({"_id": "installation"})

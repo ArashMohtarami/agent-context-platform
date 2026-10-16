@@ -1,11 +1,11 @@
-"""Invitation-only local identity; no corpus grants or machine-key adapter."""
+"""Invitation-only local identity with reviewed managed-enrollment handoff."""
 
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from pymongo.asynchronous.client_session import AsyncClientSession
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from app.identity.crypto import (
     AuthBusy,
@@ -61,7 +61,11 @@ class LocalIdentity:
             "_local_identity_control",
             {
                 "_id": "installation",
-                "schema_version": 40 if self.policy_engine else 39 if self.sso else 38,
+                "schema_version": self.policy_engine.schema_version
+                if self.policy_engine
+                else 39
+                if self.sso
+                else 38,
             },
         )
         control = await self.store.find(
@@ -71,13 +75,17 @@ class LocalIdentity:
                 "stage": "managed" if self.policy_engine else "isolated",
                 "domain_traffic_enabled": True,
                 "schema_version": 37,
-                "worker_schema_versions": [40] if self.policy_engine else [37],
+                "worker_schema_versions": [self.policy_engine.schema_version]
+                if self.policy_engine
+                else [37],
             },
         )
         if not marker or not control:
             raise AuthRejected("local identity is unavailable")
         if self.sso:
             await self.sso.enabled()
+        if self.policy_engine and self.policy_engine.human_management:
+            await self.policy_engine.enabled()
 
     async def throttle(self, namespace: str, value: str, maximum: int) -> None:
         now = utc_now()
@@ -321,12 +329,16 @@ class LocalIdentity:
             raise AuthRejected("authentication was not accepted")
         async with self.store.transaction() as tx:
             invitation = await self.consume(token, "invite", tx)
+            if self.policy_engine and self.policy_engine.human_management:
+                from app.management.invitations import Invitations
+
+                await Invitations(self).validate_enrollment(invitation, tx)
             user = await self.store.find(
                 "users",
                 {
                     "_id": invitation["user_id"],
                     "auth_epoch": invitation["auth_epoch"],
-                    "status": {"$in": ["pending", "active"]},
+                    "status": {"$in": ["pending", "verification_pending", "active"]},
                 },
                 tx,
             )
@@ -394,7 +406,22 @@ class LocalIdentity:
         await self.mail.deliver(Message(identity["subject"], "verify", verification))
 
     async def verify(self, token: str, browser_id: str) -> None:
-        async with self.store.transaction() as tx:
+        try:
+            await self._verify(token, browser_id)
+        except PyMongoError:
+            if not self.policy_engine or not self.policy_engine.human_management:
+                raise
+            from app.security.policy.evaluation import PolicyConflict
+
+            raise PolicyConflict(
+                "invitation changed; retry verification against current authority"
+            ) from None
+
+    async def _verify(self, token: str, browser_id: str) -> None:
+        boundary = (
+            self.policy_engine.transaction() if self.policy_engine else self.store.transaction()
+        )
+        async with boundary as tx:
             challenge = await self.consume(token, "verify", tx, browser_id=browser_id)
             user = await self.store.update(
                 "users",
@@ -420,6 +447,10 @@ class LocalIdentity:
             )
             if not user or not member:
                 raise AuthRejected("authentication was not accepted")
+            if self.policy_engine and self.policy_engine.human_management:
+                from app.management.invitations import Invitations
+
+                await Invitations(self).finish_enrollment(challenge, member, tx)
             await self.store.update(
                 "user_identities",
                 {"user_id": user["_id"], "provider": "local"},
