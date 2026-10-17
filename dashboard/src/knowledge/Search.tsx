@@ -1,0 +1,28 @@
+import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { errorText } from '../auth/context';
+import { Button, Empty, Input, Notice, Panel, Select, Skeleton } from '../components/ui';
+import { useConsole, useDirty } from '../management/shared';
+import { searchSchema } from './contracts';
+import type { SearchResult } from './contracts';
+import { KnowledgeFrame, ResourceInput } from './shared';
+import { SafeMarkdown } from './Markdown';
+import { Authorship } from './Projects';
+
+const sources = [['active_skill', 'Skills', 'skills:read'], ['project_context', 'Project context', 'context:read'], ['memory', 'Memory', 'memory:read']] as const;
+function metadataText(value: unknown) {return typeof value === 'string' || typeof value === 'number' ? String(value) : null;}
+export function KnowledgeSearch() {const [params] = useSearchParams(); const initial = params.get('project') ?? ''; return <SearchView key={initial} initial={initial}/>;}
+function SearchView({initial}: {initial: string}) {
+  const {auth, base, allowed} = useConsole(); const [project, setProject] = useState(initial); const [query, setQuery] = useState(''); const [source, setSource] = useState(''); const [trust, setTrust] = useState(''); const [tags, setTags] = useState(''); const [budget, setBudget] = useState('2048'); const [phrase, setPhrase] = useState(false);
+  const [result, setResult] = useState<SearchResult | null>(null); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  const available = sources.filter(([, , action]) => allowed(action)); useDirty(Boolean(query));
+  async function search() {
+    setBusy(true); setError(''); setResult(null);
+    try {setResult(await auth.act(base + '/knowledge/search', searchSchema, {query, project_id: project || null, sources: source ? [source] : available.map(([name]) => name), token_budget: Number(budget), limit: 20, phrase, tags: tags.split(',').map(t => t.trim()).filter(Boolean), memory_scopes: project ? ['global', 'project'] : ['global'], ...(trust ? {trust_level: trust} : {})}));}
+    catch (f) {setError(errorText(f));}
+    finally {setBusy(false);}
+  }
+  return <KnowledgeFrame title="Search knowledge" description="Search permitted sources with server-side candidate filters and a bounded context budget."><Panel title="Ask your knowledge workspace" description="Search terms stay out of workforce activity and audit streams."><form onSubmit={e => {e.preventDefault(); void search();}}><Input label="Search terms" value={query} required maxLength={500} autoComplete="off" onChange={e => {setQuery(e.target.value); setResult(null);}}/><div className="knowledge-filters"><ResourceInput action="search:read" value={project} optional onChange={v => {setProject(v); setResult(null);}}/><Select label="Search source" value={source} onChange={e => {setSource(e.target.value); setTrust(''); setResult(null);}}><option value="">All permitted sources</option>{available.map(([name, label]) => <option key={name} value={name}>{label}</option>)}</Select><Input label="Token budget" value={budget} type="number" min={128} max={32000} required onChange={e => {setBudget(e.target.value); setResult(null);}}/><Input label="Tags (comma separated)" value={tags} maxLength={500} onChange={e => {setTags(e.target.value); setResult(null);}}/>{source === 'active_skill' && <Select label="Skill trust" value={trust} onChange={e => {setTrust(e.target.value); setResult(null);}}><option value="">Any permitted trust</option>{['trusted', 'user', 'external', 'generated'].map(t => <option key={t}>{t}</option>)}</Select>}</div><label className="check-field"><input type="checkbox" checked={phrase} onChange={e => {setPhrase(e.target.checked); setResult(null);}}/>Exact phrase</label><Button type="submit" busy={busy} disabled={!allowed('search:read') || available.length === 0}>Search knowledge</Button></form></Panel>
+    {error && <Notice tone="danger">{error}</Notice>}{busy && <Skeleton label="Searching authorized knowledge"/>}{result && <section aria-label="Search results"><div className="search-summary"><h2>{result.results.length} permitted results</h2><span>{result.token_count} / {result.token_budget} tokens</span></div><p className="hint">Method: {result.retrieval.retrieval_method} · searched: {result.retrieval.searched_sources.join(', ') || 'none'} · skipped: {result.retrieval.skipped_sources.join(', ') || 'none'}</p>{result.results.length === 0 ? <Empty title="No permitted matches">No accessible source matched these filters. This is not a count of inaccessible content.</Empty> : result.results.map(item => <article className="knowledge-card" key={item.key}><div className="heading-actions"><h3>{item.title}</h3><span className="status">{item.source.replaceAll('_', ' ')}</span></div><dl className="knowledge-provenance">{['project_id', 'skill_id', 'skill_version', 'trust_level', 'source', 'scope', 'status', 'revision', 'source_path', 'content_hash'].map(key => {const value = metadataText(item.metadata[key]); return value === null ? null : <div key={key}><dt>{key.replaceAll('_', ' ')}</dt><dd>{value}</dd></div>;})}</dl>{item.source !== 'active_skill' && <p className="hint">Trust: no skill trust classification for this source.</p>}{typeof item.metadata.actor === 'object' && item.metadata.actor !== null && !Array.isArray(item.metadata.actor) && <Authorship actor={item.metadata.actor as Record<string, unknown>}/>}<SafeMarkdown>{item.content}</SafeMarkdown><p className="hint">Citation: <code>{item.key}</code> · {item.tokens} estimated tokens</p></article>)}</section>}
+  </KnowledgeFrame>;
+}

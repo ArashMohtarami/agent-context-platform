@@ -33,7 +33,7 @@ export function errorText(error: unknown) {
   if (error instanceof ApiError) {
     if (error.csrf) return 'The security check failed. Review and submit again.';
     if (error.status === 429) return 'Too many attempts. Wait a moment before trying again.';
-    if (error.status === 409) return 'Your access changed. Review the current context and try again.';
+    if (error.status === 409) return 'The record or your access changed. Review the current state and try again.';
     if (error.status === 403) return 'This action is outside your current access.';
     if (error.status === 401) return 'The request was not accepted. Check your credentials or use a fresh sign-in.';
     if (error.status === 422) return 'Check the required fields and try again.';

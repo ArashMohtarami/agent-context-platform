@@ -562,6 +562,7 @@ def test_the_routers_under_test_are_every_router_the_application_serves() -> Non
     # stops covering it.
     from app.api.routes.console import router as console_router
     from app.api.routes.human_management import router as human_management_router
+    from app.api.routes.knowledge import router as knowledge_router
     from app.api.routes.local_identity import router as local_identity_router
     from app.api.routes.managed_agents import router as managed_agents_router
     from app.api.routes.management_adapters import router as management_adapters_router
@@ -591,6 +592,7 @@ def test_the_routers_under_test_are_every_router_the_application_serves() -> Non
             human_management_router,
             console_router,
             management_adapters_router,
+            knowledge_router,
             managed_agents_router,
             summaries_router,
         )

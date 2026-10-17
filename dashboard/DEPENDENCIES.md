@@ -14,6 +14,7 @@ and regenerates the complete production/development inventory and runtime notice
 | React Router DOM | 7.18.4 | MIT | [project license](https://github.com/remix-run/react-router/blob/main/LICENSE.md); nested organization paths |
 | TanStack Query | 5.104.3 | MIT | [cancellation](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation), [license](https://github.com/TanStack/query/blob/main/LICENSE); no persistence adapter |
 | Radix Dialog | 1.3.1 | MIT | [accessibility](https://www.radix-ui.com/primitives/docs/overview/accessibility), [license](https://github.com/radix-ui/primitives/blob/main/LICENSE); focus-trapped dialog/drawer |
+| React Markdown | 10.1.0 | MIT | [official security documentation](https://github.com/remarkjs/react-markdown#security), [license](https://github.com/remarkjs/react-markdown/blob/10.1.0/license); React ≥18 peer compatibility, no HTML plugins, restricted elements/URLs |
 | Zod | 4.6.7 | MIT | [license](https://github.com/colinhacks/zod/blob/main/LICENSE); runtime validation of untrusted API JSON |
 | Vitest / jsdom | 5.0.5 / 30.1.3 | MIT | [Vitest guide](https://vitest.dev/guide/), [license](https://github.com/vitest-dev/vitest/blob/main/LICENSE), [jsdom](https://github.com/jsdom/jsdom); component checks |
 | Playwright | 1.64.1 | Apache-2.0 | [browser install](https://playwright.dev/docs/browsers), [license](https://github.com/microsoft/playwright/blob/main/LICENSE); real browser journeys |
@@ -28,7 +29,9 @@ packages and official registry metadata. React hooks checks run alongside strict
 TypeScript. Lockfile-only optional platform binaries are included in the license
 inventory even when absent on the current machine.
 
-The 38 runtime packages comprise 37 MIT packages and the
+Phase 11 added the pinned Markdown renderer after reviewing its official security
+contract, MIT license and React ≥18 peer range on 2026-10-18. The complete runtime
+inventory now contains 121 packages, including the
 [0BSD tslib](https://github.com/microsoft/tslib/blob/main/LICENSE.txt) helper library. The complete locked tooling inventory
 also includes Apache-2.0, ISC, BSD-2-Clause, BSD-3-Clause, MIT-0, 0BSD, CC0-1.0,
 BlueOak-1.0.0, CC-BY-4.0 and MPL-2.0. The build/test-only caniuse data's

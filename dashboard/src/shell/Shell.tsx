@@ -33,6 +33,7 @@ function Shell() {
   const base = `/o/${encodeURIComponent(me.policy_context.org_id)}`;
   const links: {to: string; label: string; icon: 'home' | 'key' | 'shield' | 'users' | 'link'}[] = [{to: base + '/workspace', label: 'My workspace', icon: 'home' as const}, {to: base + '/my-access', label: 'My access', icon: 'key' as const}, {to: base + '/security', label: 'My security', icon: 'shield' as const}];
   const permits = (...actions: string[]) => auth.state.status === 'active' && auth.state.data.grants.some(g => g.selector !== 'none' && actions.includes(g.action));
+  if (permits('projects:read', 'context:read', 'skills:read', 'memory:read', 'search:read')) links.push({to: base + '/knowledge/' + (permits('projects:read') ? 'projects' : permits('skills:read') ? 'skills' : permits('memory:read') ? 'memory' : 'search'), label: 'Knowledge', icon: 'link'});
   if (permits('members:read')) links.push({to: base + '/people', label: 'People', icon: 'users'});
   if (permits('teams:read')) links.push({to: base + '/teams', label: 'Teams', icon: 'users'});
   if (permits('members:invite')) links.push({to: base + '/invitations', label: 'Invitations', icon: 'users'});
@@ -42,8 +43,9 @@ function Shell() {
   if (permits('clients:manage:team', 'clients:manage:org')) links.push({to: base + '/agent-templates', label: 'Agent templates', icon: 'key'});
   if (permits('projects:read')) links.push({to: base + '/bindings', label: 'Project bindings', icon: 'link'});
   links.push({to: base + '/ownership', label: 'Ownership & recovery', icon: 'shield'});
-  const pageName = links.find(link => location.pathname === link.to)?.label ?? 'Management details';
-  const navigation = <nav className="side-nav" aria-label="Organization navigation"><span className="nav-section">Workspace</span>{links.map(link => <NavLink key={link.to} to={link.to} onClick={() => setDrawer(false)}><Icon name={link.icon}/>{link.label}</NavLink>)}<div className="nav-foot"><Icon name="users"/><strong>Organization context</strong><p>Installation operations use the separate operator CLI.</p></div></nav>;
+  const inKnowledge = location.pathname.startsWith(base + '/knowledge/');
+  const pageName = inKnowledge ? 'Knowledge workspace' : links.find(link => location.pathname === link.to)?.label ?? 'Management details';
+  const navigation = <nav className="side-nav" aria-label="Organization navigation"><span className="nav-section">Workspace</span>{links.map(link => <NavLink key={link.to} to={link.to} className={({isActive}) => isActive || (inKnowledge && link.label === 'Knowledge') ? 'active' : ''} onClick={() => setDrawer(false)}><Icon name={link.icon}/>{link.label}</NavLink>)}<div className="nav-foot"><Icon name="users"/><strong>Organization context</strong><p>Installation operations use the separate operator CLI.</p></div></nav>;
   async function change(selected: Organization) {
     setBusy(true); setError('');
     try {await auth.switchOrganization(selected);}
@@ -56,11 +58,11 @@ function Shell() {
     if (auth.dirty) setTarget(selected); else void change(selected);
   };
   return <div className="shell private-surface">
-    <header className="topbar"><div className="topbar-start"><Button variant="quiet" className="mobile-menu" aria-label="Open navigation" onClick={() => setDrawer(true)}><Icon name="menu"/></Button><Link className="brand" aria-label="Agent Context organization workspace" to={base + '/workspace'}><img src={mark} alt=""/><span>Agent Context<span className="brand-caption">Organization console</span></span></Link><span className="header-divider"/><span className="breadcrumb">{pageName}</span></div>
+    <header className="topbar"><div className="topbar-start"><Button variant="quiet" className="mobile-menu" aria-label="Open navigation" onClick={() => setDrawer(true)}><Icon name="menu"/></Button><Link className="brand" to={base + '/workspace'}><img src={mark} alt=""/><span>Agent Context<span className="brand-caption">Organization console</span></span></Link><span className="header-divider"/><span className="breadcrumb">{pageName}</span></div>
       <div className="topbar-actions"><Select label="Active organization" aria-label="Active organization" value={me.policy_context.org_id} disabled={busy} onChange={event => selectOrganization(event.target.value)}>{organizations.map(item => <option value={item.org_id} key={item.org_id}>{item.name}</option>)}</Select><ThemeButton/><Button variant="quiet" onClick={() => {void auth.logout();}} aria-label="Sign out"><Icon name="exit"/><span className="theme-label">Sign out</span></Button></div>
     </header>
     <aside className="sidebar">{navigation}</aside>
-    <div className="main-area"><div className="context-strip"><span><span className="context-dot"/>{org?.name ?? me.policy_context.org_id}</span><span className="context-user">{me.display_name}<span className="role-label">{me.membership.role.replaceAll('_', ' ')}</span></span></div><main id="main-content" className="page-content" tabIndex={-1}>{auth.state.message && <Notice tone="danger">{auth.state.message}</Notice>}{error && <Notice tone="danger">{error}</Notice>}<Outlet/></main><footer className="shell-footer">Agent Context Platform<span>Organization workspace · Access verified by the server</span></footer></div>
+    <div className="main-area"><div className="context-strip" role="region" aria-label="Current organization context"><span><span className="context-dot"/>{org?.name ?? me.policy_context.org_id}</span><span className="context-user">{me.display_name}<span className="role-label">{me.membership.role.replaceAll('_', ' ')}</span></span></div><main id="main-content" className="page-content" tabIndex={-1}>{auth.state.message && <Notice tone="danger">{auth.state.message}</Notice>}{error && <Notice tone="danger">{error}</Notice>}<Outlet/></main><footer className="shell-footer">Agent Context Platform<span>Organization workspace · Access verified by the server</span></footer></div>
     <Modal title="Organization navigation" description="Navigate your current organization workspace." open={drawer} onOpenChange={setDrawer} drawer>{navigation}</Modal>
     <Modal title="Discard unsaved changes?" description={`Finish or save your current form in ${org?.name ?? 'this organization'}, or discard its sensitive inputs before switching to ${target?.name ?? 'another organization'}. Drafts and selections will be cleared.`} open={target !== null} onOpenChange={open => {if (!open) setTarget(null);}}><div className="actions"><Button variant="secondary" onClick={() => setTarget(null)}>Keep editing</Button><Button variant="danger" onClick={() => {const selected = target; setTarget(null); if (selected) void change(selected);}}>Discard and switch</Button></div></Modal>
   </div>;

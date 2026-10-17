@@ -232,6 +232,18 @@ async def test_real_dashboard_browser(managed_agents_db):
                             path.unlink()
                         for name, contents in mail_snapshot.items():
                             (mail_root / name).write_bytes(contents)
+                    elif action == "knowledge":
+                        from tests.v6_knowledge_fixtures import prepare_knowledge
+
+                        await prepare_knowledge(h)
+                    elif action == "knowledge-conflict":
+                        await h.db.project_context.update_many(
+                            {"org_id": "org-a", "project_id": "payment-service"},
+                            {
+                                "$set": {"content": "Concurrent saved revision"},
+                                "$inc": {"revision": 1},
+                            },
+                        )
                     elif action == "mail":
                         messages = [
                             json.loads(p.read_text())

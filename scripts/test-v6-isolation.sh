@@ -134,6 +134,10 @@ PY
         exit 0
     fi
 fi
+if [[ "${V6_KNOWLEDGE_ADAPTERS_ONLY:-0}" == "1" ]]; then
+    "$python" -m pytest -q tests/integration/test_v6_knowledge_adapters.py --junitxml="$report_dir/knowledge-adapters.xml" "$@"
+    exit 0
+fi
 if [[ "${V6_MANAGEMENT_ADAPTERS_ONLY:-0}" == "1" ]]; then
     "$python" -m pytest -q tests/integration/test_v6_management_adapters.py --junitxml="$report_dir/management-adapters.xml" "$@"
     exit 0

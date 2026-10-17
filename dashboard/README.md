@@ -2,8 +2,8 @@
 
 This repository owns the frontend in `dashboard/`. It uses the V6 session APIs
 on the **same HTTPS origin** under `/api/v6`, with the application at `/console/`.
-The implemented navigation is My workspace, My access and My security. No
-leadership/team/content management module or invented activity data is shown.
+The console includes identity/security, organization management and the authorized
+knowledge workspace. No invented activity data is shown.
 The `/console/specimens` page contains explicitly labeled sample components.
 
 Use Node **24.22.0** (`.node-version`) and npm 10 or later. All direct versions
@@ -53,3 +53,6 @@ Phase 10 management routes and verification commands are documented in
 and browser selectors retain the filenames requested for Phase 10. Real API
 adapter coverage is `tests/integration/test_v6_management_adapters.py`, selected
 by `V6_MANAGEMENT_ADAPTERS_ONLY=1 bash scripts/test-v6-isolation.sh`.
+
+Phase 11 knowledge adapters, ownership boundaries and focused verification commands
+are documented in [dashboard knowledge](../docs/dashboard-knowledge.md).
