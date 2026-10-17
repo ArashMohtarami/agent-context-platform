@@ -17,6 +17,9 @@ __pycache__/
 .ruff_cache/
 htmlcov/
 node_modules/
+test-results/
+playwright-report/
+coverage/
 dist/
 build/
 *.egg-info/

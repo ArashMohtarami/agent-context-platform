@@ -44,7 +44,7 @@ certificate = (
     '#!/bin/bash\nset -eu\nexport KC_BOOTSTRAP_ADMIN_PASSWORD="$(cat /fixture/admin)"\n'
     "exec /opt/keycloak/bin/kc.sh start-dev --http-enabled=false --import-realm\n"
 )
-origin = "https://identity.example"
+origin = os.environ.get("V6_BROWSER_TEST_ORIGIN", "https://identity.example")
 provider_origin = "https://127.0.0.1:" + os.environ["V6_OIDC_PORT"]
 registrations = []
 for suffix in ("a", "b"):

@@ -20,6 +20,7 @@ from app.api.middleware import (
 from app.api.routes.agent_activity import router as agent_activity_router
 from app.api.routes.agents import router as agents_router
 from app.api.routes.client_profiles import router as client_profiles_router
+from app.api.routes.console import router as console_router
 from app.api.routes.content import router as content_router
 from app.api.routes.context import router as context_router
 from app.api.routes.creator import router as creator_router
@@ -344,6 +345,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(agents_router)
     application.include_router(client_profiles_router)
     application.include_router(agent_activity_router)
+    application.include_router(console_router)
     application.include_router(summaries_router)
     application.include_router(gateway_router)
     # Streamable HTTP is the same low-level MCP server as stdio.  There is no

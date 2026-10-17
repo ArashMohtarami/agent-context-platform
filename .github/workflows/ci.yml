@@ -40,3 +40,26 @@ jobs:
         run: python website/build.py
       - name: Check public release inventory
         run: python scripts/prepare_open_source_release.py --check
+
+  dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: dashboard/.node-version
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - name: Install locked frontend dependencies
+        run: npm --prefix dashboard ci
+      - name: Check frontend contracts and components
+        run: |
+          npm --prefix dashboard run lint
+          npm --prefix dashboard run typecheck
+          npm --prefix dashboard run test:unit
+          npm --prefix dashboard run licenses
+          git diff --exit-code -- dashboard/dependency-licenses.json dashboard/THIRD_PARTY_NOTICES.txt
+          npm --prefix dashboard run build

@@ -1,0 +1,8 @@
+{
+  "react-remove-scroll-bar": {
+    "version": "2.3.8",
+    "source": "https://raw.githubusercontent.com/theKashey/react-remove-scroll-bar/master/LICENSE",
+    "sha256": "a79aae0c0f21990d9d963bb3c5a79cdcea9a46f8523ba55c58d7fe776b6ebc84",
+    "reason": "Published npm tarball and its gitHead omit LICENSE; preserved official upstream MIT notice, retrieved 2026-10-17."
+  }
+}

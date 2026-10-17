@@ -45,10 +45,14 @@ V6 Phase 5 optionally adds [coupled grants and bounded delegation](docs/manageme
 with transactional governance audit and shared policy fencing.
 After verified human and sponsored-machine management, V6 Phase 8 adds
 [authorized event summaries and expiring CSV reports](docs/authorized-summaries.md).
-Management/dashboard UI remains unavailable.
+V6 Phase 9 adds the [professional console foundation](docs/dashboard-foundation.md)
+for sign-in, organization switching, effective access and My security. Its
+[frontend source and verification scripts](dashboard/README.md) live in `dashboard/`;
+serving it requires explicit activation. Team/content management screens belong
+to later phases.
 The workflows below assume completed setup and organization-bound credentials.
 Provisioning, import, and administrative commands require `--org-id`; human
-management dashboards remain disabled.
+management screens remain outside this foundation.
 
 ## Quick start
 
@@ -148,6 +152,7 @@ served independently on a public IP; see [website deployment](docs/website.md).
 | Technical content | [Creator profiles](docs/creator.md), [storage](docs/content-storage.md), [publication review](docs/content-publication-safety.md), [manual publishing](docs/content-publishing.md) |
 | Operations | [Deployment](docs/deployment.md), [security](docs/security.md), [backup and recovery](docs/backup.md), [observability](docs/observability.md) |
 | V6 maintenance foundation (domain traffic stays sealed after adoption) | [Tenant adoption](docs/tenant-adoption.md) |
+| Organization console foundation | [Setup and security](docs/dashboard-foundation.md), [frontend scripts](dashboard/README.md), [dependency review](dashboard/DEPENDENCIES.md) |
 | Licenses and dependency notices | [MIT License](LICENSE), [third-party notices](docs/third-party-notices.md) |
 
 ## Development and verification

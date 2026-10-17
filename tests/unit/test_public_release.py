@@ -312,3 +312,32 @@ def test_a_required_file_cannot_be_missing_from_the_release(public_root: Path) -
 
     with pytest.raises(ValueError, match="LICENSE: required public release file is missing"):
         release.audited_files(public_root)
+
+
+def test_dashboard_source_build_contract_and_licenses_are_in_public_release(public_root):
+    public = (
+        "dashboard/package.json",
+        "dashboard/package-lock.json",
+        "dashboard/LICENSE",
+        "dashboard/THIRD_PARTY_NOTICES.txt",
+        "dashboard/dependency-licenses.json",
+        "dashboard/src/main.tsx",
+        "dashboard/e2e/auth.spec.ts",
+        "dashboard/scripts/check-build.mjs",
+        "dashboard/README.md",
+        "dashboard/licenses/react-remove-scroll-bar-LICENSE",
+    )
+    for name in public:
+        put(public_root, name)
+    for name in (
+        "dashboard/node_modules/react/index.js",
+        "dashboard/dist/assets/index.js",
+        "dashboard/test-results/browser.xml",
+        "dashboard/playwright-report/index.html",
+        "dashboard/coverage/index.html",
+        "dashboard/.private/fixture.json",
+    ):
+        put(public_root, name, mint().token.encode())
+    assert set(release.audited_files(public_root)) == {
+        PurePosixPath(name) for name in (*public, "README.md", "LICENSE", "pyproject.toml")
+    }

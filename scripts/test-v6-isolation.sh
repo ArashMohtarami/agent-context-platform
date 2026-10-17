@@ -12,6 +12,8 @@ python="${V6_TEST_PYTHON:-$V6_REPOSITORY_ROOT/.venv/bin/python}"
 compose=(docker compose -f tests/infrastructure/v6-isolation.compose.yml)
 oidc_compose=(docker compose -f tests/infrastructure/v6-oidc.compose.yml)
 cleanup() {
+    docker logs "acp-v6-phase2-mongodb-$V6_TEST_RUN" >"$report_dir/mongodb.log" 2>&1 || true
+    docker logs "acp-v6-phase2-mongot-$V6_TEST_RUN" >"$report_dir/mongot.log" 2>&1 || true
     if [[ "${V6_OIDC_TESTS:-0}" == "1" ]]; then
         docker logs "acp-v6-oidc-keycloak-$V6_TEST_RUN" >"$report_dir/provider.log" 2>&1 || true
         "${oidc_compose[@]}" down --remove-orphans >/dev/null 2>&1 || true
@@ -122,6 +124,10 @@ for attempt in range(180):
             raise SystemExit('Disposable HTTPS Keycloak did not become ready (secrets withheld).')
         time.sleep(1)
 PY
+    if [[ "${V6_DASHBOARD_BROWSER_TESTS:-0}" == "1" ]]; then
+        "$python" -m pytest -q tests/integration/test_v6_dashboard_browser.py --junitxml="$report_dir/dashboard-browser.xml" "$@"
+        exit 0
+    fi
     if [[ "${V6_SSO_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
         "$python" -m pytest -q tests/integration/test_v6_oidc_provider.py \
             tests/integration/test_v6_org_switch.py --junitxml="$report_dir/sso-development.xml" "$@"
