@@ -47,3 +47,9 @@ frontend credential/environment variables, persistent query caches or CDN assets
 See [deployment and security](../docs/dashboard-foundation.md),
 [dependency review](DEPENDENCIES.md), [runtime notices](THIRD_PARTY_NOTICES.txt),
 and the complete [locked license inventory](dependency-licenses.json).
+
+Phase 10 management routes and verification commands are documented in
+[dashboard management](../docs/dashboard-management.md). The focused component
+and browser selectors retain the filenames requested for Phase 10. Real API
+adapter coverage is `tests/integration/test_v6_management_adapters.py`, selected
+by `V6_MANAGEMENT_ADAPTERS_ONLY=1 bash scripts/test-v6-isolation.sh`.

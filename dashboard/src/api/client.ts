@@ -11,6 +11,7 @@ export class ApiError extends Error {
 }
 interface Options {
   body?: unknown;
+  method?: 'POST' | 'PATCH' | 'PUT';
   signal?: AbortSignal | undefined;
   bootstrap?: boolean;
 }
@@ -51,7 +52,7 @@ export class SessionApi {
       const mutation = options.body !== undefined;
       if (mutation) { headers['Content-Type'] = 'application/json'; headers['X-CSRF-Token'] = this.csrf; }
       const response = await fetch('/api/v6' + path, {
-        method: mutation ? 'POST' : 'GET', credentials: 'same-origin', cache: 'no-store', redirect: 'error',
+        method: mutation ? options.method ?? 'POST' : 'GET', credentials: 'same-origin', cache: 'no-store', redirect: 'error',
         headers, signal: controller.signal,
         ...(mutation ? {body: JSON.stringify(options.body)} : {}),
       });

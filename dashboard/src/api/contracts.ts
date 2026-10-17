@@ -1,5 +1,5 @@
 import { z } from 'zod';
-const timestamp = z.iso.datetime({offset: true});
+export const timestamp = z.iso.datetime({offset: true});
 
 export const grantSchema = z.object({
   action: z.string(), resource_kind: z.string(),

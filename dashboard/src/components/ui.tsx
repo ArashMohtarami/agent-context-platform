@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { useId, useRef } from 'react';
+import { createContext, useContext, useId, useRef } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
 
 const paths = {
@@ -50,9 +50,10 @@ export function ErrorState({children, onRetry}: {children: ReactNode; onRetry?: 
 export function Panel({title, description, children, className = ''}: {title: string; description?: string; children: ReactNode; className?: string}) {
   return <section className={`panel ${className}`}><div className="panel-heading"><h2>{title}</h2>{description && <p>{description}</p>}</div>{children}</section>;
 }
+const ModalDepth = createContext(0);
 export function Modal({title, description, open, onOpenChange, children, drawer = false}: {title: string; description: string; open: boolean; onOpenChange: (open: boolean) => void; children: ReactNode; drawer?: boolean}) {
-  const restore = useRef<HTMLElement | null>(null);
-  return <Dialog.Root open={open} onOpenChange={onOpenChange}><Dialog.Portal><Dialog.Overlay className="modal-overlay"/><Dialog.Content className={drawer ? 'modal drawer' : 'modal'} onOpenAutoFocus={() => {restore.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;}} onCloseAutoFocus={event => {if (restore.current?.isConnected) {event.preventDefault(); restore.current.focus();}}}><div className="modal-title"><Dialog.Title>{title}</Dialog.Title><Dialog.Close asChild><Button variant="quiet" aria-label="Close dialog"><Icon name="close"/></Button></Dialog.Close></div><Dialog.Description>{description}</Dialog.Description>{children}</Dialog.Content></Dialog.Portal></Dialog.Root>;
+  const restore = useRef<HTMLElement | null>(null); const depth = useContext(ModalDepth);
+  return <ModalDepth.Provider value={depth + 1}><Dialog.Root open={open} onOpenChange={onOpenChange}><Dialog.Portal><Dialog.Overlay className="modal-overlay" style={{zIndex: 50 + depth * 2}}/><Dialog.Content style={{zIndex: 51 + depth * 2}} className={drawer ? 'modal drawer' : 'modal'} onOpenAutoFocus={() => {restore.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;}} onCloseAutoFocus={event => {if (restore.current?.isConnected) {event.preventDefault(); restore.current.focus();}}}><div className="modal-title"><Dialog.Title>{title}</Dialog.Title><Dialog.Close asChild><Button variant="quiet" aria-label="Close dialog"><Icon name="close"/></Button></Dialog.Close></div><Dialog.Description>{description}</Dialog.Description>{children}</Dialog.Content></Dialog.Portal></Dialog.Root></ModalDepth.Provider>;
 }
 export function Table({label, headings, children}: {label: string; headings: string[]; children: ReactNode}) {
   return <div className="table-scroll" role="region" aria-label={label} tabIndex={0}><table><caption className="sr-only">{label}</caption><thead><tr>{headings.map(heading => <th key={heading} scope="col">{heading}</th>)}</tr></thead><tbody>{children}</tbody></table></div>;

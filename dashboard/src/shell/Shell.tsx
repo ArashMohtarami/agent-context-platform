@@ -31,8 +31,18 @@ function Shell() {
   const {me, organizations} = auth.state.data;
   const org = organizations.find(item => item.org_id === me.policy_context.org_id);
   const base = `/o/${encodeURIComponent(me.policy_context.org_id)}`;
-  const links = [{to: base + '/workspace', label: 'My workspace', icon: 'home' as const}, {to: base + '/my-access', label: 'My access', icon: 'key' as const}, {to: base + '/security', label: 'My security', icon: 'shield' as const}];
-  const pageName = links.find(link => location.pathname === link.to)?.label ?? 'Workspace';
+  const links: {to: string; label: string; icon: 'home' | 'key' | 'shield' | 'users' | 'link'}[] = [{to: base + '/workspace', label: 'My workspace', icon: 'home' as const}, {to: base + '/my-access', label: 'My access', icon: 'key' as const}, {to: base + '/security', label: 'My security', icon: 'shield' as const}];
+  const permits = (...actions: string[]) => auth.state.status === 'active' && auth.state.data.grants.some(g => g.selector !== 'none' && actions.includes(g.action));
+  if (permits('members:read')) links.push({to: base + '/people', label: 'People', icon: 'users'});
+  if (permits('teams:read')) links.push({to: base + '/teams', label: 'Teams', icon: 'users'});
+  if (permits('members:invite')) links.push({to: base + '/invitations', label: 'Invitations', icon: 'users'});
+  links.push({to: base + '/my-invitations', label: 'My invitations', icon: 'users'});
+  links.push({to: base + '/access-requests', label: 'Access requests', icon: 'key'});
+  if (permits('clients:read:own', 'clients:read:team', 'clients:read:org')) links.push({to: base + '/clients', label: 'Machine clients', icon: 'key'}, {to: base + '/service-accounts', label: 'Service accounts', icon: 'shield'});
+  if (permits('clients:manage:team', 'clients:manage:org')) links.push({to: base + '/agent-templates', label: 'Agent templates', icon: 'key'});
+  if (permits('projects:read')) links.push({to: base + '/bindings', label: 'Project bindings', icon: 'link'});
+  links.push({to: base + '/ownership', label: 'Ownership & recovery', icon: 'shield'});
+  const pageName = links.find(link => location.pathname === link.to)?.label ?? 'Management details';
   const navigation = <nav className="side-nav" aria-label="Organization navigation"><span className="nav-section">Workspace</span>{links.map(link => <NavLink key={link.to} to={link.to} onClick={() => setDrawer(false)}><Icon name={link.icon}/>{link.label}</NavLink>)}<div className="nav-foot"><Icon name="users"/><strong>Organization context</strong><p>Installation operations use the separate operator CLI.</p></div></nav>;
   async function change(selected: Organization) {
     setBusy(true); setError('');

@@ -8,6 +8,11 @@ import { MyAccess, Protected, Workspace } from './shell/Shell';
 import { MySecurity } from './security/MySecurity';
 import { Specimens } from './components/Specimens';
 import { Button, Notice, Skeleton } from './components/ui';
+import { People, Person, Teams, Team } from './people/People';
+import { AccessRequests, Invitations, MyInvitations, Ownership } from './access/Access';
+import { Clients, ClientDetail, ServiceAccounts } from './clients/Clients';
+import { Templates } from './clients/Templates';
+import { Bindings } from './clients/Bindings';
 import './styles.css';
 
 export function Entry() {
@@ -25,7 +30,7 @@ export function App() {
     <Route path="/" element={<Entry/>}/><Route path="/auth/complete" element={<Entry/>}/><Route path="/auth/error" element={<CallbackError/>}/>
     <Route path="/sign-in" element={<AuthScreen key="login"/>}/><Route path="/reset-request" element={<AuthScreen key="request" mode="reset-request"/>}/><Route path="/reset" element={<AuthScreen key="reset" mode="reset"/>}/><Route path="/invitation" element={<AuthScreen key="invite" mode="invite"/>}/><Route path="/verify" element={<AuthScreen key="verify" mode="verify"/>}/>
     <Route path="/specimens" element={<Specimens/>}/>
-    <Route path="/o/:orgId" element={<Protected/>}><Route path="workspace" element={<Workspace/>}/><Route path="my-access" element={<MyAccess/>}/><Route path="security" element={<MySecurity/>}/><Route path="*" element={<Entry/>}/></Route>
+    <Route path="/o/:orgId" element={<Protected/>}><Route path="workspace" element={<Workspace/>}/><Route path="my-access" element={<MyAccess/>}/><Route path="security" element={<MySecurity/>}/><Route path="people" element={<People/>}/><Route path="people/:userId" element={<Person/>}/><Route path="teams" element={<Teams/>}/><Route path="teams/:teamId" element={<Team/>}/><Route path="invitations" element={<Invitations/>}/><Route path="my-invitations" element={<MyInvitations/>}/><Route path="access-requests" element={<AccessRequests/>}/><Route path="ownership" element={<Ownership/>}/><Route path="clients" element={<Clients/>}/><Route path="clients/:clientId" element={<ClientDetail/>}/><Route path="service-accounts" element={<ServiceAccounts/>}/><Route path="agent-templates" element={<Templates/>}/><Route path="bindings" element={<Bindings/>}/><Route path="*" element={<Entry/>}/></Route>
     <Route path="*" element={<Entry/>}/>
   </Routes></>;
 }

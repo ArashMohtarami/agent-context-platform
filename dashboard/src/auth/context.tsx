@@ -13,7 +13,7 @@ interface Auth {
   state: State; api: SessionApi; generation: number;
   refresh: () => Promise<Bootstrap | undefined>;
   reconnect: () => Promise<void>;
-  act: <T>(path: string, schema: z.ZodType<T>, body: unknown) => Promise<T>;
+  act: <T>(path: string, schema: z.ZodType<T>, body: unknown, method?: 'POST' | 'PATCH' | 'PUT') => Promise<T>;
   read: <T>(path: string, schema: z.ZodType<T>, signal?: AbortSignal) => Promise<T>;
   accept: (result: SessionResult) => Promise<void>;
   switchOrganization: (target: Organization) => Promise<void>;
@@ -118,12 +118,12 @@ export function AuthProvider({children, client}: {children: ReactNode; client?: 
     return () => {bus.close(); channel.current = null;};
   }, [clear, initialize]);
 
-  const act = async <T,>(path: string, schema: z.ZodType<T>, body: unknown) => {
-    try {return await api.request(path, schema, {body});}
+  const act = async <T,>(path: string, schema: z.ZodType<T>, body: unknown, method: 'POST' | 'PATCH' | 'PUT' = 'POST') => {
+    try {return await api.request(path, schema, {body, method});}
     catch (error) {
       if (error instanceof ApiError) {
         if (error.csrf) {await api.initialize(); await refresh();}
-        else if (current.current.status === 'active' && (error.status === 401 || error.status === 409)) await refresh();
+        else if (current.current.status === 'active' && (error.status === 401 || error.status === 409)) {const updated = await refresh(); if (updated) publish({status: 'active', data: updated, message: errorText(error)});}
       }
       throw error;
     }

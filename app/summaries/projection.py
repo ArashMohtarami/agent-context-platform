@@ -46,6 +46,9 @@ GOVERNANCE_ACTIONS = frozenset(
         "human_management_root_approved",
         "managed_client_policy_approved",
         "team_created",
+        "machine_session_ended",
+        "project_binding_updated",
+        "project_binding_deleted",
     }
 )
 

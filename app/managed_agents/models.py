@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import AwareDatetime, Field, model_validator
+from pydantic import AwareDatetime, Field, field_validator, model_validator
 
 from app.identity.models import Input
 from app.models.agent import AgentClientType
@@ -74,9 +74,17 @@ class Revision(Input):
 class TemplatePut(Input):
     expected_revision: int = Field(ge=0)
     name: str = Field(min_length=1, max_length=500)
-    scopes: tuple[str, ...] = Field(max_length=32)
+    scopes: tuple[str, ...] = Field(min_length=1, max_length=32)
     status: Literal["active", "disabled"] = "active"
     rate_limit_profile: Identifier | None = None
+
+    @field_validator("scopes")
+    @classmethod
+    def known_scopes(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        from app.models.client_profile import ClientProfileDocument
+
+        ClientProfileDocument.validate_scopes(list(value))
+        return value
 
 
 class LegacyClaim(Input):

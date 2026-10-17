@@ -51,7 +51,7 @@ async def test_real_dashboard_browser(managed_agents_db):
     encoded = await h.local.passwords.hash(PASSWORD)
     factors = {}
     recoveries = {}
-    for user in ("member", "lead"):
+    for user in ("owner", "member", "lead", "other", "reviewer"):
         now = utc_now()
         await h.db.local_credentials.insert_one(
             {"_id": user, "user_id": user, "password_hash": encoded, "updated_at": now}
@@ -101,6 +101,48 @@ async def test_real_dashboard_browser(managed_agents_db):
             expires_at=utc_now() + timedelta(hours=1),
         ),
     )
+    if os.environ.get("V6_PHASE10_BROWSER") == "1":
+        from app.security.policy.models import Issue
+        from tests.v6_managed_agent_fixtures import g
+        from tests.v6_management_fixtures import team_grants
+
+        await h.governance.change("org-a", "owner", h.lead["_id"], 1, revoke=True)
+        own = tuple(
+            g(a, "member", ("member",))
+            for a in (
+                "credentials:issue:own",
+                "credentials:revoke:own",
+                "clients:read:own",
+                "clients:manage:own",
+            )
+        )
+        h.lead = await h.governance.issue(
+            "org-a",
+            "owner",
+            Issue(
+                subject_id="lead",
+                role="team_lead",
+                parent_id=h.root,
+                expected_parent_generation=3,
+                tuples=(
+                    *team_grants(),
+                    *(
+                        g(a, "team", ("alpha",))
+                        for a in (
+                            "clients:manage:team",
+                            "clients:read:team",
+                            "credentials:revoke:team",
+                        )
+                    ),
+                ),
+                ceiling=h.domain + own,
+                remaining_depth=1,
+                allowed_roles=("contributor",),
+                expires_at=utc_now() + timedelta(days=4),
+                team_id="alpha",
+                expected_team_generation=1,
+            ),
+        )
     # Snapshot all persisted fixture collections, including private identity rows,
     # to give each browser journey a fresh real database without a test HTTP API.
     names = await h.db.list_collection_names()

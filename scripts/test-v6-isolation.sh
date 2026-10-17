@@ -134,6 +134,10 @@ PY
         exit 0
     fi
 fi
+if [[ "${V6_MANAGEMENT_ADAPTERS_ONLY:-0}" == "1" ]]; then
+    "$python" -m pytest -q tests/integration/test_v6_management_adapters.py --junitxml="$report_dir/management-adapters.xml" "$@"
+    exit 0
+fi
 export V6_UNIT_EVIDENCE_XML="$report_dir/unit.xml"
 export V6_REAL_EVIDENCE_XML="$report_dir/real-rehearsal.xml"
 if [[ "${V6_IDENTITY_DEVELOPMENT_ONLY:-0}" == "1" ]]; then

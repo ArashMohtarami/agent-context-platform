@@ -22,7 +22,7 @@ export default async function setup() {
   await new Promise<void>((resolve, reject) => listener.close(error => error ? reject(error) : resolve()));
   const log = openSync(path.join(evidence, 'fixture.log'), 'w', 0o600);
   const child = spawn('bash', ['scripts/test-v6-isolation.sh'], {cwd: repository,
-    env: {...process.env, V6_TEST_MONGODB_MEMORY_LIMIT: '3g', V6_OIDC_TESTS: '1', V6_DASHBOARD_BROWSER_TESTS: '1', V6_BROWSER_SERVE_ONLY: '1', V6_BROWSER_TEST_ORIGIN: `https://127.0.0.1:${port}`, V6_REPORT_DIR: evidence},
+    env: {...process.env, V6_TEST_MONGODB_MEMORY_LIMIT: '3g', V6_OIDC_TESTS: '1', V6_DASHBOARD_BROWSER_TESTS: '1', V6_PHASE10_BROWSER: '1', V6_BROWSER_SERVE_ONLY: '1', V6_BROWSER_TEST_ORIGIN: `https://127.0.0.1:${port}`, V6_REPORT_DIR: evidence},
     stdio: ['ignore', log, log]});
   const stop = descriptor.replace(/\.[^.]+$/, '.stop');
   async function cleanup() {
