@@ -560,6 +560,11 @@ def _declared(route: Any) -> list[Any]:
 def test_the_routers_under_test_are_every_router_the_application_serves() -> None:
     # If a router is added to the app and not here, the coverage above silently
     # stops covering it.
+    from app.api.routes.human_management import router as human_management_router
+    from app.api.routes.local_identity import router as local_identity_router
+    from app.api.routes.managed_agents import router as managed_agents_router
+    from app.api.routes.management_policy import router as management_policy_router
+    from app.api.routes.sso_identity import router as sso_identity_router
     from app.main import create_app
 
     application = create_app.__wrapped__ if hasattr(create_app, "__wrapped__") else create_app
@@ -573,7 +578,16 @@ def test_the_routers_under_test_are_every_router_the_application_serves() -> Non
     # branches, while this table verifies every declarative route dependency.
     covered = {
         route.path
-        for router in (*ROUTERS, gateway_router, agent_activity_router)
+        for router in (
+            *ROUTERS,
+            gateway_router,
+            agent_activity_router,
+            local_identity_router,
+            sso_identity_router,
+            management_policy_router,
+            human_management_router,
+            managed_agents_router,
+        )
         for route in router.routes
     }
 

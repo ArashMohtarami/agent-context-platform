@@ -5,13 +5,13 @@ complete action/resource tuples within ONE immutable organization. This is not
 the later human membership/delegation policy API.
 """
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Awaitable, Callable, Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hashlib import sha256
 from json import dumps
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from app.security.tenant import TenantContextRequired, require_tenant
 
@@ -37,6 +37,23 @@ class TenantPolicy:
     grants: tuple[ResourceGrant, ...]
     client_id: str | None = None
     operator: bool = False
+    managed: bool = False
+    subject_kind: Literal["legacy", "human", "machine"] = "legacy"
+    revision: int = 0
+    subject_revision: int = 0
+    session_id: str | None = None
+    machine_key_id: str | None = None
+    sponsor_ids: tuple[str, ...] = ()
+    team_id: str | None = None
+    service_account_id: str | None = None
+    sponsorship_revision: int = 0
+    reviewer: bool = False
+    reviewer_grants: tuple[ResourceGrant, ...] = ()
+    engine: Any = field(default=None, repr=False, compare=False)
+    refresh: Callable[[], Awaitable[None]] | None = field(default=None, repr=False, compare=False)
+    transaction_check: Callable[[Any], Awaitable[None]] | None = field(
+        default=None, repr=False, compare=False
+    )
 
     def selector(self, action: str, kind: str) -> tuple[str, ...] | None:
         if self.operator:
@@ -64,6 +81,21 @@ class TenantPolicy:
             self.subject_id,
             self.client_id,
             self.operator,
+            self.managed,
+            self.subject_kind,
+            # A copied template or unrelated member's metadata is not a change
+            # to this machine's authority. Actual grant/sponsor generations are
+            # below; every operation still rechecks current policy and shares
+            # the live org anchor fence before persistence.
+            0 if self.subject_kind == "machine" else self.revision,
+            self.subject_revision,
+            self.machine_key_id,
+            self.sponsor_ids,
+            self.team_id,
+            self.service_account_id,
+            self.sponsorship_revision,
+            self.reviewer,
+            [(g.action, g.resource_kind, g.mode, g.ids) for g in self.reviewer_grants],
             [(g.action, g.resource_kind, g.mode, g.ids) for g in self.grants],
         )
         return sha256(dumps(material, separators=(",", ":")).encode()).hexdigest()
@@ -85,6 +117,10 @@ def policy_of(principal: Any) -> TenantPolicy:
     from app.security.tenant import TenantContext
 
     org_id = TenantContext(principal.org_id).org_id
+    if getattr(principal, "managed_policy", None) is not None:
+        if principal.managed_policy.org_id != org_id:
+            raise TenantContextRequired("policy and tenant context disagree")
+        return cast(TenantPolicy, principal.managed_policy)
     grants = tuple(
         ResourceGrant(
             scope, kind, "all_in_org" if ids is None else "include" if ids else "none", ids or ()
@@ -92,7 +128,13 @@ def policy_of(principal: Any) -> TenantPolicy:
         for scope in principal.scopes
         for kind, ids in (("project", principal.projects), ("creator_profile", principal.profiles))
     )
-    return TenantPolicy(org_id, principal.key_id, grants, principal.client_id)
+    return TenantPolicy(
+        org_id,
+        principal.key_id,
+        grants,
+        principal.client_id,
+        revision=getattr(principal, "legacy_policy_revision", 0),
+    )
 
 
 def bind_policy(policy: TenantPolicy) -> None:
@@ -131,7 +173,9 @@ def select_action(action: str) -> None:
     if (
         policy is not None
         and not policy.operator
-        and not any(g.action == action for g in policy.grants)
+        and not any(
+            g.action == action and (not policy.managed or g.mode != "none") for g in policy.grants
+        )
     ):
         raise TenantContextRequired("action is absent from the trusted grant")
     _action.set(action)
@@ -167,6 +211,10 @@ def policy_filter(collection: str) -> dict[str, object]:
     parts: list[dict[str, object]] = [{"org_id": tenant.org_id}]
     projects = policy.selector(action, "project")
     profiles = policy.selector(action, "creator_profile")
+    if policy.managed:
+        from app.security.policy.resources import resource_filter
+
+        return resource_filter(policy, action, collection)
     if projects is not None:
         if collection == "projects":
             parts.append({"project_id": {"$in": list(projects)}})
@@ -246,6 +294,10 @@ def policy_allows(document: Mapping[str, object], collection: str) -> bool:
     action = _action.get()
     if action is None:
         return False
+    if policy.managed:
+        from app.security.policy.resources import resource_allows
+
+        return resource_allows(policy, action, document, collection)
     projects = policy.selector(action, "project")
     profiles = policy.selector(action, "creator_profile")
     if projects is not None:

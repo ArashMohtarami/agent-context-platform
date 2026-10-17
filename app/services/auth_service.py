@@ -18,7 +18,7 @@ from app.models.agent import AgentClientDocument
 from app.models.api_key import ApiKeyDocument
 from app.models.common import utc_now
 from app.security.keys import MalformedKeyError, matches, parse
-from app.security.principal import AuthenticationError, Principal
+from app.security.principal import AuthenticationError, AuthorizationError, Principal
 from app.security.scopes import Scope, canonical
 from app.security.tenant import TenantContext, tenant_scope
 from app.security.tenant_policy import TenantPolicy, policy_scope
@@ -151,6 +151,12 @@ class AuthService:
             secret_reader = getattr(self._keys, "cursor_secret", None)
             if secret_reader is not None:
                 principal = replace(principal, cursor_secret=await secret_reader())
+            resolver = getattr(self._keys, "resolve_policy", None)
+            if resolver is not None:
+                try:
+                    principal = await resolver(principal)
+                except AuthorizationError:
+                    self._raise_refused("policy unavailable", presented.key_id, gateway=gateway)
             return principal
 
     def _raise_refused(

@@ -88,7 +88,7 @@ async def create_research_citation(
             evidence_excerpt=request.evidence_excerpt,
             relation=request.relation,
             created_by=principal.key_id if principal.authenticated else None,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except ResearchClaimNotFoundError as error:
         raise HTTPException(
@@ -126,7 +126,7 @@ async def get_claim_evidence(
         evidence = await service.get_claim_evidence(
             research_project_id=research_project_id,
             claim_id=claim_id,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except ResearchClaimNotFoundError as error:
         raise HTTPException(
@@ -168,7 +168,7 @@ async def build_evidence_packet(
             research_project_id=request.research_project_id,
             project_id=request.project_id,
             token_budget=request.token_budget,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except ResearchSearchUnavailableError as error:
         raise HTTPException(

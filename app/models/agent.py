@@ -148,6 +148,7 @@ class AgentClientDocument(MongoDocumentModel):
     # A profile is an onboarding template. Its scope policy is copied into
     # ``scopes`` at assignment time so a later profile edit cannot silently
     # widen an already-issued client credential.
+    sponsorship_id: Identifier | None = Field(default=None, frozen=True)
     profile_id: Identifier | None = None
     scopes: list[str] = Field(default_factory=list, max_length=MAX_AGENT_SCOPES)
     project_mode: Literal["none", "include", "all_in_org"] | None = None
@@ -196,6 +197,7 @@ class AgentClientDocument(MongoDocumentModel):
 class AgentSessionDocument(MongoDocumentModel):
     """Lightweight session metadata; intentionally never a conversation store."""
 
+    policy_hash: str | None = None
     session_id: Identifier
     client_id: Identifier
     client_type: AgentClientType
@@ -288,6 +290,10 @@ class ProjectBindingDocument(MongoDocumentModel):
 class AgentActivityDocument(MongoDocumentModel):
     """Append-only operational metadata, deliberately excluding prompt bodies."""
 
+    sponsor_id: Identifier | None = None
+    sponsor_team_id: Identifier | None = None
+    service_account_id: Identifier | None = None
+    sponsorship_revision: int | None = None
     event_id: Identifier
     client_id: Identifier
     client_type: AgentClientType

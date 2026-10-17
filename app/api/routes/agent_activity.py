@@ -68,7 +68,7 @@ async def list_activity(
         client_id=effective_client_id,
         session_id=session_id,
         project_id=project_id,
-        project_ids=None if project_id is not None else principal.projects,
+        project_ids=None if project_id is not None else principal.project_selector(),
         tool=tool,
         status=event_status,
         limit=limit,

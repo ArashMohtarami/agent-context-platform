@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import PyMongoError
 
@@ -24,7 +25,11 @@ from app.api.routes.context import router as context_router
 from app.api.routes.creator import router as creator_router
 from app.api.routes.gateway import router as gateway_router
 from app.api.routes.health import router as health_router
+from app.api.routes.human_management import router as human_management_router
 from app.api.routes.knowledge_candidates import router as knowledge_candidates_router
+from app.api.routes.local_identity import router as local_identity_router
+from app.api.routes.managed_agents import router as managed_agents_router
+from app.api.routes.management_policy import router as management_policy_router
 from app.api.routes.memory import router as memory_router
 from app.api.routes.metrics import router as metrics_router
 from app.api.routes.project_bindings import router as project_bindings_router
@@ -39,6 +44,7 @@ from app.api.routes.revalidation import router as revalidation_router
 from app.api.routes.search import router as search_router
 from app.api.routes.skill_update_proposals import router as skill_update_proposals_router
 from app.api.routes.skills import router as skills_router
+from app.api.routes.sso_identity import router as sso_identity_router
 from app.core.config import Settings, get_settings
 from app.core.logging import RequestLoggingMiddleware, configure_logging
 from app.db.client import MongoDBClient
@@ -52,6 +58,10 @@ from app.db.research_indexes import ensure_research_text_indexes, ensure_researc
 from app.db.text_indexes import ensure_text_indexes
 from app.db.vector_indexes import ensure_vector_indexes
 from app.embeddings.errors import EmbeddingError
+from app.identity.browser import BrowserBoundaryMiddleware
+from app.identity.crypto import AuthBusy, AuthRejected
+from app.identity.factory import build_local_identity
+from app.identity.http_errors import auth_busy, auth_rejected, private_validation_error
 from app.mcp.gateway_controls import McpGatewayControls
 from app.mcp.remote_http import RemoteMcpGateway, add_remote_mcp_route
 from app.mcp.remote_security import RemoteMcpTransportPolicy
@@ -66,6 +76,7 @@ from app.repositories.audit_repository import MongoAuditRepository
 from app.repositories.client_profile_repository import MongoClientProfileRepository
 from app.repositories.credential_repository import MongoCredentialResolver
 from app.repositories.idempotency_repository import MongoGatewayIdempotencyRepository
+from app.security.policy.evaluation import PolicyConflict, PolicyDenied
 from app.security.tenant_maintenance import TenantMaintenanceMiddleware
 from app.services.agent_activity_service import AgentActivityService
 from app.services.agent_client_service import AgentClientService
@@ -183,7 +194,15 @@ def start_authentication(
     """
     if not settings.api_auth_enabled:
         raise RuntimeError("tenant domain traffic requires authentication and organization context")
-    return AuthService(MongoCredentialResolver(database), MongoAgentClientRepository(database))
+    return AuthService(
+        MongoCredentialResolver(
+            database,
+            management_policy=settings.v6_management_policy,
+            human_management=getattr(settings, "v6_human_management", False),
+            managed_agents=getattr(settings, "v6_managed_agents", False),
+        ),
+        MongoAgentClientRepository(database),
+    )
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -204,7 +223,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             if not resolved_settings.api_auth_enabled:
                 raise RuntimeError("authentication-disabled tenant startup is refused")
             await initialize_database(
-                mongodb.database, tenant_foundation=True, tenant_isolation=True
+                mongodb.database,
+                tenant_foundation=True,
+                tenant_isolation=True,
+                local_identity=resolved_settings.v6_local_identity,
+                sso=resolved_settings.v6_sso,
+                management_policy=resolved_settings.v6_management_policy,
+                human_management=resolved_settings.v6_human_management,
+                managed_agents=resolved_settings.v6_managed_agents,
             )
         elif resolved_settings.v6_tenant_foundation:
             await initialize_database(mongodb.database, tenant_foundation=True)
@@ -218,6 +244,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.mongodb = mongodb
         application.state.embeddings = embeddings
         application.state.auth = start_authentication(resolved_settings, mongodb.database)
+        application.state.local_identity = (
+            build_local_identity(resolved_settings, mongodb.database)
+            if resolved_settings.v6_local_identity
+            else None
+        )
         application.state.agent_client_service = AgentClientService(
             MongoAgentClientRepository(mongodb.database),
             ApiKeyService(MongoApiKeyRepository(mongodb.database)),
@@ -249,6 +280,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ):
                 yield
         finally:
+            if application.state.local_identity is not None:
+                application.state.local_identity.passwords.close()
             if embeddings is not None:
                 await embeddings.close()
             await mongodb.close()
@@ -262,12 +295,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # the security headers nor the shape the rest of the API uses.
     application.add_exception_handler(Exception, unhandled_error)
     application.add_exception_handler(RevisionConflict, revision_conflict_handler)
+    from app.identity.http_errors import policy_denied
+
+    application.add_exception_handler(PolicyDenied, policy_denied)
+    application.add_exception_handler(PolicyConflict, policy_denied)
+    application.add_exception_handler(AuthRejected, auth_rejected)
+    application.add_exception_handler(AuthBusy, auth_busy)
+    application.add_exception_handler(RequestValidationError, private_validation_error)
     # More specific than the handler above, and registered after it so it wins:
     # a database that is down is an outage to report as one, not a defect.
     application.add_exception_handler(PyMongoError, unavailable_dependency)
     # Outermost first: a body too large is refused before anything reads it,
     # and every answer carries the security headers whatever produced it.
     application.add_middleware(TenantMaintenanceMiddleware)
+    application.add_middleware(BrowserBoundaryMiddleware)
     application.add_middleware(SecurityHeadersMiddleware)
     application.add_middleware(
         RequestSizeLimitMiddleware,
@@ -276,6 +317,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.add_middleware(RequestLoggingMiddleware)
     application.include_router(health_router)
+    application.include_router(local_identity_router)
+    application.include_router(sso_identity_router)
+    application.include_router(management_policy_router)
+    application.include_router(human_management_router)
+    application.include_router(managed_agents_router)
     application.include_router(metrics_router)
     application.include_router(skills_router)
     application.include_router(projects_router)

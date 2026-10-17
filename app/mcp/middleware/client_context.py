@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from app.models.agent import AgentClientType
 from app.models.common import validate_identifier
+from app.security.policy.models import Grant
 from app.security.scopes import Scope, parse_scopes
 
 _current: ContextVar["ClientRequestContext | None"] = ContextVar("mcp_client_context", default=None)
@@ -30,6 +31,9 @@ class ClientRequestContext:
     scopes: tuple[Scope, ...]
     allowed_project_ids: tuple[str, ...] | None
     session_id: str | None = None
+    action_resources: tuple[Grant, ...] | None = None
+    subject_id: str | None = None
+    policy_context: str | None = None
 
     def __post_init__(self) -> None:
         validate_identifier(self.org_id)
@@ -95,6 +99,7 @@ class ClientRequestContext:
             projects = tuple(raw_projects)
         else:
             raise ValueError("gateway identity returned invalid project grants")
+        raw_resources = identity.get("action_resources")
         return cls(
             org_id=org_id,
             key_id=key_id,
@@ -105,6 +110,15 @@ class ClientRequestContext:
             scopes=parse_scopes(raw_scopes),
             allowed_project_ids=projects,
             session_id=session_id,
+            subject_id=str(identity["subject_id"])
+            if isinstance(identity.get("subject_id"), str)
+            else None,
+            policy_context=str(identity["policy_context"])
+            if isinstance(identity.get("policy_context"), str)
+            else None,
+            action_resources=tuple(Grant.model_validate(g) for g in raw_resources)
+            if isinstance(raw_resources, list)
+            else None,
         )
 
     def allows_scope(self, scope: Scope) -> bool:

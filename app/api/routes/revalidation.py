@@ -63,7 +63,7 @@ async def list_stale_knowledge(
     await _authorize_research_project(research_project_id, project_service, principal, request)
     result = await service.list_stale_knowledge(
         research_project_id=research_project_id,
-        allowed_project_ids=principal.projects,
+        allowed_project_ids=principal.project_selector(),
         as_of=as_of,
         limit=limit,
         cursor=cursor,
@@ -102,7 +102,7 @@ async def propose_revalidation(
             research_project_id=payload.research_project_id,
             candidate_id=candidate_id,
             created_by=principal.key_id,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
             as_of=payload.as_of,
         )
     except KnowledgeCandidateNotFoundError as error:

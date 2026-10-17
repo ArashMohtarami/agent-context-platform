@@ -5,11 +5,15 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 annotated-doc==0.0.5
 annotated-types==0.8.0
+argon2-cffi==25.1.0
+argon2-cffi-bindings==26.1.0
 anyio==4.15.1
 attrs==26.1.0
 certifi==2026.7.22
+cffi==2.1.1
 click==8.5.0
 cloudpickle==3.1.2
+cryptography==50.0.2
 dnspython==2.8.0
 fastapi==0.116.1
 filelock==3.32.6
@@ -38,8 +42,10 @@ packaging==26.3
 pydantic-core==2.46.5
 pydantic-settings==2.10.1
 pydantic==2.13.5
+pycparser==3.11
 Pygments==2.21.0
 pymongo==4.14.1
+PyOTP==2.10.0
 python-dotenv==1.2.3
 python-multipart==0.0.32
 PyYAML==6.0.2
@@ -68,3 +74,7 @@ uvicorn==0.35.0
 uvloop==0.22.1
 watchfiles==1.2.0
 websockets==17.1
+
+# Approved OIDC client and JOSE validation (BSD-3-Clause).
+Authlib==1.9.1
+joserfc==1.7.5

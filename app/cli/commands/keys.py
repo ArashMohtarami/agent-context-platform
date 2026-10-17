@@ -39,6 +39,10 @@ _EVERY_PROJECT = "all"
 
 async def create(arguments: argparse.Namespace, settings: Settings) -> Result:
     """Issue one key and print it exactly once."""
+    if settings.v6_management_policy:
+        raise UsageError(
+            "managed credential issuance requires Phase 7; review an adopted key instead"
+        )
     async with _platform(settings) as (keys, audit):
         try:
             issued = await keys.create_key(
@@ -161,7 +165,13 @@ async def _platform(settings: Settings) -> AsyncIterator[tuple[ApiKeyService, Au
             hint="keys are issued at the database, so it has to be running",
         ) from error
     try:
-        await check_operator_context(mongodb.database, enabled=settings.v6_tenant_foundation)
+        await check_operator_context(
+            mongodb.database,
+            enabled=settings.v6_tenant_foundation,
+            management_policy=settings.v6_management_policy,
+            human_management=settings.v6_human_management,
+            managed_agents=settings.v6_managed_agents,
+        )
         audit = MongoAuditRepository(mongodb.database) if settings.audit_log_enabled else None
         yield ApiKeyService(MongoApiKeyRepository(mongodb.database)), AuditService(audit)
     finally:

@@ -79,7 +79,7 @@ async def list_bindings(
         await authorize_project(request, principal, project_id)
     page = await service.list_bindings(
         project_id=project_id,
-        allowed_project_ids=None if project_id is not None else principal.projects,
+        allowed_project_ids=None if project_id is not None else principal.project_selector(),
         binding_type=binding_type,
         limit=limit,
         cursor=cursor,
@@ -108,7 +108,7 @@ async def resolve_project(
         if body.workspace_alias is not None:
             payload["workspace_hint"] = body.workspace_alias
         resolution = await service.resolve_project(
-            **payload, allowed_project_ids=principal.projects
+            **payload, allowed_project_ids=principal.project_selector()
         )
     except ValueError as error:
         raise HTTPException(

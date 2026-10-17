@@ -85,3 +85,14 @@ def decode_chunk_cursor(cursor: str, scope: str) -> tuple[int, ObjectId]:
         return index, ObjectId(str(value["id"]))
     except (ValueError, TypeError, KeyError) as error:
         raise InvalidCursorError("cursor is invalid for this tenant and query") from error
+
+
+def encode_directory_cursor(identifier: str, scope: str) -> str:
+    return _seal({"v": 2, "id": identifier, "binding": scope})
+
+
+def decode_directory_cursor(cursor: str, scope: str) -> str:
+    value = _unseal(cursor, scope).get("id")
+    if not isinstance(value, str) or not 1 <= len(value) <= 128:
+        raise InvalidCursorError("cursor is invalid for this tenant and query")
+    return value

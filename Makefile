@@ -1,6 +1,11 @@
 .PHONY: backup backups-verify check compose-config docker-wheels down format generate-secrets import-skills lint load-example reindex logs-mongot test test-embeddings test-integration test-integration-timings typecheck up verify-embeddings verify-mongodb verify-mongot
 
 .PHONY: release release-check website
+.PHONY: graphify graphify-setup
+
+# Optional developer tooling stays separate from the platform environment.
+GRAPHIFY_PYTHON ?= python3
+GRAPHIFY_VERSION := 0.9.91
 
 release-check:
 	python scripts/prepare_open_source_release.py --check
@@ -79,3 +84,11 @@ verify-mongot:
 
 logs-mongot:
 	docker compose logs --follow mongot
+
+graphify-setup:
+	$(GRAPHIFY_PYTHON) -m venv .graphify/venv
+	.graphify/venv/bin/python -m pip install "graphifyy==$(GRAPHIFY_VERSION)"
+
+graphify:
+	GRAPHIFY_OUT=graphify-out .graphify/venv/bin/graphify extract . --code-only
+	GRAPHIFY_OUT=graphify-out .graphify/venv/bin/graphify cluster-only . --no-label

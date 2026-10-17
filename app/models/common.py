@@ -183,6 +183,11 @@ class MongoDocumentModel(BaseModel):
     ) -> dict[str, object]:
         result: dict[str, object] = handler(self)
         for key in (
+            "sponsor_id",
+            "sponsor_team_id",
+            "service_account_id",
+            "sponsorship_revision",
+            "sponsorship_id",
             "project_mode",
             "profile_mode",
             "initiating_authority",

@@ -27,10 +27,18 @@ def actor_from_principal(principal: Principal) -> ActorProvenance:
     if principal.client_id is not None or principal.client_type is not None:
         if principal.client_id is None or principal.client_type is None:
             raise ValueError("principal has incomplete client identity")
+        policy = principal.managed_policy
         return ActorProvenance(
             actor_type=ActorType.AGENT,
             client_id=principal.client_id,
             client_type=AgentClientType(principal.client_type),
+            org_id=principal.org_id if policy and policy.subject_kind == "machine" else None,
+            sponsor_id=policy.subject_id if policy and policy.subject_kind == "machine" else None,
+            sponsor_team_id=policy.team_id if policy else None,
+            service_account_id=policy.service_account_id if policy else None,
+            sponsorship_revision=policy.sponsorship_revision
+            if policy and policy.subject_kind == "machine"
+            else None,
         )
     return ActorProvenance(
         actor_type=ActorType.HUMAN if principal.authenticated else ActorType.SYSTEM
@@ -47,6 +55,21 @@ def set_principal(principal: Principal) -> ActorProvenance:
 def current() -> ActorProvenance:
     """Return the request actor, falling back to explicit system provenance."""
     return _current.get() or system_actor()
+
+
+def set_human(user_id: str, org_id: str, assurance: str, method: str = "local") -> ActorProvenance:
+    """Bind a verified browser user without manufacturing a machine key/client."""
+    from typing import Literal, cast
+
+    actor = ActorProvenance(
+        actor_type=ActorType.HUMAN,
+        user_id=user_id,
+        org_id=org_id,
+        auth_method=cast(Literal["local", "oidc"], method),
+        assurance=cast(Literal["password", "mfa", "authenticated"], assurance),
+    )
+    _current.set(actor)
+    return actor
 
 
 def attribute[TDocument: MongoDocumentModel](document: TDocument) -> TDocument:

@@ -98,6 +98,7 @@ def test_all_served_routes_have_authentication_or_explicit_gateway_preflight():
 
     from app.api.routes.metrics import installation_operator
     from app.api.security import current_principal
+    from app.identity.browser import current_browser, identity_boundary, preauth
     from app.main import create_app
 
     def dependencies(dependant):
@@ -120,7 +121,17 @@ def test_all_served_routes_have_authentication_or_explicit_gateway_preflight():
     for route in create_app().routes:
         if not isinstance(route, APIRoute):
             continue
-        if route.path.startswith("/api/v4/gateway"):
+        if route.path.startswith("/api/v6/"):
+            boundary = dependencies(route.dependant)
+            assert identity_boundary in boundary, route.path
+            if route.path in {"/api/v6/auth/oidc/callback", "/api/v6/auth/oidc/logged-out"}:
+                from app.api.routes.sso_identity import sso_boundary
+
+                assert sso_boundary in boundary, route.path
+                assert route.methods == {"GET"}
+            elif route.path != "/api/v6/auth/csrf":
+                assert current_browser in boundary or preauth in boundary, route.path
+        elif route.path.startswith("/api/v4/gateway"):
             assert route.name in gateway
             seen.add(route.name)
         elif route.path.startswith("/api"):

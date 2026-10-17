@@ -6,7 +6,12 @@ import pytest
 
 from app.core.config import Settings
 
-pytest_plugins = ("v6_isolation_fixtures",)
+pytest_plugins = (
+    "v6_isolation_fixtures",
+    "v6_oidc_fixtures",
+    "v6_management_fixtures",
+    "v6_managed_agent_fixtures",
+)
 
 
 @pytest.fixture

@@ -107,7 +107,7 @@ async def create_skill_update_proposal(
             source_citation_ids=payload.source_citation_ids,
             reason=payload.reason,
             created_by=principal.key_id,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except (ResearchProjectNotFoundError, SkillUpdateProposalSkillNotFoundError) as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
@@ -143,7 +143,7 @@ async def list_skill_update_proposals(
         research_project_id=research_project_id,
         status=status_filter,
         skill_id=skill_id,
-        allowed_project_ids=principal.projects,
+        allowed_project_ids=principal.project_selector(),
         limit=limit,
         cursor=cursor,
     )
@@ -172,7 +172,7 @@ async def export_skill_update_proposal_patch(
         proposal = await service.export_patch(
             research_project_id=research_project_id,
             proposal_id=proposal_id,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except SkillUpdateProposalNotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
@@ -198,7 +198,7 @@ async def get_skill_update_proposal(
         proposal = await service.get_proposal(
             research_project_id=research_project_id,
             proposal_id=proposal_id,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except SkillUpdateProposalNotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error

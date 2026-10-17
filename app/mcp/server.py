@@ -225,6 +225,11 @@ async def _run(
             for related_project_id in related_project_ids:
                 authorization.require_project(related_project_id)
         authorization.require_profile(profile_id)
+        if isinstance(authorization, GatewayAuthorization):
+            for field, kind in (("skill_id", "skill"), ("research_project_id", "research_project")):
+                identifier = getattr(parsed, field, None)
+                if isinstance(identifier, str):
+                    authorization.require_resource(kind, identifier)
         correlation.annotate(project_id=project_id)
         client_context = current_client_context()
 

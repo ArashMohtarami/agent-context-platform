@@ -122,7 +122,7 @@ async def create_knowledge_candidate(
             freshness_class=payload.freshness_class,
             review_after=payload.review_after,
             created_by=principal.key_id,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except CandidateTargetProjectNotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
@@ -158,7 +158,7 @@ async def list_knowledge_candidates(
         research_project_id=research_project_id,
         status=status_filter,
         target_project_id=target_project_id,
-        allowed_project_ids=principal.projects,
+        allowed_project_ids=principal.project_selector(),
         limit=limit,
         cursor=cursor,
     )
@@ -199,7 +199,7 @@ async def promote_knowledge_candidate(
         current = await service.get_candidate(
             research_project_id=payload.research_project_id,
             candidate_id=candidate_id,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except KnowledgeCandidateNotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
@@ -217,7 +217,7 @@ async def promote_knowledge_candidate(
             candidate_id=candidate_id,
             expected_revision=payload.expected_revision,
             reviewer=principal.key_id,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
             supersedes_context_id=payload.supersedes_context_id,
         )
     except CandidatePromotionStateError as error:
@@ -260,7 +260,7 @@ async def _review(
         current = await service.get_candidate(
             research_project_id=research_project_id,
             candidate_id=candidate_id,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except KnowledgeCandidateNotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
@@ -273,7 +273,7 @@ async def _review(
             decision=decision,
             reviewer=principal.key_id,
             reason=reason,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except CandidateReviewStateError as error:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error

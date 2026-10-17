@@ -98,7 +98,7 @@ async def create_research_note(
             source_refs=request.source_refs,
             status=request.status,
             created_by=principal.key_id if principal.authenticated else None,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except ResearchSourceReferenceNotFoundError as error:
         raise HTTPException(
@@ -139,7 +139,7 @@ async def search_research_notes(
             query=request.query,
             phrase=request.phrase,
             limit=request.limit,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except ResearchProjectNotFoundError as error:
         raise HTTPException(
@@ -202,7 +202,7 @@ async def update_research_note(
             note_id=note_id,
             expected_revision=request.expected_revision,
             changes=changes,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except ResearchSourceReferenceNotFoundError as error:
         raise HTTPException(
@@ -249,7 +249,7 @@ async def create_research_claim(
             supporting_citation_ids=request.supporting_citations,
             contradicting_citation_ids=request.contradicting_citations,
             created_by=principal.key_id if principal.authenticated else None,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except ResearchCitationNotFoundError as error:
         raise HTTPException(
@@ -281,7 +281,7 @@ async def list_research_claims(
     page = await service.list_claims(
         research_project_id=research_project_id,
         status=status_filter,
-        allowed_project_ids=principal.projects,
+        allowed_project_ids=principal.project_selector(),
         limit=limit,
         cursor=cursor,
     )
@@ -364,7 +364,7 @@ async def update_research_claim(
             claim_id=claim_id,
             expected_revision=request.expected_revision,
             changes=changes,
-            allowed_project_ids=principal.projects,
+            allowed_project_ids=principal.project_selector(),
         )
     except ResearchCitationNotFoundError as error:
         raise HTTPException(

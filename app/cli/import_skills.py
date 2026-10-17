@@ -80,11 +80,22 @@ async def import_skills(
     mongodb = MongoDBClient(settings)
     await mongodb.connect()
     try:
-        await check_operator_context(mongodb.database, enabled=settings.v6_tenant_foundation)
+        await check_operator_context(
+            mongodb.database,
+            enabled=settings.v6_tenant_foundation,
+            management_policy=settings.v6_management_policy,
+            human_management=settings.v6_human_management,
+            managed_agents=settings.v6_managed_agents,
+        )
         await initialize_database(
             mongodb.database,
             tenant_foundation=settings.v6_tenant_foundation or current_tenant() is not None,
             tenant_isolation=settings.v6_tenant_isolation,
+            local_identity=settings.v6_local_identity,
+            sso=settings.v6_sso,
+            management_policy=settings.v6_management_policy,
+            human_management=settings.v6_human_management,
+            managed_agents=settings.v6_managed_agents,
         )
         await ensure_text_indexes(mongodb.database)
         if embedding_service is not None:

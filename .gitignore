@@ -1,6 +1,9 @@
 .env*
 !.env.example
 .venv/
+# Local Graphify installation, extraction cache, and generated code graphs.
+/.graphify/
+/graphify-out/
 examples/django-async/demo.sqlite3
 __pycache__/
 .mypy_cache/

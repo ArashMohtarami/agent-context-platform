@@ -322,6 +322,9 @@ class KnowledgeCandidateService:
             candidate_id=candidate_id,
             allowed_project_ids=allowed_project_ids,
         )
+        from app.security.policy.reviews import require_review
+
+        require_review(candidate.model_dump(), "knowledge_candidates", "research:approve")
         if candidate.revision != expected_revision:
             raise ConcurrencyConflictError("knowledge candidate changed after it was read")
         if candidate.status is not CandidateState.PENDING_REVIEW:
