@@ -257,16 +257,48 @@ class PolicyEngine:
         change: Row | None = None,
     ) -> None:
         event_id = "gov_" + uuid4().hex
-        event = {
+        event: Row = {
             "_id": event_id,
             "org_id": org_id,
             "actor_id": actor_id,
             "action": action,
             "target_id": target_id,
             "approval_reference": approval,
-            "change": change or {},
+            "change": dict(change or {}),
             "created_at": utc_now(),
         }
+        if self.managed_agents:
+            # New attribution is captured in the committing transaction. Never
+            # reconstruct historical team labels by joining today's directory.
+            member = await self.store.find(
+                "organization_memberships",
+                {"org_id": org_id, "user_id": actor_id, "status": "active"},
+                tx,
+            )
+            links = (
+                await self.store.list(
+                    "team_memberships",
+                    {"org_id": org_id, "user_id": actor_id, "status": "active"},
+                    tx,
+                )
+                if member
+                else []
+            )
+            team = (
+                await self.store.find(
+                    "teams",
+                    {"org_id": org_id, "team_id": links[0]["team_id"], "status": "active"},
+                    tx,
+                )
+                if len(links) == 1
+                else None
+            )
+            event["change"]["_event_v1"] = {
+                "verified": bool(member and member.get("verified_at"))
+                or actor_id == "installation_operator",
+                "actor_kind": "operator" if actor_id == "installation_operator" else "human",
+                "team_id": team["team_id"] if team else None,
+            }
         await self.store.insert("governance_events", event, tx)
         await self.store.insert(
             "governance_outbox",

@@ -70,6 +70,13 @@ fresh_stack() {
 }
 
 start_stack
+if [[ "${V6_SUMMARIES_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
+    for target in dashboard_aggregation report_revocation; do
+        "$python" -m pytest -q "tests/integration/test_v6_${target}.py" --junitxml="$report_dir/${target}.xml" "$@"
+        fresh_stack
+    done
+    exit 0
+fi
 if [[ "${V6_MANAGED_AGENTS_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
     for target in managed_client_revocation credential_delivery service_account_reviews; do
         "$python" -m pytest -q "tests/integration/test_v6_${target}.py" --junitxml="$report_dir/${target}.xml" "$@"
@@ -169,3 +176,9 @@ if [[ "${V6_MANAGED_AGENTS_TESTS:-0}" == "1" ]]; then
     done
 fi
 printf 'V6 isolation reports: %s\n' "$report_dir"
+if [[ "${V6_SUMMARIES_TESTS:-0}" == "1" ]]; then
+    for target in dashboard_aggregation report_revocation; do
+        fresh_stack
+        "$python" -m pytest -q "tests/integration/test_v6_${target}.py" --junitxml="$report_dir/${target}.xml" "$@"
+    done
+fi

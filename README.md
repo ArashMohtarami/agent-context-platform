@@ -43,6 +43,8 @@ disabled by default. Human sessions start without corpus assignments. V6 Phase 4
 organization switching](docs/sso-identity.md), also disabled by default.
 V6 Phase 5 optionally adds [coupled grants and bounded delegation](docs/management-policy.md),
 with transactional governance audit and shared policy fencing.
+After verified human and sponsored-machine management, V6 Phase 8 adds
+[authorized event summaries and expiring CSV reports](docs/authorized-summaries.md).
 Management/dashboard UI remains unavailable.
 The workflows below assume completed setup and organization-bound credentials.
 Provisioning, import, and administrative commands require `--org-id`; human

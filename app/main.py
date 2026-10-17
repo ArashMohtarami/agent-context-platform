@@ -45,6 +45,7 @@ from app.api.routes.search import router as search_router
 from app.api.routes.skill_update_proposals import router as skill_update_proposals_router
 from app.api.routes.skills import router as skills_router
 from app.api.routes.sso_identity import router as sso_identity_router
+from app.api.routes.summaries import router as summaries_router
 from app.core.config import Settings, get_settings
 from app.core.logging import RequestLoggingMiddleware, configure_logging
 from app.db.client import MongoDBClient
@@ -343,6 +344,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(agents_router)
     application.include_router(client_profiles_router)
     application.include_router(agent_activity_router)
+    application.include_router(summaries_router)
     application.include_router(gateway_router)
     # Streamable HTTP is the same low-level MCP server as stdio.  There is no
     # Claude-specific endpoint or backend: both transports share one tool

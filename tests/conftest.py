@@ -11,6 +11,7 @@ pytest_plugins = (
     "v6_oidc_fixtures",
     "v6_management_fixtures",
     "v6_managed_agent_fixtures",
+    "v6_summary_fixtures",
 )
 
 

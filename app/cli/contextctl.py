@@ -43,6 +43,7 @@ from app.cli.commands import (
     skill,
     skills,
     source,
+    summaries,
 )
 from app.cli.config import CliSettings
 from app.cli.errors import EXIT_FAILED, EXIT_OK, EXIT_USAGE, CliError, UsageError
@@ -113,6 +114,7 @@ def build_parser() -> argparse.ArgumentParser:
         projects,
         research,
         source,
+        summaries,
         note,
         claim,
         candidate,
