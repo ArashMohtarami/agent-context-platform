@@ -48,11 +48,13 @@ After verified human and sponsored-machine management, V6 Phase 8 adds
 V6 Phase 9 adds the [professional console foundation](docs/dashboard-foundation.md)
 for sign-in, organization switching, effective access and My security. Its
 [frontend source and verification scripts](dashboard/README.md) live in `dashboard/`;
-serving it requires explicit activation. Team/content management screens belong
-to later phases.
+serving it requires explicit activation. Phase 10 adds
+[management workflows](docs/dashboard-management.md), Phase 11 adds the
+[knowledge workspace](docs/dashboard-knowledge.md), and Phase 12 adds the
+[evidence-backed research console](docs/dashboard-research.md).
 The workflows below assume completed setup and organization-bound credentials.
 Provisioning, import, and administrative commands require `--org-id`; human
-management screens remain outside this foundation.
+management uses verified human sessions and explicit resource assignments.
 
 ## Quick start
 

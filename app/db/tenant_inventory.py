@@ -335,7 +335,7 @@ def references(collection: str, document: Mapping[str, object]) -> Iterator[Refe
                         "memories"
                         if target == "memory"
                         else "project_context"
-                        if target == "project_context"
+                        if target in {"project_context", "architecture_decision"}
                         else None
                     )
                     query = {

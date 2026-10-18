@@ -232,6 +232,14 @@ async def test_real_dashboard_browser(managed_agents_db):
                             path.unlink()
                         for name, contents in mail_snapshot.items():
                             (mail_root / name).write_bytes(contents)
+                    elif action == "research":
+                        from tests.v6_research_console_fixtures import prepare_research
+
+                        result = await prepare_research(h)
+                    elif action == "research-revoke":
+                        await h.db.browser_sessions.update_many(
+                            {"user_id": "member"}, {"$set": {"revoked": True}}
+                        )
                     elif action == "knowledge":
                         from tests.v6_knowledge_fixtures import prepare_knowledge
 

@@ -567,6 +567,7 @@ def test_the_routers_under_test_are_every_router_the_application_serves() -> Non
     from app.api.routes.managed_agents import router as managed_agents_router
     from app.api.routes.management_adapters import router as management_adapters_router
     from app.api.routes.management_policy import router as management_policy_router
+    from app.api.routes.research_console import router as research_console_router
     from app.api.routes.sso_identity import router as sso_identity_router
     from app.api.routes.summaries import router as summaries_router
     from app.main import create_app
@@ -593,6 +594,7 @@ def test_the_routers_under_test_are_every_router_the_application_serves() -> Non
             console_router,
             management_adapters_router,
             knowledge_router,
+            research_console_router,
             managed_agents_router,
             summaries_router,
         )

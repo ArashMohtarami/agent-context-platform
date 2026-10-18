@@ -39,6 +39,7 @@ from app.api.routes.project_bindings import router as project_bindings_router
 from app.api.routes.projects import router as projects_router
 from app.api.routes.research import router as research_router
 from app.api.routes.research_briefs import router as research_briefs_router
+from app.api.routes.research_console import router as research_console_router
 from app.api.routes.research_evidence import router as research_evidence_router
 from app.api.routes.research_notes_claims import router as research_notes_claims_router
 from app.api.routes.research_search import router as research_search_router
@@ -336,6 +337,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(creator_router)
     application.include_router(content_router)
     application.include_router(research_router)
+    application.include_router(research_console_router)
     application.include_router(knowledge_candidates_router)
     application.include_router(skill_update_proposals_router)
     application.include_router(research_sources_router)

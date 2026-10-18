@@ -11,6 +11,7 @@ from app.api.routes.console import enabled
 from app.db.errors import SearchUnavailableError
 from app.embeddings.errors import EmbeddingError
 from app.identity.browser import CurrentBrowser
+from app.identity.crypto import AuthBusy, AuthRejected
 from app.memory.errors import MemoryNotFoundError, MemorySupersessionError
 from app.models.common import Identifier
 from app.models.memory import MemoryScope
@@ -39,7 +40,7 @@ def action_gate(action: str) -> Callable[..., Awaitable[None]]:
         ):
             raise PolicyDenied("verified human policy is required")
         select_action(action)
-        if action.endswith(":write"):
+        if action.endswith((":write", ":approve", ":promote")):
             context.service.sessions.recent(context.row)
 
     return gate
@@ -79,6 +80,8 @@ class KnowledgeRoute(APIRoute):
 
             try:
                 return await handler(request)
+            except (AuthRejected, AuthBusy):
+                raise
             except TenantContextRequired:
                 raise PolicyDenied("operation is outside effective access") from None
             except (

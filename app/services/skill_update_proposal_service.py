@@ -64,6 +64,10 @@ class SkillUpdateProposalStore(Protocol):
 
     async def get(self, proposal_id: str) -> SkillUpdateProposalDocument | None: ...
 
+    async def update(
+        self, document: SkillUpdateProposalDocument, *, expected_revision: int
+    ) -> SkillUpdateProposalDocument: ...
+
     async def list(
         self,
         *,
@@ -181,6 +185,52 @@ class SkillUpdateProposalService:
             allowed_project_ids=allowed_project_ids,
             limit=limit,
             cursor=cursor,
+        )
+
+    async def review_proposal(
+        self,
+        *,
+        research_project_id: str,
+        proposal_id: str,
+        expected_revision: int,
+        decision: SkillUpdateProposalStatus,
+        allowed_project_ids: tuple[str, ...] | None,
+    ) -> SkillUpdateProposalDocument:
+        """Revision-bound independent decision; patch remains inert/generated."""
+        from app.repositories.errors import ConcurrencyConflictError
+        from app.security.policy.evaluation import PolicyDenied
+        from app.security.policy.reviews import require_review
+
+        current = await self.get_proposal(
+            research_project_id=research_project_id,
+            proposal_id=proposal_id,
+            allowed_project_ids=allowed_project_ids,
+        )
+        require_review(current.model_dump(), "skill_update_proposals", "research:approve")
+        if current.revision != expected_revision:
+            raise ConcurrencyConflictError("proposal revision changed")
+        if current.status != SkillUpdateProposalStatus.PENDING_REVIEW or decision not in {
+            SkillUpdateProposalStatus.APPROVED,
+            SkillUpdateProposalStatus.REJECTED,
+        }:
+            raise PolicyDenied("only a pending proposal can receive a final review")
+        # Revalidate referenced evidence and the exact canonical base at decision.
+        await self._validate_provenance(
+            research_project_id=research_project_id,
+            source_claim_ids=current.source_claim_ids,
+            source_citation_ids=current.source_citation_ids,
+            allowed_project_ids=allowed_project_ids,
+        )
+        skill = await self._skills.get_active(current.skill_id)
+        if skill is None or skill.version != current.current_version:
+            raise SkillUpdateProposalVersionMismatchError("canonical base changed")
+        payload = current.model_dump(by_alias=True, mode="python")
+        payload["status"] = decision
+        updated = SkillUpdateProposalDocument.model_validate(
+            payload, context={"from_storage": True}
+        )
+        return await self._proposals(research_project_id).update(
+            updated, expected_revision=expected_revision
         )
 
     async def export_patch(

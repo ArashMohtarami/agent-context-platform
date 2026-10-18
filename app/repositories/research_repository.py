@@ -445,6 +445,7 @@ class MongoResearchDocumentRepository(
         self,
         *,
         source_id: str | None = None,
+        snapshot_id: str | None = None,
         status: ResearchRecordStatus | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
         cursor: str | None = None,
@@ -452,6 +453,8 @@ class MongoResearchDocumentRepository(
         filters: MongoDocument = {}
         if source_id is not None:
             filters["source_id"] = validate_identifier(source_id)
+        if snapshot_id is not None:
+            filters["snapshot_id"] = validate_identifier(snapshot_id)
         if status is not None:
             filters["status"] = status
         return await self._list_scoped(filters, limit=limit, cursor=cursor)
@@ -963,6 +966,7 @@ class MongoSkillUpdateProposalRepository(
         *,
         status: SkillUpdateProposalStatus | None = None,
         skill_id: str | None = None,
+        skill_ids: tuple[str, ...] | None = None,
         allowed_project_ids: tuple[str, ...] | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
         cursor: str | None = None,
@@ -976,6 +980,8 @@ class MongoSkillUpdateProposalRepository(
             filters["$expr"] = {
                 "$setIsSubset": ["$authorization.project_ids", list(allowed_project_ids)]
             }
+        if skill_ids is not None:
+            filters["$and"] = [{"skill_id": {"$in": list(skill_ids)}}]
         return await self._list_scoped(filters, limit=limit, cursor=cursor)
 
     async def update(
@@ -1051,6 +1057,8 @@ class MongoIngestionJobRepository(_MongoResearchProjectScopedRepository[Ingestio
         self,
         *,
         source_id: str | None = None,
+        user_id: str | None = None,
+        session_id: str | None = None,
         status: IngestionJobState | None = None,
         limit: int = DEFAULT_PAGE_SIZE,
         cursor: str | None = None,
@@ -1058,6 +1066,10 @@ class MongoIngestionJobRepository(_MongoResearchProjectScopedRepository[Ingestio
         filters: MongoDocument = {}
         if source_id is not None:
             filters["source_id"] = validate_identifier(source_id)
+        if user_id is not None:
+            filters["initiating_authority.user_id"] = validate_identifier(user_id)
+        if session_id is not None:
+            filters["initiating_authority.session_id"] = validate_identifier(session_id)
         if status is not None:
             filters["status"] = status
         return await self._list_scoped(filters, limit=limit, cursor=cursor)

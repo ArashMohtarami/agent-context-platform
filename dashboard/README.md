@@ -56,3 +56,6 @@ by `V6_MANAGEMENT_ADAPTERS_ONLY=1 bash scripts/test-v6-isolation.sh`.
 
 Phase 11 knowledge adapters, ownership boundaries and focused verification commands
 are documented in [dashboard knowledge](../docs/dashboard-knowledge.md).
+
+Phase 12 evidence, ingestion, independent review and controlled promotion are
+documented in [dashboard research](../docs/dashboard-research.md).

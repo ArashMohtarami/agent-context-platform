@@ -12,7 +12,14 @@ from app.security.policy.evaluation import PolicyDenied
 from app.security.policy.reviews import require_review
 from app.security.tenant_policy import current_policy
 
-AUTHORED_COLLECTIONS = frozenset({"content_items", "content_versions", "knowledge_candidates"})
+RESEARCH_REVIEW_STATES = {
+    "knowledge_candidates": {"approved", "rejected", "needs_changes"},
+    "skill_update_proposals": {"approved", "rejected"},
+    "research_claims": {"supported", "partially_supported", "contested", "unsupported", "outdated"},
+    "research_notes": {"reviewed"},
+    "research_briefs": {"ready"},
+}
+AUTHORED_COLLECTIONS = frozenset({"content_items", "content_versions", *RESEARCH_REVIEW_STATES})
 AUTHORITY_COLLECTIONS = frozenset({"api_keys", "agent_clients", "client_profiles"})
 
 
@@ -83,7 +90,7 @@ def is_decision(collection: str, changes: dict[str, Any]) -> str | None:
     state = changes.get("status")
     if collection == "content_items" and state == "approved":
         return "content:write"
-    if collection == "knowledge_candidates" and state in {"approved", "rejected", "needs_changes"}:
+    if collection in RESEARCH_REVIEW_STATES and state in RESEARCH_REVIEW_STATES[collection]:
         return "research:approve"
     return None
 
