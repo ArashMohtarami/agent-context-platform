@@ -60,6 +60,7 @@ def covered(grant: Grant, ceiling: tuple[Grant, ...]) -> bool:
 class Issue(BaseModel):
     model_config = ConfigDict(extra="forbid")
     subject_id: Identifier
+    expected_subject_revision: int | None = Field(default=None, ge=1)
     role: str = "contributor"
     parent_id: Identifier
     expected_parent_generation: int = Field(ge=1)

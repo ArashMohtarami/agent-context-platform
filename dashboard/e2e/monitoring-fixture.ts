@@ -1,0 +1,4 @@
+import { control } from './fixture';
+export interface MonitoringFixture {org_b_count:number;governance_count:number;access_decisions:number;query:{source:string;scope:string;start:string;end:string;timezone:string;bucket:string;team_id:null;project_id:null;client_id:null;outcome:null};diff_id:string;legacy_id:string;foreign_event_id:string;expected:Record<string,{count:number;outcomes:Record<string,number>;ids:string[];samples:number;latency:number|null;buckets:Record<string,{start_ms:number;end_ms:number;count:number}[]>}>}
+export async function prepare() {return control<MonitoringFixture>('monitoring');}
+export function query(f:MonitoringFixture,changes:Record<string,string>={}) {return new URLSearchParams({...Object.fromEntries(Object.entries(f.query).filter(([,v])=>v!==null).map(([k,v])=>[k,String(v)])),...changes}).toString();}

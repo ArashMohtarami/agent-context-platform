@@ -7,6 +7,10 @@
 .venv
 .graphify
 graphify-out
+node_modules
+test-results
+playwright-report
+coverage
 __pycache__
 secrets
 *.py[cod]

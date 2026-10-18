@@ -4,6 +4,7 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.responses import RedirectResponse
 
 from app.api.routes.local_identity import authenticated
 from app.identity.browser import (
@@ -18,6 +19,28 @@ from app.identity.crypto import AuthRejected
 from app.identity.sso import SSOIdentity, policy_context
 
 router = APIRouter(prefix="/api/v6", tags=["SSO and own organizations"])
+
+
+def browser_callback(request: Request, response: Response, result: dict[str, Any]) -> Any:
+    """Fixed same-origin navigation; codes/state/provider tokens never reach the SPA."""
+    if getattr(
+        request.app.state.settings, "v6_console_enabled", False
+    ) and "text/html" in request.headers.get("accept", ""):
+        target = (
+            "/console/sign-in?linked=1"
+            if result.get("linked")
+            else (
+                "/console/sign-in?logged_out=1"
+                if result.get("logged_out")
+                else "/console/auth/complete"
+            )
+        )
+        redirect = RedirectResponse(target, status_code=303)
+        for name, value in response.raw_headers:
+            if name.lower() in {b"set-cookie", b"cache-control", b"referrer-policy"}:
+                redirect.raw_headers.append((name, value))
+        return redirect
+    return result
 
 
 async def sso_boundary(service: IdentityBoundary) -> SSOIdentity:
@@ -57,7 +80,7 @@ async def reauthenticate(body: Reauthenticate, context: CurrentBrowser, sso: SSO
 
 
 @router.get("/auth/oidc/callback")
-async def callback(request: Request, response: Response, sso: SSO) -> dict[str, Any]:
+async def callback(request: Request, response: Response, sso: SSO) -> Any:
     # OAuth callbacks are the narrow mutation exception to Origin/CSRF headers.
     # A single-use state transaction binds browser, purpose, org, nonce and PKCE.
     pairs = request.query_params
@@ -91,8 +114,14 @@ async def callback(request: Request, response: Response, sso: SSO) -> dict[str, 
     response.headers["Referrer-Policy"] = "no-referrer"
     if issued is None:
         clear_cookie(response)
-        return {"linked": True, "reauthentication_required": True}
-    return {**authenticated(response, issued), "policy_context": policy_context(issued.row)}
+        return browser_callback(
+            request, response, {"linked": True, "reauthentication_required": True}
+        )
+    return browser_callback(
+        request,
+        response,
+        {**authenticated(response, issued), "policy_context": policy_context(issued.row)},
+    )
 
 
 @router.get("/me/organizations")
@@ -121,8 +150,8 @@ async def logout(response: Response, context: CurrentBrowser, sso: SSO) -> dict[
 
 
 @router.get("/auth/oidc/logged-out")
-async def logged_out(request: Request, sso: SSO) -> dict[str, bool]:
+async def logged_out(request: Request, response: Response, sso: SSO) -> Any:
     if set(request.query_params) != {"state"} or len(request.query_params.getlist("state")) != 1:
         raise AuthRejected("authentication was not accepted")
     await sso.logged_out(request.query_params["state"])
-    return {"logged_out": True}
+    return browser_callback(request, response, {"logged_out": True})

@@ -198,10 +198,15 @@ async def offboard(org_id: str, user_id: str, body: Revision, context: CurrentBr
 
 @router.get("/organizations/{org_id}/teams", response_model=Page[TeamDTO])
 async def teams(
-    org_id: str, context: CurrentBrowser, limit: Limit = 50, cursor: Cursor = None
+    org_id: str,
+    context: CurrentBrowser,
+    limit: Limit = 50,
+    cursor: Cursor = None,
+    prefix: Prefix = "",
+    status: Literal["active", "suspended"] | None = None,
 ) -> Any:
     return await Directory(management(context)).teams(
-        org_id, context.row["user_id"], limit=limit, cursor=cursor
+        org_id, context.row["user_id"], limit=limit, cursor=cursor, prefix=prefix, status=status
     )
 
 

@@ -23,6 +23,7 @@ PUBLIC_DIRECTORIES = frozenset(
     {
         "app",
         "deploy",
+        "dashboard",
         "docker",
         "docs",
         "examples",
@@ -70,6 +71,9 @@ PRIVATE_PARTS = frozenset(
         ".pytest_cache",
         ".ruff_cache",
         "node_modules",
+        "test-results",
+        "playwright-report",
+        "coverage",
         "dist",
         "build",
         "htmlcov",

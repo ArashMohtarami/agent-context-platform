@@ -167,13 +167,19 @@ async def auth_policy(org_id: str, body: AuthPolicy, context: CurrentBrowser) ->
 
 
 class Transfer(Input):
+    expected_policy_revision: int | None = Field(default=None, ge=1)
+    expected_target_revision: int | None = Field(default=None, ge=1)
     target_id: str = Field(min_length=1, max_length=128)
 
 
 @router.post("/organizations/{org_id}/ownership-transfer", status_code=201)
 async def transfer(org_id: str, body: Transfer, context: CurrentBrowser) -> Row:
     return await Governance(engine(context, mutation=True)).offer_transfer(
-        org_id, context.row["user_id"], body.target_id
+        org_id,
+        context.row["user_id"],
+        body.target_id,
+        expected_policy_revision=body.expected_policy_revision,
+        expected_target_revision=body.expected_target_revision,
     )
 
 

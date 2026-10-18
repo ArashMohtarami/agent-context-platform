@@ -12,7 +12,16 @@ from app.security.policy.evaluation import PolicyDenied
 from app.security.policy.reviews import require_review
 from app.security.tenant_policy import current_policy
 
-AUTHORED_COLLECTIONS = frozenset({"content_items", "content_versions", "knowledge_candidates"})
+RESEARCH_REVIEW_STATES = {
+    "knowledge_candidates": {"approved", "rejected", "needs_changes"},
+    "skill_update_proposals": {"approved", "rejected"},
+    "research_claims": {"supported", "partially_supported", "contested", "unsupported", "outdated"},
+    "research_notes": {"reviewed"},
+    "research_briefs": {"ready"},
+}
+AUTHORED_COLLECTIONS = frozenset(
+    {"content_items", "content_ideas", "content_versions", *RESEARCH_REVIEW_STATES}
+)
 AUTHORITY_COLLECTIONS = frozenset({"api_keys", "agent_clients", "client_profiles"})
 
 
@@ -81,9 +90,9 @@ def fenced(method: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any
 
 def is_decision(collection: str, changes: dict[str, Any]) -> str | None:
     state = changes.get("status")
-    if collection == "content_items" and state == "approved":
+    if collection in {"content_items", "content_ideas"} and state == "approved":
         return "content:write"
-    if collection == "knowledge_candidates" and state in {"approved", "rejected", "needs_changes"}:
+    if collection in RESEARCH_REVIEW_STATES and state in RESEARCH_REVIEW_STATES[collection]:
         return "research:approve"
     return None
 
@@ -99,6 +108,19 @@ async def review_gate(
         require_review(existing, collection, operation)
         return False
     require_review(existing, collection, operation)
+    if collection == "content_items" and any(
+        field in changes and changes[field] != existing.get(field)
+        for field in (
+            "title",
+            "body",
+            "project_ids",
+            "source_refs",
+            "pillar_id",
+            "topic_tags",
+            "tags",
+        )
+    ):
+        raise PolicyDenied("editing cannot also approve content")
     # Immutable history of author sponsors, recorded by the server in the same
     # fenced transaction as each authored mutation. Last-writer actor is not
     # sufficient proof of independent authorship.

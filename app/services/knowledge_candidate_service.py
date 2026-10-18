@@ -353,14 +353,17 @@ class KnowledgeCandidateService:
             candidate_id=updated.candidate_id,
             event_id=self._event_id(updated.candidate_id, expected_revision, decision),
             target_type=updated.candidate_type,
-            target_id=updated.target_project_id or updated.target_skill_id,
+            # No promoted object exists at review time. The proposed project/skill
+            # remains on the candidate; target_id is a real domain reference only
+            # after controlled promotion creates that object.
+            target_id=None,
             reviewer=reviewer,
             decision=decision,
             decided_at=reviewed_at,
             reason=reason,
             authorization=ResearchAuthorization(
                 project_ids=list(updated.authorization.project_ids),
-                owner_key_id=reviewer,
+                owner_key_id=_reviewer_key_id(reviewer),
             ),
         )
         try:
@@ -507,7 +510,8 @@ class KnowledgeCandidateService:
             decided_at=promoted_at,
             reason="approved candidate promoted through controlled V3 workflow",
             authorization=ResearchAuthorization(
-                project_ids=list(updated.authorization.project_ids), owner_key_id=reviewer
+                project_ids=list(updated.authorization.project_ids),
+                owner_key_id=_reviewer_key_id(reviewer),
             ),
         )
         try:
@@ -658,3 +662,11 @@ class KnowledgeCandidateService:
 
 
 __all__ = ["CandidatePromotion", "CandidateReview", "KnowledgeCandidateService"]
+
+
+def _reviewer_key_id(reviewer: str) -> str | None:
+    """Human reviewer IDs are not machine key identifiers."""
+    from app.security.tenant_policy import current_policy
+
+    policy = current_policy()
+    return None if policy and policy.subject_kind == "human" else reviewer

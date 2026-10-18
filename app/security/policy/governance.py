@@ -284,7 +284,9 @@ class Governance:
 
         return await self.mutate(org_id, issuer_id, operation)
 
-    async def issue_in_transaction(self, snapshot: Row, tx: Any, request: Issue) -> Row:
+    async def issue_in_transaction(
+        self, snapshot: Row, tx: Any, request: Issue, *, preview: bool = False
+    ) -> Row:
         org_id, issuer_id = snapshot["anchor"]["org_id"], snapshot["member"]["user_id"]
         self.engine.require(snapshot, "grants:delegate", "member", request.subject_id)
         if self.engine.human_management:
@@ -316,8 +318,24 @@ class Governance:
                 "organization_memberships", {"org_id": org_id, "user_id": target}, tx
             ):
                 raise PolicyDenied("delegation target is outside the organization")
+        if (
+            request.expected_subject_revision is not None
+            and member["revision"] != request.expected_subject_revision
+        ):
+            raise PolicyConflict("target membership changed; preview the current revision")
         if not can_appoint(snapshot["member"]["role"], member["role"]):
             raise PolicyDenied("current target role is outside the issuer's authority")
+        if preview:
+            return {
+                "subject_id": request.subject_id,
+                "policy_revision": snapshot["anchor"]["revision"],
+                "tuples": [g.model_dump() for g in request.tuples],
+                "ceiling": [g.model_dump() for g in request.ceiling],
+                "expires_at": request.expires_at,
+                "role": request.role,
+                "membership_revision": member["revision"],
+                "existing_assignments_changed": False,
+            }
         if member["role"] != request.role:
             if member["role"] == "org_owner":
                 raise PolicyDenied("ownership requires an accepted transfer")
@@ -489,9 +507,22 @@ class Governance:
 
         return await self.mutate(org_id, issuer_id, operation)
 
-    async def offer_transfer(self, org_id: str, owner_id: str, target_id: str) -> Row:
+    async def offer_transfer(
+        self,
+        org_id: str,
+        owner_id: str,
+        target_id: str,
+        *,
+        expected_policy_revision: int | None = None,
+        expected_target_revision: int | None = None,
+    ) -> Row:
         async def operation(snapshot: Row, tx: Any) -> Row:
             self.engine.require(snapshot, "org:transfer-owner", "organization", org_id)
+            if (
+                expected_policy_revision is not None
+                and snapshot["anchor"]["revision"] != expected_policy_revision
+            ):
+                raise PolicyConflict("ownership policy changed; review the current context")
             if owner_id == target_id or snapshot["member"]["role"] != "org_owner":
                 raise PolicyDenied("distinct verified owner acceptance is required")
             member = await self.store.find(
@@ -502,6 +533,11 @@ class Governance:
             user = await self.store.find("users", {"_id": target_id, "status": "active"}, tx)
             if not member or not member["verified_at"] or not user or member["role"] == "org_owner":
                 raise PolicyDenied("verified target membership is required")
+            if (
+                expected_target_revision is not None
+                and member["revision"] != expected_target_revision
+            ):
+                raise PolicyConflict("target membership changed; review the current person")
             row = {
                 "_id": "transfer_" + uuid4().hex,
                 "org_id": org_id,

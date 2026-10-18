@@ -8,3 +8,13 @@ prune backups
 prune dist
 prune build
 global-exclude .env .env.local .env.production *.py[cod]
+
+# The public source distribution includes the independently built browser client.
+graft dashboard
+prune dashboard/node_modules
+prune dashboard/dist
+prune dashboard/test-results
+prune dashboard/playwright-report
+prune dashboard/coverage
+prune dashboard/.vite
+prune dashboard/.private

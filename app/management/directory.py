@@ -1,6 +1,7 @@
 """Organization-only directory queries, filtered before pagination and projection."""
 
 import re
+from typing import Any
 
 from app.identity.repository import Row
 from app.management.boundaries import has, permits_member
@@ -59,7 +60,14 @@ class Directory:
         )
 
     async def teams(
-        self, org_id: str, actor: str, *, limit: int = 50, cursor: str | None = None
+        self,
+        org_id: str,
+        actor: str,
+        *,
+        limit: int = 50,
+        cursor: str | None = None,
+        prefix: str = "",
+        status: str | None = None,
     ) -> Row:
         if not 1 <= limit <= 100:
             raise PolicyDenied("bounded directory query is required")
@@ -75,6 +83,12 @@ class Directory:
                     if has(snapshot, "teams:read", "team", team_id)
                 )
             }
+        if len(prefix) > 128:
+            raise PolicyDenied("bounded team filter is required")
+        if prefix:
+            query["name"] = {"$regex": "^" + re.escape(prefix), "$options": "i"}
+        if status:
+            query["status"] = status
         return await self.page("teams", query, "team_id", TEAM_FIELDS, snapshot, limit, cursor)
 
     async def page(
@@ -103,9 +117,16 @@ class Directory:
             )
         except InvalidCursorError:
             raise PolicyConflict("directory cursor changed; start a fresh page") from None
+        # Console adapters authorize these domain projections before calling
+        # this shared cursor implementation. Keep IdentityStore's private
+        # collection allowlist unchanged.
+        collection: Any = (
+            self.store.database[name]
+            if name in {"client_profiles", "agent_sessions", "project_bindings"}
+            else self.store._collection(name)
+        )
         rows = (
-            await self.store._collection(name)
-            .find(selected, {field: 1 for field in fields})
+            await collection.find(selected, {field: 1 for field in fields})
             .sort(key, 1)
             .limit(limit + 1)
             .to_list(limit + 1)

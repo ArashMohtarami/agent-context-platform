@@ -282,6 +282,7 @@ async def test_approve_records_immutable_event_without_v1_mutation() -> None:
     assert reviewed.candidate.source_claim_ids == ["retry-key"]
     assert reviewed.event.decision is CandidateState.APPROVED
     assert reviewed.event.candidate_id == candidate.candidate_id
+    assert reviewed.event.target_id is None  # No promoted object exists at approval.
     assert len(store.events) == 1
     # Approval alone keeps V1 targets inert; promotion is a separate call.
     assert candidate_service._memories is None

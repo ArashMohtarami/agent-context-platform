@@ -1090,6 +1090,8 @@ def context_candidate(document: ProjectContextDocument) -> RetrievalCandidate:
         trust_level=None,
         metadata={
             "context_id": str(document.id),
+            "revision": document.revision,
+            "actor": document.actor.model_dump(mode="json"),
             "project_id": document.project_id,
             "type": document.type,
             "status": document.status,
@@ -1125,6 +1127,8 @@ def memory_candidate(document: MemoryDocument) -> RetrievalCandidate:
         trust_level=None,
         metadata={
             "memory_id": str(document.id),
+            "revision": document.revision,
+            "actor": document.actor.model_dump(mode="json"),
             "scope": document.scope,
             "project_id": document.project_id,
             "client_id": document.client_id,
@@ -1185,8 +1189,8 @@ def _context_candidates(matches: Sequence[ProjectContextMatch]) -> tuple[Retriev
 def skill_candidate(chunk: SkillChunkDocument, skill: SkillDocument) -> RetrievalCandidate:
     """Describe one stored skill chunk as a source-agnostic candidate.
 
-    Skills are global knowledge: they have no project owner, so they are
-    visible to every project, and they carry no curator-assigned importance, so
+    Imported skills are organization-owned knowledge, filtered by their exact
+    action/resource policy. They carry no curator-assigned importance, so
     they score neutrally on it. Project context and memory bring a real
     importance value with them when their phases add them as sources.
     """
@@ -1215,5 +1219,6 @@ def skill_candidate(chunk: SkillChunkDocument, skill: SkillDocument) -> Retrieva
             "trust_level": skill.trust_level,
             "status": skill.status,
             "source_path": skill.source_path,
+            "content_hash": skill.content_hash,
         },
     )

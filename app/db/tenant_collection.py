@@ -344,7 +344,16 @@ class TenantCollection:
         if (
             policy is not None
             and (policy.managed or policy.engine is not None)
-            and self.collection in {"content_items", "knowledge_candidates"}
+            and self.collection
+            in {
+                "content_items",
+                "content_ideas",
+                "knowledge_candidates",
+                "skill_update_proposals",
+                "research_claims",
+                "research_notes",
+                "research_briefs",
+            }
         ):
             if any(
                 "status" in cast(Mapping[str, object], fields)

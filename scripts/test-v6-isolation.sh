@@ -12,6 +12,8 @@ python="${V6_TEST_PYTHON:-$V6_REPOSITORY_ROOT/.venv/bin/python}"
 compose=(docker compose -f tests/infrastructure/v6-isolation.compose.yml)
 oidc_compose=(docker compose -f tests/infrastructure/v6-oidc.compose.yml)
 cleanup() {
+    docker logs "acp-v6-phase2-mongodb-$V6_TEST_RUN" >"$report_dir/mongodb.log" 2>&1 || true
+    docker logs "acp-v6-phase2-mongot-$V6_TEST_RUN" >"$report_dir/mongot.log" 2>&1 || true
     if [[ "${V6_OIDC_TESTS:-0}" == "1" ]]; then
         docker logs "acp-v6-oidc-keycloak-$V6_TEST_RUN" >"$report_dir/provider.log" 2>&1 || true
         "${oidc_compose[@]}" down --remove-orphans >/dev/null 2>&1 || true
@@ -70,6 +72,13 @@ fresh_stack() {
 }
 
 start_stack
+if [[ "${V6_SUMMARIES_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
+    for target in dashboard_aggregation report_revocation; do
+        "$python" -m pytest -q "tests/integration/test_v6_${target}.py" --junitxml="$report_dir/${target}.xml" "$@"
+        fresh_stack
+    done
+    exit 0
+fi
 if [[ "${V6_MANAGED_AGENTS_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
     for target in managed_client_revocation credential_delivery service_account_reviews; do
         "$python" -m pytest -q "tests/integration/test_v6_${target}.py" --junitxml="$report_dir/${target}.xml" "$@"
@@ -115,11 +124,31 @@ for attempt in range(180):
             raise SystemExit('Disposable HTTPS Keycloak did not become ready (secrets withheld).')
         time.sleep(1)
 PY
+    if [[ "${V6_DASHBOARD_BROWSER_TESTS:-0}" == "1" ]]; then
+        "$python" -m pytest -q tests/integration/test_v6_dashboard_browser.py --junitxml="$report_dir/dashboard-browser.xml" "$@"
+        exit 0
+    fi
     if [[ "${V6_SSO_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
         "$python" -m pytest -q tests/integration/test_v6_oidc_provider.py \
             tests/integration/test_v6_org_switch.py --junitxml="$report_dir/sso-development.xml" "$@"
         exit 0
     fi
+fi
+if [[ "${V6_CREATOR_ADAPTERS_ONLY:-0}" == "1" ]]; then
+    "$python" -m pytest -q tests/integration/test_v6_creator_adapters.py tests/integration/test_v6_review_authority.py --junitxml="$report_dir/creator-adapters.xml" "$@"
+    exit 0
+fi
+if [[ "${V6_RESEARCH_ADAPTERS_ONLY:-0}" == "1" ]]; then
+    "$python" -m pytest -q tests/integration/test_v6_research_adapters.py --junitxml="$report_dir/research-adapters.xml" "$@"
+    exit 0
+fi
+if [[ "${V6_KNOWLEDGE_ADAPTERS_ONLY:-0}" == "1" ]]; then
+    "$python" -m pytest -q tests/integration/test_v6_knowledge_adapters.py --junitxml="$report_dir/knowledge-adapters.xml" "$@"
+    exit 0
+fi
+if [[ "${V6_MANAGEMENT_ADAPTERS_ONLY:-0}" == "1" ]]; then
+    "$python" -m pytest -q tests/integration/test_v6_management_adapters.py --junitxml="$report_dir/management-adapters.xml" "$@"
+    exit 0
 fi
 export V6_UNIT_EVIDENCE_XML="$report_dir/unit.xml"
 export V6_REAL_EVIDENCE_XML="$report_dir/real-rehearsal.xml"
@@ -169,3 +198,9 @@ if [[ "${V6_MANAGED_AGENTS_TESTS:-0}" == "1" ]]; then
     done
 fi
 printf 'V6 isolation reports: %s\n' "$report_dir"
+if [[ "${V6_SUMMARIES_TESTS:-0}" == "1" ]]; then
+    for target in dashboard_aggregation report_revocation; do
+        fresh_stack
+        "$python" -m pytest -q "tests/integration/test_v6_${target}.py" --junitxml="$report_dir/${target}.xml" "$@"
+    done
+fi

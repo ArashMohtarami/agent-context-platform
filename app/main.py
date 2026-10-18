@@ -20,15 +20,19 @@ from app.api.middleware import (
 from app.api.routes.agent_activity import router as agent_activity_router
 from app.api.routes.agents import router as agents_router
 from app.api.routes.client_profiles import router as client_profiles_router
+from app.api.routes.console import router as console_router
 from app.api.routes.content import router as content_router
 from app.api.routes.context import router as context_router
 from app.api.routes.creator import router as creator_router
+from app.api.routes.creator_console import router as creator_console_router
 from app.api.routes.gateway import router as gateway_router
 from app.api.routes.health import router as health_router
 from app.api.routes.human_management import router as human_management_router
+from app.api.routes.knowledge import router as knowledge_router
 from app.api.routes.knowledge_candidates import router as knowledge_candidates_router
 from app.api.routes.local_identity import router as local_identity_router
 from app.api.routes.managed_agents import router as managed_agents_router
+from app.api.routes.management_adapters import router as management_adapters_router
 from app.api.routes.management_policy import router as management_policy_router
 from app.api.routes.memory import router as memory_router
 from app.api.routes.metrics import router as metrics_router
@@ -36,6 +40,7 @@ from app.api.routes.project_bindings import router as project_bindings_router
 from app.api.routes.projects import router as projects_router
 from app.api.routes.research import router as research_router
 from app.api.routes.research_briefs import router as research_briefs_router
+from app.api.routes.research_console import router as research_console_router
 from app.api.routes.research_evidence import router as research_evidence_router
 from app.api.routes.research_notes_claims import router as research_notes_claims_router
 from app.api.routes.research_search import router as research_search_router
@@ -45,6 +50,7 @@ from app.api.routes.search import router as search_router
 from app.api.routes.skill_update_proposals import router as skill_update_proposals_router
 from app.api.routes.skills import router as skills_router
 from app.api.routes.sso_identity import router as sso_identity_router
+from app.api.routes.summaries import router as summaries_router
 from app.core.config import Settings, get_settings
 from app.core.logging import RequestLoggingMiddleware, configure_logging
 from app.db.client import MongoDBClient
@@ -330,8 +336,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(memory_router)
     application.include_router(search_router)
     application.include_router(creator_router)
+    application.include_router(creator_console_router)
     application.include_router(content_router)
     application.include_router(research_router)
+    application.include_router(research_console_router)
     application.include_router(knowledge_candidates_router)
     application.include_router(skill_update_proposals_router)
     application.include_router(research_sources_router)
@@ -343,6 +351,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(agents_router)
     application.include_router(client_profiles_router)
     application.include_router(agent_activity_router)
+    application.include_router(console_router)
+    application.include_router(management_adapters_router)
+    application.include_router(knowledge_router)
+    application.include_router(summaries_router)
     application.include_router(gateway_router)
     # Streamable HTTP is the same low-level MCP server as stdio.  There is no
     # Claude-specific endpoint or backend: both transports share one tool

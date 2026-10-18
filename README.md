@@ -43,10 +43,20 @@ disabled by default. Human sessions start without corpus assignments. V6 Phase 4
 organization switching](docs/sso-identity.md), also disabled by default.
 V6 Phase 5 optionally adds [coupled grants and bounded delegation](docs/management-policy.md),
 with transactional governance audit and shared policy fencing.
-Management/dashboard UI remains unavailable.
+After verified human and sponsored-machine management, V6 Phase 8 adds
+[authorized event summaries and expiring CSV reports](docs/authorized-summaries.md).
+V6 Phase 9 adds the [professional console foundation](docs/dashboard-foundation.md)
+for sign-in, organization switching, effective access and My security. Its
+[frontend source and verification scripts](dashboard/README.md) live in `dashboard/`;
+serving it requires explicit activation. Phase 10 adds
+[management workflows](docs/dashboard-management.md), Phase 11 adds the
+[knowledge workspace](docs/dashboard-knowledge.md), and Phase 12 adds the
+[evidence-backed research console](docs/dashboard-research.md). Phase 13 adds the
+[creator studio](docs/dashboard-creator.md) with independent review and manual publication receipts.
+Phase 14 adds [authorized monitoring and governance audit views](docs/dashboard-monitoring.md).
 The workflows below assume completed setup and organization-bound credentials.
 Provisioning, import, and administrative commands require `--org-id`; human
-management dashboards remain disabled.
+management uses verified human sessions and explicit resource assignments.
 
 ## Quick start
 
@@ -146,6 +156,7 @@ served independently on a public IP; see [website deployment](docs/website.md).
 | Technical content | [Creator profiles](docs/creator.md), [storage](docs/content-storage.md), [publication review](docs/content-publication-safety.md), [manual publishing](docs/content-publishing.md) |
 | Operations | [Deployment](docs/deployment.md), [security](docs/security.md), [backup and recovery](docs/backup.md), [observability](docs/observability.md) |
 | V6 maintenance foundation (domain traffic stays sealed after adoption) | [Tenant adoption](docs/tenant-adoption.md) |
+| Organization console foundation | [Setup and security](docs/dashboard-foundation.md), [frontend scripts](dashboard/README.md), [dependency review](dashboard/DEPENDENCIES.md) |
 | Licenses and dependency notices | [MIT License](LICENSE), [third-party notices](docs/third-party-notices.md) |
 
 ## Development and verification

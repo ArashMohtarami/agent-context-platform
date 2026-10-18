@@ -517,6 +517,18 @@ class ContentService:
         current = await self.get_content(profile_id, content_id)
         if current.revision != expected_revision:
             raise ConcurrencyConflictError("content item changed after it was read")
+        changes = dict(changes)
+        authorial = {"title", "topic_tags", "pillar_id", "project_ids", "source_refs", "tags"}
+        edited = any(current.model_dump().get(k) != v for k, v in changes.items() if k in authorial)
+        if edited:
+            if changes.get("status") in {ContentStatus.APPROVED, ContentStatus.APPROVED.value}:
+                raise InvalidContentLifecycleTransitionError("editing cannot also approve content")
+            if current.status is ContentStatus.PUBLISHED:
+                raise InvalidContentLifecycleTransitionError(
+                    "published content requires a new draft version"
+                )
+            if current.status in {ContentStatus.REVIEW, ContentStatus.APPROVED}:
+                changes["status"] = ContentStatus.DRAFTING
         if changes.get("status") in {ContentStatus.APPROVED, ContentStatus.APPROVED.value}:
             from app.security.policy.reviews import require_review
 
