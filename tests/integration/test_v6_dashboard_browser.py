@@ -150,7 +150,8 @@ async def test_real_dashboard_browser(managed_agents_db):
     mail_root = h.local.mail.directory
     mail_snapshot = {p.name: p.read_bytes() for p in mail_root.glob("*.json")}
     dist = Path(__file__).resolve().parents[2] / "dashboard/dist"
-    assert (dist / "index.html").is_file(), "build the actual frontend first"
+    if os.environ.get("V6_DASHBOARD_HOSTING") != "1":
+        assert (dist / "index.html").is_file(), "build the actual frontend first"
 
     @h.app.get("/console/{asset:path}", include_in_schema=False)
     async def console_assets(asset: str):
@@ -180,15 +181,26 @@ async def test_real_dashboard_browser(managed_agents_db):
         access_log=False,
         log_level="warning",
     )
-    server = uvicorn.Server(config)
-    task = asyncio.create_task(server.serve())
-    for _ in range(200):
-        if server.started:
-            break
-        if task.done():
-            await task
-        await asyncio.sleep(0.05)
-    assert server.started
+    hosting = None
+    server = None
+    task = None
+    if os.environ.get("V6_DASHBOARD_HOSTING") == "1":
+        from tests.v6_deployment_fixtures import hosted_stack
+
+        hosting = hosted_stack(h, origin, tls, root / "hosting")
+        await hosting.__aenter__()
+        # Actual operator CLI records the container's approved pinned endpoint/CA version.
+        snapshots = {name: await h.db[name].find({}).to_list() for name in names}
+    else:
+        server = uvicorn.Server(config)
+        task = asyncio.create_task(server.serve())
+        for _ in range(200):
+            if server.started:
+                break
+            if task.done():
+                await task
+            await asyncio.sleep(0.05)
+        assert server.started
     payload = {
         "fixture": "acp-phase9-disposable",
         "origin": origin,
@@ -340,7 +352,10 @@ async def test_real_dashboard_browser(managed_agents_db):
                 "real browser acceptance failed; inspect private Playwright artifacts"
             )
     finally:
-        server.should_exit = True
-        await task
+        if server and task:
+            server.should_exit = True
+            await task
+        if hosting:
+            await hosting.__aexit__(None, None, None)
         descriptor.unlink(missing_ok=True)
         descriptor.with_suffix(".stop").unlink(missing_ok=True)

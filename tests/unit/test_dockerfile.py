@@ -49,7 +49,8 @@ def test_the_runtime_contains_the_mongodb_backup_tools() -> None:
     stage = next(line for line in DOCKERFILE.splitlines() if line.endswith(" AS mongodb-tools"))
     assert stage.startswith("FROM mongo:8.3.9-noble@sha256:")
     assert "--from=mongodb-tools /usr/bin/mongodump /usr/bin/mongorestore" in DOCKERFILE
-    assert "libgssapi-krb5-2" in DOCKERFILE
+    assert "COPY --from=operator-tools /operator-runtime/ /" in DOCKERFILE
+    assert "libgssapi_krb5.so.2" in Path("docker/runtime/collect.py").read_text()
 
 
 def test_the_test_image_contains_backup_deployment_contracts() -> None:

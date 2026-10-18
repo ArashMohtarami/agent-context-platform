@@ -63,3 +63,14 @@ jobs:
           npm --prefix dashboard run licenses
           git diff --exit-code -- dashboard/dependency-licenses.json dashboard/THIRD_PARTY_NOTICES.txt
           npm --prefix dashboard run build
+      - name: Build pinned static TLS distribution image
+        run: docker build --target console -t acp-console:ci .
+      - name: Audit extracted source and reproduce the frontend build
+        run: |
+          python scripts/prepare_open_source_release.py --output /tmp/acp-source.tar.gz
+          mkdir /tmp/acp-source
+          tar -xzf /tmp/acp-source.tar.gz -C /tmp/acp-source
+          python /tmp/acp-source/agent-context-platform/scripts/prepare_open_source_release.py --check
+          npm --prefix /tmp/acp-source/agent-context-platform/dashboard ci --ignore-scripts --no-audit --no-fund
+          npm --prefix /tmp/acp-source/agent-context-platform/dashboard run licenses
+          npm --prefix /tmp/acp-source/agent-context-platform/dashboard run build

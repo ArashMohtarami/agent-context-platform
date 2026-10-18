@@ -1,12 +1,17 @@
 # Deployment
 
+For the implemented V6 console, use [console deployment](dashboard-deployment.md):
+its same-origin TLS overlay, mounted identity secrets and explicit cutover
+replace the older loopback-only API topology below. Authentication-disabled
+multitenant operation is refused. Do not expose the base API over public HTTP.
+
 ## Authentication
 
 Knowledge APIs and MCP require a scoped credential by default; health checks
 are public. Issue the first operator key through the database-backed CLI:
 
 ```bash
-docker compose exec -T context-api python -m app.cli.contextctl --json keys create \
+docker compose exec -T context-api python -m app.cli.contextctl --org-id YOUR_ORG --json keys create \
   --name codex --scope search:read --scope skills:read | jq -r .key
 ```
 
@@ -17,9 +22,7 @@ it.
 
 The operator key is shown once; the platform stores only a hash. Subsequent
 client credentials can be issued through authenticated gateway administration.
- `API_AUTH_ENABLED=false` turns authentication
-off for a single-user deployment, which logs a warning at startup and is reported by
-`/health/ready`. An application whose authentication decision was never made fails closed with a
+ `API_AUTH_ENABLED=false` is refused for tenant domain traffic. An application whose authentication decision was never made fails closed with a
 500 rather than serving. Health endpoints stay open because Docker's healthcheck has no credential
 and readiness carries no knowledge.
 

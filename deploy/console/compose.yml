@@ -1,0 +1,82 @@
+# From repository root: docker compose -f docker-compose.yml -f deploy/console/compose.yml ...
+services:
+  context-api:
+    # Console deployment has no host-facing cleartext API port.
+    ports: !reset []
+    environment:
+      V6_TENANT_FOUNDATION: 'true'
+      V6_TENANT_ISOLATION: 'true'
+      V6_LOCAL_IDENTITY: 'true'
+      V6_SSO: 'true'
+      V6_MANAGEMENT_POLICY: 'true'
+      V6_HUMAN_MANAGEMENT: 'true'
+      V6_MANAGED_AGENTS: 'true'
+      V6_CONSOLE_ENABLED: 'true'
+      API_AUTH_ENABLED: 'true'
+      API_PROXY_HEADERS: 'true'
+      API_FORWARDED_ALLOW_IPS: ${CONSOLE_PROXY_IP:-172.29.15.2}
+      MCP_REMOTE_ALLOW_LOOPBACK_HTTP: 'false'
+      V6_BROWSER_ORIGIN: ${V6_BROWSER_ORIGIN:?Set the exact external HTTPS origin}
+      V6_MFA_KEYRING_FILE: /run/secrets/v6-mfa-keyring
+      V6_OIDC_REGISTRATIONS_FILE: /run/secrets/v6-oidc-registrations
+      V6_MAIL_SINK_DIRECTORY: /var/lib/acp-mail
+    secrets:
+      - source: v6_mfa_keyring
+        target: v6-mfa-keyring
+      - source: v6_oidc_registrations
+        target: v6-oidc-registrations
+    volumes:
+      - ${V6_MAIL_HOST_DIRECTORY:?Prepare a private writable handoff directory}:/var/lib/acp-mail
+      # Optional approved private provider CAs, referenced by registrations.
+      - ${V6_PROVIDER_CA_DIRECTORY:?Prepare provider CA directory, may be empty}:/run/provider-ca:ro
+    networks:
+      console_ingress:
+        ipv4_address: ${CONSOLE_API_IP:-172.29.15.3}
+      agent_context: {}
+      api_public: {}
+  console:
+    build:
+      context: .
+      target: console
+    restart: unless-stopped
+    depends_on:
+      context-api:
+        condition: service_healthy
+    environment:
+      CONSOLE_SERVER_NAME: ${CONSOLE_SERVER_NAME:?Set certificate DNS hostname or IPv4 SAN}
+      CONSOLE_UPSTREAM: context-api:8000
+    ports:
+      - '${CONSOLE_BIND_IP:-127.0.0.1}:${CONSOLE_HTTPS_PORT:-8443}:8443'
+    secrets:
+      - source: console_cert
+        target: console-cert
+      - source: console_key
+        target: console-key
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 128m
+    networks:
+      console_ingress:
+        ipv4_address: ${CONSOLE_PROXY_IP:-172.29.15.2}
+      console_public: {}
+secrets:
+  console_cert:
+    file: ${CONSOLE_CERT_FILE:?Mount the certificate chain}
+  console_key:
+    file: ${CONSOLE_KEY_FILE:?Mount the TLS private key}
+  v6_mfa_keyring:
+    file: ${V6_MFA_KEYRING_SECRET:?Mount the versioned MFA encryption keyring}
+  v6_oidc_registrations:
+    file: ${V6_OIDC_REGISTRATIONS_SECRET:?Mount approved registrations, or local-only empty JSON list}
+networks:
+  console_ingress:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${CONSOLE_SUBNET:-172.29.15.0/28}
+
+  console_public: {}

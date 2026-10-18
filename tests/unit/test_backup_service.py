@@ -110,6 +110,9 @@ class FakeBackupRepository:
         """Return the live collection counts."""
         return dict(self.counts)
 
+    async def encryption_key_ids(self) -> set[str]:
+        return set()
+
     async def restored_document_count(self, prefix: str) -> int:
         """Count only the isolated collections made by one check."""
         return sum(count for name, count in self.counts.items() if name.startswith(prefix))

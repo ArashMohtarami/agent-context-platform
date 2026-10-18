@@ -49,7 +49,9 @@ class BrowserBoundaryMiddleware:
                     return
 
         async def private_send(message: Any) -> None:
-            if scope["type"] == "http" and scope["path"].startswith("/api/v6/"):
+            if scope["type"] == "http" and (
+                scope["path"] == "/api/v6" or scope["path"].startswith("/api/v6/")
+            ):
                 # Uvicorn's access logger reads the scope when sending the response.
                 # OAuth callback codes/state must not become access-log query strings.
                 scope["query_string"] = b""

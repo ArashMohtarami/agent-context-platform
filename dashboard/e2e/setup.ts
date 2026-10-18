@@ -21,8 +21,9 @@ export default async function setup() {
   const port = address.port;
   await new Promise<void>((resolve, reject) => listener.close(error => error ? reject(error) : resolve()));
   const log = openSync(path.join(evidence, 'fixture.log'), 'w', 0o600);
-  const child = spawn('bash', ['scripts/test-v6-isolation.sh'], {cwd: repository,
-    env: {...process.env, V6_TEST_MONGODB_MEMORY_LIMIT: '3g', V6_OIDC_TESTS: '1', V6_DASHBOARD_BROWSER_TESTS: '1', V6_PHASE10_BROWSER: '1', V6_BROWSER_SERVE_ONLY: '1', V6_BROWSER_TEST_ORIGIN: `https://127.0.0.1:${port}`, V6_REPORT_DIR: evidence},
+  const hosting = process.env.V6_DASHBOARD_HOSTING !== '0' || process.argv.some(value => value.includes('hosting.spec'));
+  const child = spawn('bash', [hosting ? 'scripts/test-v6-deployment.sh' : 'scripts/test-v6-isolation.sh'], {cwd: repository,
+    env: {...process.env, ...(hosting ? {V6_DASHBOARD_HOSTING: '1'} : {}), V6_TEST_MONGODB_MEMORY_LIMIT: '3g', V6_OIDC_TESTS: '1', V6_DASHBOARD_BROWSER_TESTS: '1', V6_PHASE10_BROWSER: '1', V6_BROWSER_SERVE_ONLY: '1', V6_BROWSER_TEST_ORIGIN: `https://127.0.0.1:${port}`, V6_REPORT_DIR: evidence},
     stdio: ['ignore', log, log]});
   const stop = descriptor.replace(/\.[^.]+$/, '.stop');
   async function cleanup() {

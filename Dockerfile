@@ -1,3 +1,20 @@
+FROM node:24.22.0-bookworm-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS console-builder
+WORKDIR /build/dashboard
+COPY dashboard/package.json dashboard/package-lock.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund
+COPY dashboard/ ./
+RUN npm run licenses && npm run build
+
+FROM nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8 AS console
+COPY --from=console-builder /build/dashboard/dist/ /usr/share/nginx/html/console/
+COPY --from=console-builder /build/dashboard/THIRD_PARTY_NOTICES.txt /usr/share/nginx/html/console/THIRD_PARTY_NOTICES.txt
+COPY --from=console-builder /build/dashboard/licenses/ /usr/share/nginx/html/console/licenses/
+COPY dashboard/LICENSE /usr/share/nginx/html/console/LICENSE
+COPY deploy/console/ /etc/acp-console/
+ENTRYPOINT ["/bin/sh", "/etc/acp-console/start.sh"]
+EXPOSE 8443
+HEALTHCHECK --interval=10s --timeout=5s --retries=6 CMD ["/bin/sh", "/etc/acp-console/healthcheck.sh"]
+
 FROM python:3.12.11-slim@sha256:0b29ab9e420820f53d1cd5ce0157dfe07bea8a7cff5b4754d6d95c07b0e5bc47 AS dependency-builder
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -15,6 +32,12 @@ RUN python -m pip install --no-cache-dir --no-index --find-links=.docker-wheels 
 # the tools coexist without publishing MongoDB or adding an operator image.
 FROM mongo:8.3.9-noble@sha256:1cd50aca58bb5f84ca6bb32b69a75ad67b23867fc8454bd1ff288822e4599219 AS mongodb-tools
 
+# Same Debian 13 release as the slim runtime; extract only Git/GSSAPI/CA runtime
+# files and their notices, keeping compilers and package managers out of this layer.
+FROM python:3.12.11@sha256:c1a5d356638cc86bd865d9019efbc34a6b0c3ad15a21e5ab4eb57bd2d1c3f7ce AS operator-tools
+COPY docker/runtime/collect.py /collect.py
+RUN python /collect.py
+
 FROM python:3.12.11-slim@sha256:0b29ab9e420820f53d1cd5ce0157dfe07bea8a7cff5b4754d6d95c07b0e5bc47 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -24,12 +47,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 RUN groupadd --system app && useradd --system --gid app --home-dir /app app
 
-# MongoDB Database Tools link GSSAPI even when password authentication is
-# used. Keep only the runtime library; no Kerberos client configuration or
-# service is introduced.
-RUN apt-get update \
-    && apt-get install --yes --no-install-recommends ca-certificates git libgssapi-krb5-2 \
-    && rm -rf /var/lib/apt/lists/*
+# Git and GSSAPI runtime dependencies/notices come from a matching pinned Debian
+# image. Package mirrors are not part of a clean build or a mutable dependency.
+COPY --from=operator-tools /operator-runtime/ /
 
 # Model weights live on a persistent volume owned by the runtime user, so they
 # are downloaded once and never baked into the image.
@@ -67,10 +87,19 @@ COPY deploy/systemd ./deploy/systemd
 COPY docs/backup.md ./docs/backup.md
 COPY docs/codex.md docs/client-onboarding.md ./docs/
 COPY docs/clients ./docs/clients
+# Source/distribution tests inspect the maintained console/runbooks and build
+# manifests. Dockerignore excludes private plans and generated browser state.
+COPY dashboard ./dashboard
+COPY docs ./docs
+COPY website ./website
+COPY deploy/console ./deploy/console
+COPY deploy/keycloak ./deploy/keycloak
+COPY .github ./.github
 COPY examples ./examples
 COPY scripts/codex-mcp-server.sh scripts/create-mongot-user.js \
      scripts/create-application-user.js scripts/verify-mongot.sh \
      scripts/backup.sh scripts/restore.sh scripts/prepare_open_source_release.py ./scripts/
+COPY scripts/test-v6-deployment.sh scripts/test-v6-isolation.sh ./scripts/
 COPY tests ./tests
 RUN chown -R app:app /app
 

@@ -33,3 +33,24 @@ build
 *.egg-info
 *.tar.gz
 *.zip
+
+# Frontend compiler/browser caches are never distribution inputs.
+**/.vite/
+**/blob-report/
+**/.npm/
+*.tsbuildinfo
+
+# Apply exclusions to nested source trees as well as the repository root.
+**/node_modules
+**/dist
+**/test-results
+**/playwright-report
+**/coverage
+**/.private
+**/.git
+**/.env*
+**/secrets
+**/backups
+**/__pycache__
+
+!.env.example

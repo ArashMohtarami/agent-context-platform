@@ -21,7 +21,9 @@ from pathlib import Path
 from typing import Final, Protocol
 
 from app.backup import naming
+from app.backup.access import require_operator
 from app.backup.manifest import BackupManifest, ManifestError, build, digest, read, write
+from app.backup.recovery import check_keys, required_keys
 from app.backup.retention import Decision, RetentionPolicy, select
 from app.backup.tools import DUMP, RESTORE, MongoTools, ToolFailedError
 from app.core.config import Settings
@@ -52,6 +54,8 @@ class BackupRepository(Protocol):
     """Persistence operations the backup workflow needs."""
 
     async def collection_counts(self) -> dict[str, int]: ...
+
+    async def encryption_key_ids(self) -> set[str]: ...
 
     async def restored_document_count(self, prefix: str) -> int: ...
 
@@ -154,7 +158,18 @@ class BackupService:
         once it is complete, so a backup interrupted halfway never appears in
         the directory as something a restore might later choose.
         """
+        require_operator()
         created_at = self._clock()
+        try:
+            encryption_keys = required_keys(self._settings)
+        except ValueError as error:
+            raise BackupError(str(error)) from error
+        if self._repository is not None and self._settings.v6_local_identity:
+            required = await self._repository.encryption_key_ids()
+            if required - encryption_keys.keys():
+                raise BackupError(
+                    "mounted keyring is missing keys referenced by encrypted identity"
+                )
         target = self._prepared_directory() / naming.archive_name(created_at, gzip=gzip)
         if target.exists():
             raise BackupError(f"{target.name} already exists")
@@ -182,6 +197,7 @@ class BackupService:
                 database=self._settings.mongodb_database,
                 gzip=gzip,
                 collections=collections,
+                encryption_keys=encryption_keys,
             )
             write(self._manifest_path(target.name), manifest)
         except OSError as error:
@@ -212,6 +228,7 @@ class BackupService:
         Only files this platform named are listed, so an operator's own files
         sitting beside them are never reported, verified, or deleted.
         """
+        require_operator()
         directory = self.directory
         if not directory.is_dir():
             return ()
@@ -256,6 +273,7 @@ class BackupService:
         why the phase asks for it and why a backup nobody has restored is not
         yet known to be a backup.
         """
+        require_operator()
         failures: list[str] = []
         if not backup.archive.exists():
             return Verification(
@@ -284,11 +302,15 @@ class BackupService:
 
         restored: int | None = None
         expected: int | None = None
-        if restore and readable:
+        if restore and readable and not failures:
             expected = manifest.documents if manifest is not None else None
             try:
-                restored = await self._restore_into_scratch(backup)
-            except BackupError as error:
+                check_keys(self._settings, manifest.encryption_keys if manifest else {})
+                restored_counts = await self._restore_into_scratch(backup)
+                restored = sum(restored_counts.values())
+                if manifest and manifest.collections and restored_counts != manifest.collections:
+                    failures.append("isolated restore per-collection inventory does not match")
+            except (BackupError, ValueError) as error:
                 failures.append(str(error))
             else:
                 if expected is not None and restored != expected:
@@ -334,7 +356,7 @@ class BackupService:
             return False
         return True
 
-    async def _restore_into_scratch(self, backup: StoredBackup) -> int:
+    async def _restore_into_scratch(self, backup: StoredBackup) -> dict[str, int]:
         """Restore into throwaway collections and return what arrived.
 
         Into *this* database under a unique prefix, not a separate one, and
@@ -363,7 +385,13 @@ class BackupService:
             arguments.append("--gzip")
         try:
             await self._tools.run(RESTORE, arguments)
-            return await self._repository.restored_document_count(prefix)
+            # A matching total alone can conceal a missing identity/policy collection.
+            actual = {
+                name.removeprefix(prefix): count
+                for name, count in (await self._repository.collection_counts()).items()
+                if name.startswith(prefix)
+            }
+            return actual
         except ToolFailedError as error:
             raise BackupError(f"the archive did not restore: {error}") from error
         finally:
@@ -393,6 +421,10 @@ class BackupService:
         verification = await self.verify(backup)
         if not verification.sound:
             raise BackupError("the backup failed verification: " + "; ".join(verification.failures))
+        try:
+            check_keys(self._settings, backup.manifest.encryption_keys if backup.manifest else {})
+        except ValueError as error:
+            raise BackupError(str(error)) from error
         arguments = [
             *self._tools.connection_arguments(),
             f"--archive={backup.archive}",

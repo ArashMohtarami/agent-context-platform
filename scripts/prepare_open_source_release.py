@@ -54,6 +54,24 @@ PUBLIC_ROOT_FILES = frozenset(
         "requirements-dev.lock",
     }
 )
+DASHBOARD_REQUIRED = frozenset(
+    {
+        "dashboard/package.json",
+        "dashboard/package-lock.json",
+        "dashboard/.node-version",
+        "dashboard/LICENSE",
+        "dashboard/THIRD_PARTY_NOTICES.txt",
+        "dashboard/dependency-licenses.json",
+        "dashboard/src/main.tsx",
+        "dashboard/index.html",
+        "dashboard/vite.config.ts",
+        "dashboard/tsconfig.json",
+        "dashboard/playwright.config.ts",
+        "dashboard/eslint.config.js",
+        "dashboard/scripts/check-build.mjs",
+        "dashboard/scripts/licenses.mjs",
+    }
+)
 PRIVATE_PARTS = frozenset(
     {
         ".git",
@@ -73,6 +91,9 @@ PRIVATE_PARTS = frozenset(
         "node_modules",
         "test-results",
         "playwright-report",
+        "blob-report",
+        ".vite",
+        ".npm",
         "coverage",
         "dist",
         "build",
@@ -111,7 +132,7 @@ def eligible(path: PurePosixPath) -> bool:
         return False
     if path.name.startswith(".env") and path.name != ".env.example":
         return False
-    if path.suffix in {".pyc", ".pyo", ".sqlite3", ".gz", ".zip", ".pem", ".key"}:
+    if path.suffix in {".pyc", ".pyo", ".sqlite3", ".gz", ".zip", ".pem", ".key", ".tsbuildinfo"}:
         return False
     if any(p.endswith(".egg-info") for p in path.parts):
         return False
@@ -186,6 +207,10 @@ def audited_files(root: Path, forbidden: tuple[str, ...] = ()) -> dict[PurePosix
     for required in ("README.md", "LICENSE", "pyproject.toml"):
         if PurePosixPath(required) not in files:
             problems.append(f"{required}: required public release file is missing")
+    if any(path.parts[0] == "dashboard" for path in files):
+        for required in sorted(DASHBOARD_REQUIRED):
+            if PurePosixPath(required) not in files:
+                problems.append(f"{required}: required dashboard distribution file is missing")
     if problems:
         raise ValueError("Public source audit failed:\n" + "\n".join(problems))
     return files

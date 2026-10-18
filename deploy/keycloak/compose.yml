@@ -1,0 +1,52 @@
+# Optional separate provider installation. Do not merge its database with platform MongoDB.
+name: agent-context-keycloak
+services:
+  keycloak-db:
+    image: postgres:16.15@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD_FILE: /run/secrets/keycloak-db-password
+    secrets: [keycloak-db-password]
+    volumes: [keycloak_data:/var/lib/postgresql/data]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, pg_isready, -U, keycloak, -d, keycloak]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks: [provider]
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1@sha256:79c623a22abacf3fe6c00a5fb30f5b7843d717b234033b80995891c06116d244
+    restart: unless-stopped
+    entrypoint: [/bin/bash, /start-provider.sh]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_HOSTNAME: ${KEYCLOAK_ORIGIN:?Set exact external HTTPS provider origin}
+      KC_HTTP_ENABLED: 'false'
+      KC_HTTPS_CERTIFICATE_FILE: /run/secrets/keycloak-cert
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /run/secrets/keycloak-key
+      KC_HEALTH_ENABLED: 'true'
+    ports: ['${KEYCLOAK_BIND_IP:-127.0.0.1}:${KEYCLOAK_HTTPS_PORT:-8444}:8443']
+    volumes: ['./start.sh:/start-provider.sh:ro']
+    secrets: [keycloak-db-password, keycloak-cert, keycloak-key]
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    security_opt: [no-new-privileges:true]
+    mem_limit: 1g
+    networks: [provider]
+secrets:
+  keycloak-db-password:
+    file: ${KEYCLOAK_DB_PASSWORD_FILE:?Mount a unique database password}
+  keycloak-cert:
+    file: ${KEYCLOAK_CERT_FILE:?Mount TLS certificate chain}
+  keycloak-key:
+    file: ${KEYCLOAK_KEY_FILE:?Mount TLS private key}
+volumes:
+  keycloak_data: {}
+networks:
+  provider: {}
