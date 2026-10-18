@@ -8,6 +8,7 @@ import { errorText, SessionUnavailable, useAuth } from '../auth/context';
 import { Button, Empty, ErrorState, Icon, Modal, Notice, Panel, Select, Skeleton, Status, Table } from '../components/ui';
 import type { Organization } from '../api/contracts';
 import mark from '../assets/mark.svg';
+import { Overview } from '../overview/Overview';
 
 export function ThemeButton() {
   const [dark, setDark] = useState(() => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -34,6 +35,9 @@ function Shell() {
   const links: {to: string; label: string; icon: 'home' | 'key' | 'shield' | 'users' | 'link'}[] = [{to: base + '/workspace', label: 'My workspace', icon: 'home' as const}, {to: base + '/my-access', label: 'My access', icon: 'key' as const}, {to: base + '/security', label: 'My security', icon: 'shield' as const}];
   const permits = (...actions: string[]) => auth.state.status === 'active' && auth.state.data.grants.some(g => g.selector !== 'none' && actions.includes(g.action));
   if (permits('projects:read', 'context:read', 'skills:read', 'memory:read', 'search:read')) links.push({to: base + '/knowledge/' + (permits('projects:read') ? 'projects' : permits('skills:read') ? 'skills' : permits('memory:read') ? 'memory' : 'search'), label: 'Knowledge', icon: 'link'});
+  if (permits('activity:read:team')) links.push({to: base + '/team-overview', label: 'Team overview', icon: 'users'});
+  if (me.membership.role !== 'team_lead' && permits('activity:read:org')) links.push({to: base + '/leadership', label: 'Leadership overview', icon: 'home'});
+  if (me.membership.role !== 'team_lead' && permits('audit:read:org')) links.push({to: base + '/audit', label: 'Governance audit', icon: 'shield'});
   if (permits('creator:read', 'content:read')) links.push({to: base + '/creator', label: 'Creator studio', icon: 'link'});
   if (permits('research:read')) links.push({to: base + '/research', label: 'Research', icon: 'link'});
   if (permits('members:read')) links.push({to: base + '/people', label: 'People', icon: 'users'});
@@ -80,6 +84,7 @@ export function Workspace() {
     <div className="overview-grid"><Panel title="Organization context"><dl className="detail-list"><div><dt>Workspace</dt><dd>{org?.name ?? data.me.policy_context.org_id}</dd></div><div><dt>Your role</dt><dd className="capitalize">{data.me.membership.role.replaceAll('_', ' ')}</dd></div><div><dt>Sign-in policy</dt><dd>{org?.auth_policy === 'sso_required' ? 'Approved SSO required' : org?.auth_policy === 'sso_preferred' ? 'SSO preferred' : 'Local sign-in'}</dd></div></dl></Panel>
     <Panel title="My access"><p>Read your effective action and resource boundaries. A role or team name does not grant corpus access by itself.</p><Link className="button secondary" to={base + '/my-access'}>Review my access<Icon name="arrow"/></Link></Panel>
     <Panel title="My security"><p>{data.security.mfa_enrolled ? 'Your local authenticator is enrolled.' : data.me.auth_method === 'oidc' ? 'Your provider verifies your sign-in.' : 'Set up an authenticator to protect sensitive account changes.'}</p><Link className="button secondary" to={base + '/security'}>Manage sign-in security<Icon name="arrow"/></Link></Panel></div>
+    <Overview embedded/>
     <Panel title="Built around explicit access" description="Your console uses the current organization’s verified policy."><div className="principle-grid"><div><Icon name="users"/><h3>Your organization</h3><p>Switching workspaces checks membership and sign-in policy, then clears the previous context.</p></div><div><Icon name="key"/><h3>Your resource boundaries</h3><p>Read, write and management permissions stay coupled to their authorized resources.</p></div><div><Icon name="shield"/><h3>Your security</h3><p>Manage human browser sessions and verified login identities from your own account.</p></div></div></Panel>
   </>;
 }

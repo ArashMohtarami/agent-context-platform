@@ -140,6 +140,17 @@ class CoverageDTO(BaseModel):
     gaps: list[HistoryGap] = Field(default_factory=list)
 
 
+class MeasureDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    value: float | None
+    sample_count: int
+    denominator: int | None
+    state: Literal["unavailable", "observed", "no_recorded_samples"]
+    source: Source
+    unit: Literal["events", "clients", "milliseconds"]
+    definition: str
+
+
 class SummaryDTO(BaseModel):
     model_config = ConfigDict(extra="forbid")
     org_id: str
@@ -152,6 +163,7 @@ class SummaryDTO(BaseModel):
     outcomes: dict[str, int]
     buckets: list[dict[str, datetime | int]]
     sparse_series: bool = True
+    measures: dict[str, MeasureDTO] = Field(default_factory=dict)
 
 
 class ActivityDTO(BaseModel):
@@ -169,3 +181,28 @@ class ReportDTO(BaseModel):
     download_path: str
     expires_at: datetime
     max_rows: int = MAX_REPORT_ROWS
+
+
+class AuditQuery(SummaryQuery):
+    source: Literal["governance"] = "governance"
+    scope: Literal["org"] = "org"
+    event_id: str = Field(min_length=1, max_length=128)
+
+    def filters(self) -> SummaryQuery:
+        return SummaryQuery.model_validate(self.model_dump(exclude={"event_id"}))
+
+
+class AuditFieldDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    field: str
+    before: str | None
+    after: str | None
+
+
+class AuditDiffDTO(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    event: EventDTO
+    fields: list[AuditFieldDTO]
+    state: Literal["recorded_fields", "unavailable"]
+    redaction: str
+    coverage: CoverageDTO

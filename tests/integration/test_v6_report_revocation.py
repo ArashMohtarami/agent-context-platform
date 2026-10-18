@@ -135,7 +135,9 @@ async def test_real_revoked_policy_active_session_and_expired_reports_fail(summa
 async def test_real_governance_csv_formula_neutralization_and_body_redaction(summary_db):
     h = summary_db
     poison_id = '=HYPERLINK("https://invalid.example")'
-    now = utc_now()
+    # BSON dates have millisecond precision; keep the synthetic record strictly
+    # before the exclusive window end even on a sub-millisecond local round trip.
+    now = utc_now() - timedelta(milliseconds=10)
     await h.db.governance_events.insert_one(
         {
             "_id": poison_id,

@@ -313,3 +313,15 @@ summary {cursor:pointer; min-height:2.75rem; display:flex; align-items:center; g
 .creator-diff span { display: block; }
 .creator-diff span[data-change="add"] { color: var(--success); background: color-mix(in srgb, var(--success) 8%, transparent); }
 .creator-diff span[data-change="remove"] { color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+
+.monitor-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; align-items: end; }
+.monitor-chart { width: 100%; height: auto; max-height: 15rem; margin: 1rem 0; color: var(--primary); }
+.monitor-chart rect { fill: currentColor; }
+.monitor-chart line { stroke: var(--control); }
+.monitor-total { font-size: 1.65rem; font-weight: 700; color: var(--ink); }
+.monitor-chart text { fill: var(--muted); font: 12px system-ui, sans-serif; }
+.modal:has(.audit-diff) { width: min(68rem, calc(100vw - 2rem)); }
+.audit-diff table { min-width: 0; table-layout: fixed; }
+.audit-diff th:first-child { width: 22%; }
+.audit-diff th, .audit-diff td { padding: .75rem .5rem; vertical-align: top; }
+.audit-diff pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: .5rem; }

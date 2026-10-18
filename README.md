@@ -53,6 +53,7 @@ serving it requires explicit activation. Phase 10 adds
 [knowledge workspace](docs/dashboard-knowledge.md), and Phase 12 adds the
 [evidence-backed research console](docs/dashboard-research.md). Phase 13 adds the
 [creator studio](docs/dashboard-creator.md) with independent review and manual publication receipts.
+Phase 14 adds [authorized monitoring and governance audit views](docs/dashboard-monitoring.md).
 The workflows below assume completed setup and organization-bound credentials.
 Provisioning, import, and administrative commands require `--org-id`; human
 management uses verified human sessions and explicit resource assignments.

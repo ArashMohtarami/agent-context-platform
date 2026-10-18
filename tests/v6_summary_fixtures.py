@@ -21,7 +21,10 @@ def grant(action, kind="organization", ids=("org-a",)):
 
 @pytest_asyncio.fixture
 async def summary_db(managed_agents_db):
-    h = managed_agents_db
+    yield await prepare_summary(managed_agents_db)
+
+
+async def prepare_summary(h):
     root = await h.db.policy_assignments.find_one({"_id": h.root})
     caps = (
         grant("activity:read:org"),
@@ -52,6 +55,8 @@ async def summary_db(managed_agents_db):
             ),
             "fictional-independent-summary-root-review",
         )
+
+    h.root_generation = 4
 
     async def issue(subject, role, tuples, team=None, **kwargs):
         return await h.governance.issue(
@@ -141,7 +146,7 @@ async def summary_db(managed_agents_db):
     )
     with tenant_scope(TenantContext("org-a")):
         await checkpoint(h.engine, "org-a", h.declaration)
-    yield h
+    return h
 
 
 def params(query):

@@ -10,6 +10,10 @@ STORAGE = {
     "_managed_agents_control": "installation metadata; verified schema42 activation prerequisite",
 }
 ROUTES = {
+    "GET /api/v6/organizations/{org_id}/audit-diff": (
+        "current browser/org; audit:read:org; same time/retention predicate and policy fence; "
+        "declared authority fields only"
+    ),
     "GET /api/v6/organizations/{org_id}/overview": (
         "browser+org match; exact action-resource grants; Mongo pre-group predicate"
     ),

@@ -7,7 +7,15 @@ from fastapi import APIRouter, HTTPException, Path, Query, Response
 
 from app.api.routes.human_management import management
 from app.identity.browser import CurrentBrowser
-from app.summaries.models import ActivityDTO, ActivityQuery, ReportDTO, SummaryDTO, SummaryQuery
+from app.summaries.models import (
+    ActivityDTO,
+    ActivityQuery,
+    AuditDiffDTO,
+    AuditQuery,
+    ReportDTO,
+    SummaryDTO,
+    SummaryQuery,
+)
 from app.summaries.reports import Reports
 from app.summaries.service import Summaries
 
@@ -65,3 +73,10 @@ async def download(
             "X-Summary-Metadata": json.dumps(metadata, ensure_ascii=True, separators=(",", ":")),
         },
     )
+
+
+@router.get("/audit-diff", response_model=AuditDiffDTO)
+async def audit_diff(
+    org_id: str, context: CurrentBrowser, query: Annotated[AuditQuery, Query()]
+) -> Any:
+    return await service(context).audit_diff(org_id, context.row["user_id"], query)

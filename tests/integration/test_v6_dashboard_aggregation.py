@@ -1,5 +1,6 @@
 """Actual persisted aggregation, attribution, coverage and policy predicates."""
 
+import asyncio
 from datetime import timedelta
 
 import pytest
@@ -273,3 +274,157 @@ async def test_real_governance_projection_attribution_and_private_body_exclusion
     async with browser(h, "other") as (client, headers):
         response = await client.get(BASE + "/overview", params=params(query), headers=headers)
         assert response.status_code == 403  # aggregate metadata is not audit authority
+
+
+async def test_declared_measures_match_permitted_raw_samples_and_timezone_boundaries(summary_db):
+    h = summary_db
+    for scope, subject, team in (
+        ("org", "owner", None),
+        ("own", "member", None),
+        ("team", "lead", "alpha"),
+    ):
+        raw_filter = {"org_id": "org-a", "created_at": {"$gte": h.query.start, "$lt": h.query.end}}
+        if scope == "own":
+            raw_filter.update(
+                sponsor_id="member", sponsorship_revision={"$gte": 1}, project_id="payment-service"
+            )
+        if scope == "team":
+            raw_filter.update(
+                sponsor_team_id="alpha",
+                sponsorship_revision={"$gte": 1},
+                project_id="payment-service",
+            )
+        raw = await h.db.agent_activity.find(raw_filter).to_list(None)
+        samples = [r["latency_ms"] for r in raw if r.get("latency_ms") is not None]
+        clients = {
+            r["client_id"]
+            for r in raw
+            if r.get("sponsor_id") and r.get("sponsorship_revision", 0) >= 1
+        }
+        async with browser(h, subject) as (http, headers):
+            for zone in ("UTC", "Asia/Tehran", "America/New_York"):
+                query = h.query.model_copy(
+                    update={"scope": scope, "team_id": team, "timezone": zone, "bucket": "hour"}
+                )
+                r = await http.get(BASE + "/overview", params=params(query), headers=headers)
+                assert r.status_code == 200, r.text
+                result = r.json()
+                m = result["measures"]
+                assert (
+                    result["observed_count"]
+                    == len(raw)
+                    == sum(x["count"] for x in result["buckets"])
+                )
+                assert m["clients"]["value"] == len(clients)
+                assert m["latency"]["sample_count"] == len(samples)
+                assert m["latency"]["value"] == pytest.approx(sum(samples) / len(samples))
+                assert m["latency"]["denominator"] == len(raw)
+                assert m["access_reviews"]["value"] is None
+                assert all(x["start"] < x["end"] for x in result["buckets"])
+                # A different source declares review decisions; no corpus-review inference.
+                assert "PRIVATE" not in r.text
+
+
+async def test_governance_diff_redacts_payload_and_preserves_missing_snapshots(summary_db):
+    h = summary_db
+    from app.security.policy.models import Grant
+
+    await h.governance.change(
+        "org-a",
+        "owner",
+        h.sponsor_assignment["_id"],
+        1,
+        tuples=tuple(Grant.model_validate(x) for x in h.sponsor_assignment["tuples"]),
+    )
+    event = await h.db.governance_events.find_one(
+        {"org_id": "org-a", "action": "assignment_narrowed"}
+    )
+    await h.db.governance_events.update_one(
+        {"_id": event["_id"]},
+        {
+            "$set": {
+                "change.after.name": "PRIVATE_NAME",
+                "change.prompt": "PRIVATE_PROMPT",
+                "change.after.tuples.0.ids.0": "PRIVATE_RESOURCE_ID",
+            }
+        },
+    )
+    query = h.query.model_copy(update={"source": "governance", "end": utc_now()})
+    async with browser(h, "owner") as (http, headers):
+        r = await http.get(
+            BASE + "/audit-diff", params=params(query) | {"event_id": event["_id"]}, headers=headers
+        )
+        assert r.status_code == 200, r.text
+        concurrent = await asyncio.gather(
+            http.get(BASE + "/overview", params=params(query), headers=headers),
+            http.get(BASE + "/activity", params=params(query), headers=headers),
+            http.get(
+                BASE + "/audit-diff",
+                params=params(query) | {"event_id": event["_id"]},
+                headers=headers,
+            ),
+        )
+        assert [response.status_code for response in concurrent] == [200, 200, 200]
+        fields = {x["field"]: x for x in r.json()["fields"]}
+        assert fields["revision"]["before"] == "1" and fields["revision"]["after"] == "2"
+        assert all(
+            x not in r.text
+            for x in ("PRIVATE_NAME", "PRIVATE_PROMPT", "PRIVATE_RESOURCE_ID", event["target_id"])
+        )
+        assert (
+            await http.get(
+                BASE + "/audit-diff",
+                params=params(query) | {"event_id": "foreign"},
+                headers=headers,
+            )
+        ).status_code == 403
+    async with browser(h, "other") as (http, headers):
+        assert (
+            await http.get(
+                BASE + "/audit-diff",
+                params=params(query) | {"event_id": event["_id"]},
+                headers=headers,
+            )
+        ).status_code == 403
+
+
+async def test_second_organization_positive_metadata_counts_use_matching_ids(summary_db):
+    import httpx
+
+    from app.identity.browser import SESSION_COOKIE
+    from app.identity.crypto import csrf
+    from tests.v6_monitoring_fixtures import monitoring_state
+
+    h = summary_db
+    member = await h.db.organization_memberships.find_one({"org_id": "org-a", "user_id": "member"})
+    await h.db.organization_memberships.insert_one(
+        {**member, "_id": "second-org-member", "org_id": "org-b"}
+    )
+    await monitoring_state(h, "org-b", configure_sso=False)
+    user = await h.db.users.find_one({"_id": "member"})
+    member = await h.db.organization_memberships.find_one({"org_id": "org-b", "user_id": "member"})
+    org = await h.db.organizations.find_one({"org_id": "org-b"})
+    issued = await h.local.sessions.issue(
+        user, member, org, ["password", "mfa"], utc_now(), utc_now()
+    )
+    headers = {
+        "Origin": "https://identity.example",
+        "X-CSRF-Token": csrf(issued.token),
+        "X-Session-Context": h.local.policy_context(issued.row)["context_id"],
+    }
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=h.app),
+        base_url="https://identity.example",
+        cookies={SESSION_COOKIE: issued.token},
+    ) as http:
+        r = await http.get(
+            "/api/v6/organizations/org-b/overview", params=params(h.query), headers=headers
+        )
+        assert r.status_code == 200, r.text
+        expected = await h.db.agent_activity.count_documents(
+            {"org_id": "org-b", "created_at": {"$gte": h.query.start, "$lt": h.query.end}}
+        )
+        assert r.json()["org_id"] == "org-b" and r.json()["observed_count"] == expected
+        assert (
+            await http.get(BASE + "/overview", params=params(h.query), headers=headers)
+        ).status_code == 403

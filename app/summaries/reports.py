@@ -20,6 +20,7 @@ from app.summaries.models import (
     SummaryQuery,
 )
 from app.summaries.projection import projection
+from app.summaries.reads import retry_read
 from app.summaries.service import MAX_TIME_MS, Summaries
 from app.summaries.visibility import SOURCES, visibility
 
@@ -77,6 +78,7 @@ class Reports:
 
         return await Governance(self.engine).mutate(org, actor, operation)
 
+    @retry_read
     async def download(self, org: str, actor: str, report_id: str) -> tuple[str, Row]:
         self.service.context(org, actor)
         async with self.engine.transaction() as tx:

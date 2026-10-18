@@ -1,6 +1,6 @@
 # Authorized summaries and reports
 
-Phase 8 adds server read contracts, not a dashboard. It requires an activated
+Phase 8 establishes the server read contracts; the [Phase 14 UI](dashboard-monitoring.md) consumes them. It requires an activated
 Phase 7 installation, verified human browser sessions and current organization
 policy. Existing bearer/MCP interfaces cannot authenticate these routes with a
 browser cookie. There are no new dependencies or migrations: schema head 42 is
@@ -11,6 +11,7 @@ on disk, in an outbox or in an idempotency record.
 | API | Contract |
 | --- | --- |
 | `GET /api/v6/organizations/{org_id}/overview` | Own/team/org summary, outcomes and sparse hour/day buckets |
+| `GET /api/v6/organizations/{org_id}/audit-diff` | Phase 14: separately authorized, redacted recorded authority fields; no raw snapshot or target IDs |
 | `GET /api/v6/organizations/{org_id}/activity` | Same visibility, observed count and signed keyset pagination |
 | `POST /api/v6/organizations/{org_id}/reports` | Approve bounded filters; return an expiring recipient-bound download path |
 | `GET /api/v6/organizations/{org_id}/reports/{report_id}/download` | Reauthorize, apply current retention and generate neutralized CSV |
@@ -97,7 +98,7 @@ stream), and `complete` (covered transactional governance stream). A separate
 `observation_state` distinguishes recorded events from no recorded events.
 `observed_count=0` alone never claims collection was complete. Sparse buckets
 represent recorded events only: missing buckets are not synthesized zeros.
-Counts, buckets and details use one MongoDB pre-aggregation visibility predicate,
+Phase 14 adds server-computed distinct verified clients, finite reported latency samples and declared access-decision counts, while leaving event/CSV payloads content-free. Counts, buckets and details use one MongoDB pre-aggregation visibility predicate,
 within one snapshot serialized with policy revocation. A page length is never a
 total. Timezone changes bucket boundaries, not stored event instants.
 

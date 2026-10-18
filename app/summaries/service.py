@@ -8,9 +8,11 @@ from app.security.policy.engine import PolicyEngine
 from app.security.policy.evaluation import PolicyConflict, PolicyDenied
 from app.security.tenant import require_tenant
 from app.security.tenant_cursor import binding, decode_directory_cursor, encode_directory_cursor
+from app.summaries import measures
 from app.summaries.coverage import CHECKPOINT_ACTION, coverage
-from app.summaries.models import SummaryQuery
+from app.summaries.models import AuditQuery, SummaryQuery
 from app.summaries.projection import projection
+from app.summaries.reads import retry_read
 from app.summaries.visibility import SOURCES, visibility
 
 MAX_TIME_MS = 3000
@@ -94,6 +96,7 @@ class Summaries:
             "outcomes": [{"$group": {"_id": "$outcome", "count": {"$sum": 1}}}],
         }
         if overview:
+            facets.update(measures.facets(query.source))
             facets["buckets"] = [
                 {
                     "$group": {
@@ -107,13 +110,34 @@ class Summaries:
                         "count": {"$sum": 1},
                     }
                 },
+                {
+                    "$set": {
+                        "end": {
+                            "$dateAdd": {
+                                "startDate": "$_id",
+                                "unit": query.bucket,
+                                "amount": 1,
+                                "timezone": query.timezone,
+                            }
+                        }
+                    }
+                },
                 {"$sort": {"_id": 1}},
             ]
         else:
             facets["items"] = [*after, {"$sort": {"event_id": 1}}, {"$limit": limit + 1}]
         rows = await (
             await self.db[SOURCES[query.source]].aggregate(
-                [{"$match": predicate}, {"$project": projection(query.source)}, {"$facet": facets}],
+                [
+                    {"$match": predicate},
+                    {
+                        "$project": {
+                            **projection(query.source),
+                            **(measures.fields(query.source) if overview else {}),
+                        }
+                    },
+                    {"$facet": facets},
+                ],
                 session=tx,
                 maxTimeMS=MAX_TIME_MS,
                 allowDiskUse=False,
@@ -142,10 +166,14 @@ class Summaries:
             "generated_at": now,
             "observation_state": "recorded_events" if count else "no_recorded_events",
             "outcomes": {r["_id"]: r["count"] for r in result["outcomes"]},
-            "buckets": [{"start": r["_id"], "count": r["count"]} for r in result["buckets"]],
+            "buckets": [
+                {"start": r["_id"], "count": r["count"], "end": r["end"]} for r in result["buckets"]
+            ],
+            "measures": measures.metrics(result, query.source, count),
             "sparse_series": True,
         }
 
+    @retry_read
     async def read(
         self,
         org: str,
@@ -165,3 +193,48 @@ class Summaries:
             return await self.aggregate(
                 snapshot, query, tx, overview=overview, limit=limit, cursor=cursor
             )
+
+    @retry_read
+    async def audit_diff(self, org: str, actor: str, query: AuditQuery) -> Row:
+        from app.summaries.audit import REDACTION, diff
+
+        self.context(org, actor)
+        filters = query.filters()
+        filters.current(utc_now())
+        async with self.engine.transaction() as tx:
+            await self.ready(tx)
+            snapshot = await self.engine.snapshot(org, actor, tx)
+            await self.engine.fence(snapshot["anchor"], tx)
+            predicate = visibility(snapshot, filters)
+            declared = await self.checkpoint(org, "governance", tx)
+            parts = [predicate, {"_id": query.event_id}]
+            if declared:
+                parts.append({"created_at": {"$gte": declared["change"]["retained_from"]}})
+            rows = await (
+                await self.db["governance_events"].aggregate(
+                    [
+                        {"$match": {"$and": parts}},
+                        {"$limit": 1},
+                        {"$project": {**projection("governance"), "_change": "$change"}},
+                    ],
+                    session=tx,
+                    maxTimeMS=MAX_TIME_MS,
+                    allowDiskUse=False,
+                )
+            ).to_list(1)
+            if not rows:
+                raise PolicyDenied("audit event is unavailable in the permitted window")
+            event = rows[0]
+            change = event.pop("_change", {})
+            fields = (
+                diff(change)
+                if isinstance(change, dict) and event["attribution"] == "verified_event_time"
+                else []
+            )
+            return {
+                "event": event,
+                "fields": fields,
+                "state": "recorded_fields" if fields else "unavailable",
+                "redaction": REDACTION,
+                "coverage": coverage(filters, declared, utc_now()).model_dump(),
+            }

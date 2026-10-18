@@ -174,3 +174,67 @@ def test_every_phase8_route_storage_and_query_source_reconciles_with_source():
     assert {"retrieval_logs", "audit_logs", "identity_audit_events", "metrics"} == set(
         EXCLUDED_SOURCES
     )
+
+
+def test_monitoring_diff_never_serializes_arbitrary_snapshot_values_or_identifiers():
+    from app.summaries.audit import diff
+
+    rows = diff(
+        {
+            "before": {"revision": 1, "name": "PRIVATE_NAME", "status": "active"},
+            "after": {
+                "revision": 2,
+                "name": "PRIVATE_OTHER",
+                "status": "revoked",
+                "tuples": [
+                    {
+                        "action": "content:read",
+                        "resource_kind": "project",
+                        "selector": "include",
+                        "ids": ["PRIVATE_PROJECT"],
+                    }
+                ],
+                "targets": {"mode": "include", "ids": ["PRIVATE_PERSON"]},
+            },
+        }
+    )
+    assert "PRIVATE" not in str(rows)
+    assert {r["field"]: r for r in rows}["tuples"]["before"] is None
+    assert "1 identifiers withheld" in str(rows)
+    assert (
+        diff(
+            {
+                "after": {
+                    "role": "PRIVATE_ROLE",
+                    "status": "PRIVATE_STATUS",
+                    "prompt": "PRIVATE_BODY",
+                }
+            }
+        )
+        == []
+    )
+    assert diff({"after": {"tuples": [{"action": "PRIVATE_ACTION"}]}}) == []
+
+
+def test_monitoring_review_measure_does_not_count_unrelated_governance_as_reviews():
+    from app.summaries.measures import metrics
+
+    result = metrics({"reviews": [{"count": 2}]}, "governance", 15)["access_reviews"]
+    assert result["value"] == result["sample_count"] == 2
+    assert result["denominator"] == 15
+    gateway = metrics(
+        {"latency": [], "clients": [], "verified": [], "unattributed": []}, "gateway_activity", 0
+    )
+    assert gateway["latency"]["value"] is None
+    assert gateway["access_reviews"]["state"] == "unavailable"
+    bad = metrics(
+        {
+            "latency": [{"count": 2, "mean": float("inf")}],
+            "clients": [],
+            "verified": [],
+            "unattributed": [],
+        },
+        "gateway_activity",
+        2,
+    )
+    assert bad["latency"]["value"] is None

@@ -232,6 +232,14 @@ async def test_real_dashboard_browser(managed_agents_db):
                             path.unlink()
                         for name, contents in mail_snapshot.items():
                             (mail_root / name).write_bytes(contents)
+                    elif action == "monitoring":
+                        from tests.v6_monitoring_fixtures import prepare_monitoring
+
+                        result = await prepare_monitoring(h)
+                    elif action == "monitoring-state":
+                        from tests.v6_monitoring_fixtures import monitoring_state
+
+                        await monitoring_state(h, command["state"])
                     elif action == "creator":
                         from tests.v6_creator_fixtures import prepare_creator
 
