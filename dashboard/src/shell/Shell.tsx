@@ -34,6 +34,7 @@ function Shell() {
   const links: {to: string; label: string; icon: 'home' | 'key' | 'shield' | 'users' | 'link'}[] = [{to: base + '/workspace', label: 'My workspace', icon: 'home' as const}, {to: base + '/my-access', label: 'My access', icon: 'key' as const}, {to: base + '/security', label: 'My security', icon: 'shield' as const}];
   const permits = (...actions: string[]) => auth.state.status === 'active' && auth.state.data.grants.some(g => g.selector !== 'none' && actions.includes(g.action));
   if (permits('projects:read', 'context:read', 'skills:read', 'memory:read', 'search:read')) links.push({to: base + '/knowledge/' + (permits('projects:read') ? 'projects' : permits('skills:read') ? 'skills' : permits('memory:read') ? 'memory' : 'search'), label: 'Knowledge', icon: 'link'});
+  if (permits('creator:read', 'content:read')) links.push({to: base + '/creator', label: 'Creator studio', icon: 'link'});
   if (permits('research:read')) links.push({to: base + '/research', label: 'Research', icon: 'link'});
   if (permits('members:read')) links.push({to: base + '/people', label: 'People', icon: 'users'});
   if (permits('teams:read')) links.push({to: base + '/teams', label: 'Teams', icon: 'users'});
@@ -45,7 +46,7 @@ function Shell() {
   if (permits('projects:read')) links.push({to: base + '/bindings', label: 'Project bindings', icon: 'link'});
   links.push({to: base + '/ownership', label: 'Ownership & recovery', icon: 'shield'});
   const inKnowledge = location.pathname.startsWith(base + '/knowledge/');
-  const pageName = location.pathname.startsWith(base + '/research') ? 'Research console' : inKnowledge ? 'Knowledge workspace' : links.find(link => location.pathname === link.to)?.label ?? 'Management details';
+  const pageName = location.pathname.startsWith(base + '/creator') ? 'Creator studio' : location.pathname.startsWith(base + '/research') ? 'Research console' : inKnowledge ? 'Knowledge workspace' : links.find(link => location.pathname === link.to)?.label ?? 'Management details';
   const navigation = <nav className="side-nav" aria-label="Organization navigation"><span className="nav-section">Workspace</span>{links.map(link => <NavLink key={link.to} to={link.to} className={({isActive}) => isActive || (inKnowledge && link.label === 'Knowledge') ? 'active' : ''} onClick={() => setDrawer(false)}><Icon name={link.icon}/>{link.label}</NavLink>)}<div className="nav-foot"><Icon name="users"/><strong>Organization context</strong><p>Installation operations use the separate operator CLI.</p></div></nav>;
   async function change(selected: Organization) {
     setBusy(true); setError('');

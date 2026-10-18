@@ -134,6 +134,10 @@ PY
         exit 0
     fi
 fi
+if [[ "${V6_CREATOR_ADAPTERS_ONLY:-0}" == "1" ]]; then
+    "$python" -m pytest -q tests/integration/test_v6_creator_adapters.py tests/integration/test_v6_review_authority.py --junitxml="$report_dir/creator-adapters.xml" "$@"
+    exit 0
+fi
 if [[ "${V6_RESEARCH_ADAPTERS_ONLY:-0}" == "1" ]]; then
     "$python" -m pytest -q tests/integration/test_v6_research_adapters.py --junitxml="$report_dir/research-adapters.xml" "$@"
     exit 0

@@ -24,6 +24,7 @@ from app.api.routes.console import router as console_router
 from app.api.routes.content import router as content_router
 from app.api.routes.context import router as context_router
 from app.api.routes.creator import router as creator_router
+from app.api.routes.creator_console import router as creator_console_router
 from app.api.routes.gateway import router as gateway_router
 from app.api.routes.health import router as health_router
 from app.api.routes.human_management import router as human_management_router
@@ -335,6 +336,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     application.include_router(memory_router)
     application.include_router(search_router)
     application.include_router(creator_router)
+    application.include_router(creator_console_router)
     application.include_router(content_router)
     application.include_router(research_router)
     application.include_router(research_console_router)

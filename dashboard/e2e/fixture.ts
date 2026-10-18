@@ -16,7 +16,7 @@ export async function control<T = string>(action: string, data: Record<string, u
   const env = await environment(); const file = path.join(env.requests, randomUUID());
   await writeFile(file + '.pending', JSON.stringify({action, ...data}), {mode: 0o600});
   await rename(file + '.pending', file + '.request');
-  for (let attempt = 0; attempt < (['knowledge', 'research'].includes(action) ? 3600 : 900); attempt++) {
+  for (let attempt = 0; attempt < (['knowledge', 'research', 'creator'].includes(action) ? 3600 : 900); attempt++) {
     try {
       const answer: {error?: string; result: T} = JSON.parse(await readFile(file + '.reply', 'utf8'));
       await unlink(file + '.reply');

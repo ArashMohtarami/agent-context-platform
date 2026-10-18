@@ -64,5 +64,5 @@ def require_review(row: Mapping[str, Any], collection: str, operation: str) -> N
         return
     if not actor.get("user_id") or actor.get("org_id") != policy.org_id:
         raise PolicyDenied("authored subject sponsorship is not verified")
-    if actor["user_id"] == policy.subject_id:
+    if actor["user_id"] in (policy.sponsor_ids or (policy.subject_id,)):
         raise PolicyDenied("self-review is refused")

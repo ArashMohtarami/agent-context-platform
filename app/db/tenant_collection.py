@@ -347,6 +347,7 @@ class TenantCollection:
             and self.collection
             in {
                 "content_items",
+                "content_ideas",
                 "knowledge_candidates",
                 "skill_update_proposals",
                 "research_claims",

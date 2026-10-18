@@ -308,3 +308,8 @@ summary {cursor:pointer; min-height:2.75rem; display:flex; align-items:center; g
 .search-summary {display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.7rem;}
 .field textarea {width:100%; min-height:10rem; resize:vertical; padding:.8rem; border:1px solid var(--border); border-radius:.5rem; font:inherit; color:var(--ink); background:var(--surface);}
 .table-scroll small {display:block; color:var(--muted); margin-top:.25rem;}
+
+.creator-diff { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85rem; line-height: 1.7; }
+.creator-diff span { display: block; }
+.creator-diff span[data-change="add"] { color: var(--success); background: color-mix(in srgb, var(--success) 8%, transparent); }
+.creator-diff span[data-change="remove"] { color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }

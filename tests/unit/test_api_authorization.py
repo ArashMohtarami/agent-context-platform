@@ -30,6 +30,7 @@ from app.api.routes.client_profiles import router as client_profiles_router
 from app.api.routes.content import router as content_router
 from app.api.routes.context import router as context_router
 from app.api.routes.creator import router as creator_router
+from app.api.routes.creator_console import router as creator_console_router
 from app.api.routes.gateway import router as gateway_router
 from app.api.routes.knowledge_candidates import router as knowledge_candidates_router
 from app.api.routes.memory import router as memory_router
@@ -595,6 +596,7 @@ def test_the_routers_under_test_are_every_router_the_application_serves() -> Non
             management_adapters_router,
             knowledge_router,
             research_console_router,
+            creator_console_router,
             managed_agents_router,
             summaries_router,
         )

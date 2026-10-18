@@ -40,7 +40,7 @@ def action_gate(action: str) -> Callable[..., Awaitable[None]]:
         ):
             raise PolicyDenied("verified human policy is required")
         select_action(action)
-        if action.endswith((":write", ":approve", ":promote")):
+        if action.endswith((":write", ":approve", ":promote", ":publish")):
             context.service.sessions.recent(context.row)
 
     return gate
