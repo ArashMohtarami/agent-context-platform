@@ -407,3 +407,36 @@ The same procedure, with the platform built first:
 `scripts/backup.sh` and `scripts/restore.sh` wrap these for a scheduler. The
 restore script refuses to run without `RESTORE_CONFIRMED=1`, and prints the
 steps it does not do.
+
+## V6 management and encryption-key recovery
+
+Whole-installation archives include **every** enumerated collection: private
+users/identities/password hashes/MFA, browser sessions and challenges, memberships,
+teams/invitations, policy anchors/grants/governance audit/outbox, client custody,
+credential delivery metadata, jobs, summary coverage/reports and adoption
+preservation/quarantine. No tenant role or CSV export grants this capability.
+Raw archives are not exposed by `/console`, `/api/v6`, MCP or the marketing site.
+
+Use stopped writers for exact count-and-dump rehearsals; an online database-level
+dump is not a transactional multi-collection snapshot claim. Scratch restore
+verification compares **per-collection** inventories as well as combined counts,
+and never passes `--drop`. A tenant report cannot be supplied as a managed backup.
+
+Managed manifests record SHA-256 commitments to every retained mounted MFA key
+version without recording any key bytes. Restore verification and managed restore
+require the matching keyring; the same key ID with different bytes is refused.
+Keep encrypted off-host recovery copies of that keyring, database credentials,
+TLS key and approved IdP registrations separately, under operator controls. Local
+passwords and opaque browser session hashes are database state, not external
+plaintext password/session-signing files. Recover MFA/PKCE keys before opening
+identity services; password reset cannot recover encrypted factors. Old manifests
+without commitments remain readable, but require a separate decryption rehearsal.
+
+The disposable V6 recovery test materializes all collections, compares original
+BSON and decrypts a restored factor with a recovered keyring. This does not prove
+production recovery until repeated against your own preserved secrets and data.
+The optional Keycloak PostgreSQL database, provider keys and configuration need
+their **own** consistent backup/recovery; MongoDB cannot recover that IdP. See
+[console deployment](dashboard-deployment.md) for the TLS/cutover and provider
+runbooks. After restoring an older policy snapshot, revoke sessions/keys/challenges
+and repeat operator activation checks before admitting traffic.

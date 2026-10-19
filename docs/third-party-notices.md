@@ -64,3 +64,24 @@ inside the platform do not grant redistribution rights.
 
 Product and vendor names identify compatibility or dependencies; their trademark
 rights remain with their respective owners.
+
+## Console ingress and optional identity provider
+
+The console uses the committed `dashboard/package-lock.json`,
+[dependency inventory](../dashboard/DEPENDENCIES.md),
+[MIT license](../dashboard/LICENSE) and
+[complete frontend notices](../dashboard/THIRD_PARTY_NOTICES.txt). The static
+image retains the notices and supplemental license files. Node is a pinned
+build stage, not a production JavaScript server. nginx is BSD-licensed;
+its official image retains its upstream component notices.
+
+The pinned optional Keycloak image is Apache-2.0, with its own bundled JVM and
+third-party notices; PostgreSQL uses the [PostgreSQL license](https://www.postgresql.org/about/licence/).
+These images do not become part of this repository's MIT code license.
+When redistributing container binaries, retain their full upstream notices and
+meet their corresponding-source obligations, including Git (GPL-2.0) and its
+Debian runtime libraries. The API image copies Debian package copyright files
+and common licenses with Git/GSSAPI/CA runtime files from a pinned matching
+Debian image; build tools are excluded from the final image. Use the exact
+package versions in that image to obtain corresponding Debian source, rather
+than assuming a moving package mirror matches a binary.

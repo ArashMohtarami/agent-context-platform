@@ -26,6 +26,10 @@ PUBLIC_DOCS = frozenset(
 )
 ROOT_DOWNLOADS = frozenset(
     {
+        "dashboard/README.md",
+        "dashboard/DEPENDENCIES.md",
+        "dashboard/LICENSE",
+        "dashboard/THIRD_PARTY_NOTICES.txt",
         "LICENSE",
         "README.md",
         "CONTRIBUTING.md",

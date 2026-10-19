@@ -192,3 +192,5 @@ The project's original code, documentation, skills, and examples are available
 under the [MIT License](LICENSE). MongoDB, `mongot`, Python dependencies, model
 weights, and material you ingest retain their own licenses. See
 [third-party notices](docs/third-party-notices.md) for these boundaries.
+
+The implemented console has a [same-origin TLS deployment and distribution guide](docs/dashboard-deployment.md), including local-only/OIDC operation and isolated recovery gates.

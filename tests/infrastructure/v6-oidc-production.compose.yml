@@ -1,0 +1,39 @@
+# Isolated production-mode provider with its own disposable PostgreSQL storage.
+services:
+  keycloak-db:
+    image: postgres:16.15@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD_FILE: /run/secrets/db-password
+    volumes:
+      - '${V6_TEST_DIR:?}/oidc/admin:/run/secrets/db-password:ro'
+    tmpfs: [/var/lib/postgresql/data]
+    networks: [fixture]
+    healthcheck:
+      test: [CMD, pg_isready, -U, keycloak, -d, keycloak]
+      interval: 2s
+      timeout: 3s
+      retries: 45
+  keycloak:
+    entrypoint: [/bin/bash, /start-provider.sh]
+    command: [--import-realm]
+    volumes:
+      - '${V6_REPOSITORY_ROOT:?}/deploy/keycloak/start.sh:/start-provider.sh:ro'
+      - '${V6_TEST_DIR:?}/oidc/admin:/run/secrets/keycloak-db-password:ro'
+      - '${V6_TEST_DIR:?}/oidc/admin:/run/secrets/keycloak-bootstrap-password:ro'
+    environment:
+      KEYCLOAK_BOOTSTRAP_ENABLED: 'true'
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_HTTPS_PORT: ${V6_OIDC_PORT:?}
+    ports: !override ['127.0.0.1:${V6_OIDC_PORT:?}:${V6_OIDC_PORT:?}']
+    networks: [fixture]
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+networks:
+  fixture:
+    external: true
+    name: acp-v6-phase2-isolated-${V6_TEST_RUN:?}

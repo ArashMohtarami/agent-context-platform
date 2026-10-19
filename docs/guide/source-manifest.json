@@ -1,8 +1,8 @@
 [
   {
     "path": "README.md",
-    "sha256": "0e86e094301efbcfa3462a47f5271885017d0128173b477b4960cba80c5ed6a9",
-    "lines": 168
+    "sha256": "38b4ebd1bd4354fc32158376f26be2754f0713dbb42af5ccc2d01965495d5b16",
+    "lines": 196
   },
   {
     "path": "docs/architecture.md",
@@ -10,9 +10,14 @@
     "lines": 108
   },
   {
+    "path": "docs/authorized-summaries.md",
+    "sha256": "4d3ab848bf466def84ba557617f6da029c72542980eca3ed4a870d1348da89ea",
+    "lines": 136
+  },
+  {
     "path": "docs/backup.md",
-    "sha256": "3b09a5c9543b836b3bbca925617d8a782a02cfc3927b4e7eb4a93ba2e2cf420f",
-    "lines": 409
+    "sha256": "53477dffaa63ac485345cc5e95ec23fdd4360865561e5724e89b4adc9bbb366f",
+    "lines": 442
   },
   {
     "path": "docs/cli.md",
@@ -28,6 +33,16 @@
     "path": "docs/client-profiles.md",
     "sha256": "c4840e9191f0165deed4ed5326efa9470f8d4a43521348c55ae9993df486fc04",
     "lines": 77
+  },
+  {
+    "path": "docs/clients/claude-code.md",
+    "sha256": "98e04fd65aa0e7c1ac8465cb2d31576ee9ec75d05d7565d26644d43d332f8a45",
+    "lines": 254
+  },
+  {
+    "path": "docs/clients/gemini-cli.md",
+    "sha256": "847d04e434dda9ec2f8c2da36d50699cdb68ede1dfa9a9f68f08eaaffbcd0dd1",
+    "lines": 394
   },
   {
     "path": "docs/codex.md",
@@ -90,19 +105,74 @@
     "lines": 111
   },
   {
+    "path": "docs/dashboard-creator.md",
+    "sha256": "19b89a59edb59282ed60303a1d1cc576d9e2848a8140ad22b1cb12ed434f0a66",
+    "lines": 99
+  },
+  {
+    "path": "docs/dashboard-deployment.md",
+    "sha256": "024d47be336662a52fdb6bf43aacf07a8eee9ccaafb715a0052385f362d8ad90",
+    "lines": 235
+  },
+  {
+    "path": "docs/dashboard-foundation.md",
+    "sha256": "a263effc9ba14015b12d65850df1a38d483b6143c3bea01ee8faf17ec02839a1",
+    "lines": 124
+  },
+  {
+    "path": "docs/dashboard-knowledge.md",
+    "sha256": "14df5a7e2403941d624de2a355748f84685fa72bb97d7af3fade3a37313eb0c2",
+    "lines": 98
+  },
+  {
+    "path": "docs/dashboard-management.md",
+    "sha256": "806db6df0d5c8d51b18f1d68983c0751b3c521f12399190f38e4af3be2af7276",
+    "lines": 140
+  },
+  {
+    "path": "docs/dashboard-monitoring.md",
+    "sha256": "5aebea885f18ba94aea510965016c7d0d4bf3bec3fd8f8ff330296f42d7a8003",
+    "lines": 101
+  },
+  {
+    "path": "docs/dashboard-research.md",
+    "sha256": "81cbe674583e2746d46e80f92be6a52028f2b6cb97b7dba2f4716acba796d73e",
+    "lines": 98
+  },
+  {
     "path": "docs/database.md",
     "sha256": "888a84fcf148d7edd844c98d85d38e453ff7c47e0b3ad35c877dbd973f41bdd1",
     "lines": 131
   },
   {
     "path": "docs/deployment.md",
-    "sha256": "0afd21a459b6d3412ed15d729a5662b8759f7d418cb34a33751ba1399f69d4e0",
-    "lines": 177
+    "sha256": "d2059d2f25de582547b8322d7ceaff2f164a5b60939d2f2ec4988dc44f14166c",
+    "lines": 180
   },
   {
     "path": "docs/embeddings.md",
     "sha256": "b24a337a30884a8a1e3ea1351396f0b92a3c682b2d05987c9883093d5c92f700",
     "lines": 169
+  },
+  {
+    "path": "docs/human-organization-management.md",
+    "sha256": "9a75f2f8c90d48e28335c9cecd67fe5e9897fdb7825896529ecbff7ffb87ae6d",
+    "lines": 261
+  },
+  {
+    "path": "docs/local-identity.md",
+    "sha256": "8a2a2fb642fb6fe5c7e079c84825095cca5b05c8752bee89d7f439d95e34323c",
+    "lines": 212
+  },
+  {
+    "path": "docs/managed-agents.md",
+    "sha256": "3a0228e3bc64a183bd7f2779add1cff50feee5a08c6ce30972980fe92d0a0cd1",
+    "lines": 192
+  },
+  {
+    "path": "docs/management-policy.md",
+    "sha256": "7d27a0df256d0eb23f58ef1dda49969d7e4b2d9c0354af59cca3b7a4fdfbb5d6",
+    "lines": 257
   },
   {
     "path": "docs/mcp.md",
@@ -175,23 +245,28 @@
     "lines": 181
   },
   {
+    "path": "docs/sso-identity.md",
+    "sha256": "086f693d6c4e87bb9f8dd6af83ba6c4fa5a0e1dd1fd0b9516ef4d4acea0b89a2",
+    "lines": 227
+  },
+  {
+    "path": "docs/tenant-adoption.md",
+    "sha256": "9a6902f43b06e66e5b84a05d8898bfe9ac12a73b12bc601c1d84c15a2c295420",
+    "lines": 154
+  },
+  {
+    "path": "docs/tenant-isolation.md",
+    "sha256": "588caa71372cfc2d77a5fcaccd75a052dbe2e59479639ceacad47a4400f292eb",
+    "lines": 49
+  },
+  {
     "path": "docs/third-party-notices.md",
-    "sha256": "6129f7e6aca4bfe9cf5c809524ee54169f9a0479fba9f161931ceb2724c839d9",
-    "lines": 66
+    "sha256": "c805d6f4eb4b4c6eaa3d134086e1ced335cb6bd06f8fb66a29e5ca57917968a9",
+    "lines": 87
   },
   {
     "path": "docs/website.md",
     "sha256": "bcb7093de85b02dcd2e3aad4495b99b9fb25582ea431d3dd977a61aa639668a3",
     "lines": 117
-  },
-  {
-    "path": "docs/clients/claude-code.md",
-    "sha256": "98e04fd65aa0e7c1ac8465cb2d31576ee9ec75d05d7565d26644d43d332f8a45",
-    "lines": 254
-  },
-  {
-    "path": "docs/clients/gemini-cli.md",
-    "sha256": "847d04e434dda9ec2f8c2da36d50699cdb68ede1dfa9a9f68f08eaaffbcd0dd1",
-    "lines": 394
   }
 ]

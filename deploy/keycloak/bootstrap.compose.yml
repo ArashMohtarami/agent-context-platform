@@ -1,0 +1,10 @@
+# Initial commissioning ONLY; remove this overlay after creating the provider operator.
+services:
+  keycloak:
+    environment:
+      KEYCLOAK_BOOTSTRAP_ENABLED: 'true'
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_BOOTSTRAP_USERNAME:?Set initial provider operator username}
+    secrets: [keycloak-bootstrap-password]
+secrets:
+  keycloak-bootstrap-password:
+    file: ${KEYCLOAK_BOOTSTRAP_PASSWORD_FILE:?Mount the unique initial provider operator password}

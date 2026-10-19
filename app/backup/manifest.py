@@ -51,6 +51,9 @@ class BackupManifest(BaseModel):
     # forward, and an operator debugging one needs to know what made it.
     tool_version: str | None = None
     app_version: str | None = None
+    # Commitments to random mounted keys, never their bytes, passwords or tokens.
+    # All versions are required: inactive MFA factors/PKCE challenges can use old keys.
+    encryption_keys: dict[str, str] = Field(default_factory=dict)
 
     @property
     def documents(self) -> int:
@@ -108,6 +111,7 @@ def build(
     collections: dict[str, int],
     tool_version: str | None = None,
     app_version: str | None = None,
+    encryption_keys: dict[str, str] | None = None,
 ) -> BackupManifest:
     """Describe an archive that has just been written."""
     return BackupManifest(
@@ -120,4 +124,5 @@ def build(
         collections=collections,
         tool_version=tool_version,
         app_version=app_version,
+        encryption_keys=encryption_keys or {},
     )

@@ -327,6 +327,7 @@ def test_dashboard_source_build_contract_and_licenses_are_in_public_release(publ
         "dashboard/README.md",
         "dashboard/licenses/react-remove-scroll-bar-LICENSE",
     )
+    public = tuple(sorted(set(public) | release.DASHBOARD_REQUIRED))
     for name in public:
         put(public_root, name)
     for name in (

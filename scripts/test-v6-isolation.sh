@@ -11,6 +11,9 @@ mkdir -p "$report_dir"
 python="${V6_TEST_PYTHON:-$V6_REPOSITORY_ROOT/.venv/bin/python}"
 compose=(docker compose -f tests/infrastructure/v6-isolation.compose.yml)
 oidc_compose=(docker compose -f tests/infrastructure/v6-oidc.compose.yml)
+if [[ "${V6_DEPLOYMENT_TESTS:-0}" == "1" || "${V6_DASHBOARD_HOSTING:-0}" == "1" ]]; then
+    oidc_compose+=(-f tests/infrastructure/v6-oidc-production.compose.yml)
+fi
 cleanup() {
     docker logs "acp-v6-phase2-mongodb-$V6_TEST_RUN" >"$report_dir/mongodb.log" 2>&1 || true
     docker logs "acp-v6-phase2-mongot-$V6_TEST_RUN" >"$report_dir/mongot.log" 2>&1 || true
@@ -105,6 +108,16 @@ with socket.socket() as listener:
     print(listener.getsockname()[1])
 PY
     )"
+    if [[ -z "${V6_BROWSER_TEST_ORIGIN:-}" ]]; then
+        export V6_BROWSER_TEST_ORIGIN
+        V6_BROWSER_TEST_ORIGIN="$("$python" - <<'PYPORT'
+import socket
+with socket.socket() as listener:
+    listener.bind(('127.0.0.1', 0))
+    print('https://127.0.0.1:' + str(listener.getsockname()[1]))
+PYPORT
+        )"
+    fi
     "$python" tests/infrastructure/v6_oidc_prepare.py
     "${oidc_compose[@]}" up -d >/dev/null
     export V6_OIDC_REGISTRATIONS_FILE="$V6_TEST_DIR/oidc/registrations.json"
@@ -119,8 +132,10 @@ for attempt in range(180):
         with urllib.request.urlopen(url, context=context, timeout=2) as response:
             assert response.status == 200
         break
-    except Exception:
+    except Exception as error:
         if attempt == 179:
+            print('Provider discovery failure classification:', type(error).__name__,
+                  getattr(error, 'code', ''), type(getattr(error, 'reason', None)).__name__)
             raise SystemExit('Disposable HTTPS Keycloak did not become ready (secrets withheld).')
         time.sleep(1)
 PY
@@ -133,6 +148,14 @@ PY
             tests/integration/test_v6_org_switch.py --junitxml="$report_dir/sso-development.xml" "$@"
         exit 0
     fi
+fi
+if [[ "${V6_DEPLOYMENT_TESTS:-0}" == "1" ]]; then
+    if [[ "${V6_DEPLOYMENT_HOSTING_ONLY:-0}" != "1" ]]; then
+        "$python" -m pytest -q tests/integration/test_v6_management_backup_recovery.py --junitxml="$report_dir/management-backup.xml" "$@"
+        fresh_stack
+    fi
+    "$python" -m pytest -q tests/integration/test_v6_dashboard_hosting.py --junitxml="$report_dir/hosting.xml" "$@"
+    exit 0
 fi
 if [[ "${V6_CREATOR_ADAPTERS_ONLY:-0}" == "1" ]]; then
     "$python" -m pytest -q tests/integration/test_v6_creator_adapters.py tests/integration/test_v6_review_authority.py --junitxml="$report_dir/creator-adapters.xml" "$@"

@@ -101,7 +101,9 @@ class Registration(BaseModel):
 
 class Registry:
     def __init__(self, registrations: list[Registration], origin: str) -> None:
-        if not 1 <= len(registrations) <= 50:
+        # An explicitly empty mounted registry supports local-only installations.
+        # No provider can be configured, selected or linked until approved here.
+        if not 0 <= len(registrations) <= 50:
             raise ValueError("a bounded list of provider registrations is required")
         self.registrations = {item.registration_id: item for item in registrations}
         if len(self.registrations) != len(registrations):
