@@ -220,3 +220,35 @@ def test_issuance_ceiling_does_not_confer_personal_review_authority():
     )
     validate_issue(root, command, "owner", now)
     assert not command.tuples
+
+
+def test_shared_parent_decoding_never_caches_authority_across_evaluations():
+    now, members, users, assignments = lineage()
+    lead = assignments["lead-grant"]
+    for number in range(100):
+        child = Governance.assignment(
+            str(number),
+            "org-a",
+            members["member"],
+            "lead",
+            request().tuples,
+            (),
+            Selector(),
+            (),
+            0,
+            now + timedelta(hours=1),
+            lead,
+        )
+        assignments[child["_id"]] = child
+    now = utc_now()
+    assert len(effective("org-a", "member", assignments, members, users, now)[0]) == 100
+    # Every call must recheck both the decoded ceiling commitment and the live
+    # lineage generation, even when the same Python dictionaries are reused.
+    root = assignments["root"]
+    original = deepcopy(root["ceiling"])
+    root["ceiling"] = []
+    assert effective("org-a", "member", assignments, members, users, now)[0] == ()
+    root["ceiling"] = original
+    assert len(effective("org-a", "member", assignments, members, users, now)[0]) == 100
+    root["generation"] += 1
+    assert effective("org-a", "member", assignments, members, users, now)[0] == ()

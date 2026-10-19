@@ -1,0 +1,143 @@
+{
+  "tenant-crud-count-cursor-join": [
+    "tests/integration/test_v6_tenant_isolation.py::test_every_collection_crud_counts_distinct_and_foreign_ids",
+    "tests/integration/test_v6_tenant_isolation.py::test_real_mongot_all_production_indexes_have_tenant_candidate_filters",
+    "tests/integration/test_v6_tenant_isolation.py::test_live_resource_denials_joins_references_and_org_global_memory",
+    "tests/integration/test_v6_tenant_isolation.py::test_idempotency_uses_org_and_rechecks_effective_authority",
+    "tests/integration/test_v6_tenant_isolation.py::test_operator_cutover_rehearsal_keeps_additional_org_sealed",
+    "tests/integration/test_v6_mcp_isolation.py::test_rest_v1_v4_v5_and_spoofed_headers",
+    "tests/integration/test_v6_mcp_isolation.py::test_http_mcp_sessions_cannot_switch_org",
+    "tests/integration/test_v6_mcp_isolation.py::test_actual_stdio_mcp_uses_one_org_and_rechecks_revocation",
+    "tests/integration/test_v6_mcp_isolation.py::test_rest_content_export_history_and_research_are_tenant_bound"
+  ],
+  "tenant-adoption-identity-index-workers": [
+    "tests/integration/test_v6_tenant_adoption.py::test_all_families_preserve_ids_authored_fields_actors_and_references",
+    "tests/integration/test_v6_tenant_adoption.py::test_adopted_service_updates_keep_legacy_identity",
+    "tests/integration/test_v6_tenant_adoption.py::test_two_org_same_natural_keys_strict_constraints_and_new_scheme",
+    "tests/integration/test_v6_tenant_adoption.py::test_transaction_rollback_and_interrupted_resume",
+    "tests/integration/test_v6_tenant_adoption.py::test_unknown_and_conflicting_ownership_is_preserved_and_blocks",
+    "tests/integration/test_v6_tenant_adoption.py::test_backup_and_old_worker_checks_refuse_before_domain_mutation",
+    "tests/integration/test_v6_tenant_adoption.py::test_missing_preserved_record_cannot_prepare_without_reference",
+    "tests/integration/test_v6_tenant_adoption.py::test_pre_v6_reserved_names_do_not_infer_metadata_ownership",
+    "tests/integration/test_v6_tenant_adoption.py::test_model_defaults_cannot_hide_invalid_persisted_legacy_rows"
+  ],
+  "job-export-idempotency": [
+    "tests/integration/test_v6_job_isolation.py::test_matching_job_ids_never_share_payloads_or_replay_across_orgs",
+    "tests/integration/test_v6_job_isolation.py::test_revocation_during_provider_work_prevents_result_persistence",
+    "tests/integration/test_v6_job_isolation.py::test_cached_mcp_ingestion_result_rechecks_source_authority",
+    "tests/integration/test_v6_report_revocation.py::test_real_csv_matches_detail_aggregate_and_retention_no_foreign_content",
+    "tests/integration/test_v6_report_revocation.py::test_real_revoked_policy_active_session_and_expired_reports_fail",
+    "tests/integration/test_v6_report_revocation.py::test_real_governance_csv_formula_neutralization_and_body_redaction",
+    "tests/integration/test_v6_report_revocation.py::test_real_large_report_refuses_partial_delivery_and_empty_foreign_filter"
+  ],
+  "local-mfa-session-csrf": [
+    "tests/integration/test_v6_local_identity.py::test_real_enrollment_owner_intent_and_hashed_private_storage",
+    "tests/integration/test_v6_local_identity.py::test_real_challenge_purpose_expiry_browser_binding_and_audit_rollback",
+    "tests/integration/test_v6_local_identity.py::test_real_totp_replay_login_challenge_race_and_single_use_recovery",
+    "tests/integration/test_v6_local_identity.py::test_real_reset_preserves_mfa_and_suspension_and_revokes_sessions",
+    "tests/integration/test_v6_local_identity.py::test_real_cookie_rotation_expiry_csrf_logout_and_revoke",
+    "tests/integration/test_v6_local_identity.py::test_real_strict_validators_identity_uniqueness_and_fail_closed_migration",
+    "tests/integration/test_v6_local_identity.py::test_real_recovery_replacement_password_change_and_explicit_mfa_removal",
+    "tests/integration/test_v6_local_identity.py::test_real_second_membership_requires_existing_identity_proof_and_own_sessions_only",
+    "tests/integration/test_v6_local_identity.py::test_real_account_throttle_and_password_enumeration_resistance"
+  ],
+  "oidc-linking-provider-boundary": [
+    "tests/integration/test_v6_oidc_provider.py::test_real_provider_link_login_assurance_and_rp_logout",
+    "tests/integration/test_v6_oidc_provider.py::test_equal_verified_email_never_creates_or_links_an_identity",
+    "tests/integration/test_v6_oidc_provider.py::test_real_code_state_pkce_replay_and_browser_substitution_fail",
+    "tests/integration/test_v6_oidc_provider.py::test_link_requires_both_identities_and_cannot_take_an_existing_link",
+    "tests/integration/test_v6_oidc_provider.py::test_actual_idp_disable_is_bounded_and_app_suspension_is_immediate",
+    "tests/integration/test_v6_oidc_provider.py::test_schema_39_guard_resume_and_old_runtime_refusal",
+    "tests/integration/test_v6_org_switch.py::test_explicit_local_switch_rotates_session_csrf_and_rejects_old_context",
+    "tests/integration/test_v6_org_switch.py::test_required_target_needs_its_own_real_provider_not_local_or_org_a_oidc",
+    "tests/integration/test_v6_org_switch.py::test_local_only_and_explicit_break_glass_have_no_automatic_fallback"
+  ],
+  "delegation-fencing-self-grant-owner": [
+    "tests/integration/test_v6_policy_fencing.py::test_real_parent_revoke_or_narrow_wins_against_child_issue",
+    "tests/integration/test_v6_policy_fencing.py::test_real_child_commit_before_revoke_is_immediately_ineffective",
+    "tests/integration/test_v6_policy_fencing.py::test_real_audit_or_outbox_failure_rolls_back_assignment_member_and_anchor",
+    "tests/integration/test_v6_policy_fencing.py::test_real_suspension_reinstatement_and_old_generation_never_restore_children",
+    "tests/integration/test_v6_policy_fencing.py::test_real_session_governance_csrf_context_none_and_transactional_transfer",
+    "tests/integration/test_v6_policy_fencing.py::test_real_managed_domain_writes_share_the_anchor_and_stop_after_revoke",
+    "tests/integration/test_v6_policy_fencing.py::test_real_strict_schema_migration_resume_and_unverified_machines_are_sealed",
+    "tests/integration/test_v6_policy_fencing.py::test_real_review_operation_and_immutable_authorship_prevent_self_review",
+    "tests/integration/test_v6_policy_fencing.py::test_real_reviewed_adoption_adapter_rest_http_mcp_and_operator_revoke",
+    "tests/integration/test_v6_policy_fencing.py::test_real_managed_search_intersects_action_resources_before_mongot_selection",
+    "tests/integration/test_v6_access_request_races.py::test_real_exact_independent_request_approval_is_immutable_and_single_use",
+    "tests/integration/test_v6_access_request_races.py::test_real_approval_rechecks_exact_revision_expiry_and_current_resources",
+    "tests/integration/test_v6_access_request_races.py::test_real_wrong_team_foreign_resources_and_lead_escalation_are_refused",
+    "tests/integration/test_v6_access_request_races.py::test_real_audit_or_decision_failure_rolls_back_the_entire_approval",
+    "tests/integration/test_v6_access_request_races.py::test_real_parent_revoke_wins_against_concurrent_approval_with_shared_anchor",
+    "tests/integration/test_v6_access_request_races.py::test_real_two_concurrent_approvals_create_exactly_one_assignment_and_decision",
+    "tests/integration/test_v6_access_request_races.py::test_real_concurrent_invite_acceptance_consumes_one_challenge_atomically",
+    "tests/integration/test_v6_access_request_races.py::test_real_parent_revoke_wins_against_invite_claim_without_consuming_secret"
+  ],
+  "sponsorship-rest-stdio-http-mcp": [
+    "tests/integration/test_v6_managed_client_revocation.py::test_real_rest_current_sponsor_client_key_team_parent_revocation",
+    "tests/integration/test_v6_managed_client_revocation.py::test_actual_stdio_connected_session_rechecks_revocation",
+    "tests/integration/test_v6_managed_client_revocation.py::test_active_http_mcp_session_rechecks_revocation",
+    "tests/integration/test_v6_managed_client_revocation.py::test_pending_machine_job_recheck_denies_result_without_undoing_committed_work",
+    "tests/integration/test_v6_managed_client_revocation.py::test_unclaimed_legacy_keys_and_schema41_workers_are_refused",
+    "tests/integration/test_v6_managed_client_revocation.py::test_real_action_resource_intersection_and_foreign_client_namespace",
+    "tests/integration/test_v6_managed_client_revocation.py::test_project_directory_only_grant_works_without_corpus_permission"
+  ],
+  "review-authority-same-sponsor": [
+    "tests/integration/test_v6_service_account_reviews.py::test_normal_client_cannot_review_even_with_content_write",
+    "tests/integration/test_v6_service_account_reviews.py::test_approved_service_review_custody_and_event_time_self_review",
+    "tests/integration/test_v6_service_account_reviews.py::test_service_custodian_cannot_self_approve_exception_or_use_other_team",
+    "tests/integration/test_v6_review_authority.py::test_separately_approved_service_second_client_has_same_sponsor_and_cannot_self_review",
+    "tests/integration/test_v6_review_authority.py::test_real_mcp_safety_scan_is_advisory_and_cannot_approve_or_publish"
+  ],
+  "credential-once-copy-and-rotation": [
+    "tests/integration/test_v6_credential_delivery.py::test_http_recipient_only_token_once_and_no_plaintext_persistence",
+    "tests/integration/test_v6_credential_delivery.py::test_explicit_rotation_lost_delivery_and_revocation",
+    "tests/integration/test_v6_credential_delivery.py::test_template_disable_does_not_propagate_and_explicit_assignment_narrows",
+    "tests/integration/test_v6_credential_delivery.py::test_concurrent_issuance_and_audit_failure_are_secret_safe",
+    "tests/integration/test_v6_credential_delivery.py::test_expiry_and_current_client_resource_narrowing_are_enforced",
+    "tests/integration/test_v6_security_acceptance.py::test_sponsor_suspend_fences_concurrent_key_issue_without_orphan_secret",
+    "tests/integration/test_v6_security_acceptance.py::test_credential_delivery_has_no_plaintext_in_any_persisted_collection_or_log"
+  ],
+  "membership-team-reinstatement": [
+    "tests/integration/test_v6_membership_lifecycle.py::test_real_invite_local_enrollment_request_approval_and_offboard_journey",
+    "tests/integration/test_v6_membership_lifecycle.py::test_real_team_directory_pagination_dtos_and_foreign_context_fail_closed",
+    "tests/integration/test_v6_membership_lifecycle.py::test_real_pending_invitation_cannot_outlive_issuer_or_team_authority",
+    "tests/integration/test_v6_membership_lifecycle.py::test_real_wrong_person_overbroad_and_wrong_team_invites_do_not_create_authority",
+    "tests/integration/test_v6_membership_lifecycle.py::test_real_membership_suspend_is_org_local_and_owner_handover_remains_explicit",
+    "tests/integration/test_v6_membership_lifecycle.py::test_real_team_suspend_reinstate_never_resurrects_old_grants_or_sessions",
+    "tests/integration/test_v6_membership_lifecycle.py::test_real_human_pending_job_and_unknown_machine_sponsorship_fail_closed",
+    "tests/integration/test_v6_membership_lifecycle.py::test_real_schema41_validators_resume_and_old_policy_workers_are_refused",
+    "tests/integration/test_v6_membership_lifecycle.py::test_real_shared_person_effective_sources_and_matching_foreign_team_stay_private",
+    "tests/integration/test_v6_membership_lifecycle.py::test_real_invitation_audit_failure_rolls_back_pending_identity_and_delivery",
+    "tests/integration/test_v6_membership_lifecycle.py::test_real_renewed_pending_invite_invalidates_old_verification_and_preserves_history",
+    "tests/integration/test_v6_membership_lifecycle.py::test_real_cutover_fences_old_queued_legacy_workers_and_preserves_review"
+  ],
+  "event-time-coverage-counts": [
+    "tests/integration/test_v6_dashboard_aggregation.py::test_real_counts_buckets_pages_own_team_org_and_foreign_filters",
+    "tests/integration/test_v6_dashboard_aggregation.py::test_real_team_moves_do_not_join_current_membership_or_rewrite_history",
+    "tests/integration/test_v6_dashboard_aggregation.py::test_real_coverage_zero_missing_stale_partial_absent_and_retention",
+    "tests/integration/test_v6_dashboard_aggregation.py::test_real_cursor_filter_subject_policy_and_org_binding_and_bounded_inputs",
+    "tests/integration/test_v6_dashboard_aggregation.py::test_real_governance_projection_attribution_and_private_body_exclusion",
+    "tests/integration/test_v6_dashboard_aggregation.py::test_declared_measures_match_permitted_raw_samples_and_timezone_boundaries",
+    "tests/integration/test_v6_dashboard_aggregation.py::test_governance_diff_redacts_payload_and_preserves_missing_snapshots",
+    "tests/integration/test_v6_dashboard_aggregation.py::test_second_organization_positive_metadata_counts_use_matching_ids",
+    "tests/integration/test_v6_security_acceptance.py::test_monitoring_revoke_during_read_or_final_cas_never_returns_stale_totals"
+  ],
+  "coupled-human-machine-corpus": [
+    "tests/integration/test_v6_knowledge_adapters.py::test_repeated_id_human_search_skill_versions_and_cursors_are_tenant_bound",
+    "tests/integration/test_v6_knowledge_adapters.py::test_read_a_write_b_and_private_memory_do_not_borrow_authority",
+    "tests/integration/test_v6_knowledge_adapters.py::test_real_context_conflict_and_same_scope_memory_supersession_preserve_history",
+    "tests/integration/test_v6_knowledge_adapters.py::test_verified_machine_and_human_adapters_agree_on_the_same_action_resource_policy",
+    "tests/integration/test_v6_creator_adapters.py::test_draft_revision_independent_approval_export_and_manual_receipt",
+    "tests/integration/test_v6_creator_adapters.py::test_planning_profiles_evidence_and_same_id_search_keep_every_source_boundary",
+    "tests/integration/test_v6_research_adapters.py::test_ingest_inspect_independent_current_review_and_controlled_promotion",
+    "tests/integration/test_v6_research_adapters.py::test_bounded_file_ssrf_foreign_citations_and_revoked_job_results",
+    "tests/integration/test_v6_research_adapters.py::test_project_notes_claim_assessment_brief_and_history_use_real_domain_records"
+  ],
+  "deployment-operator-backup": [
+    "tests/integration/test_v6_management_backup_recovery.py::test_all_management_state_restores_with_exact_bson_and_recovered_key",
+    "tests/integration/test_v6_management_backup_recovery.py::test_maintenance_adoption_refuses_mixed_workers_and_preserves_seal",
+    "tests/integration/test_v6_management_backup_recovery.py::test_optional_provider_has_its_own_recoverable_postgresql_state",
+    "tests/integration/test_v6_dashboard_hosting.py::test_tls_console_only_fallback_errors_headers_and_proxy_spoof",
+    "tests/integration/test_v6_dashboard_hosting.py::test_real_local_mfa_cookie_csrf_bearer_mcp_and_backup_boundary"
+  ]
+}

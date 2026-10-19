@@ -36,6 +36,7 @@ export function errorText(error: unknown) {
     if (error.status === 409) return 'The record or your access changed. Review the current state and try again.';
     if (error.status === 403) return 'This action is outside your current access.';
     if (error.status === 401) return 'The request was not accepted. Check your credentials or use a fresh sign-in.';
+    if (error.status === 503) return 'The requested service is temporarily unavailable. Choose another supported method or try again later.';
     if (error.status === 422) return 'Check the required fields and try again.';
   }
   return 'The service could not be reached. Try again when the connection is available.';

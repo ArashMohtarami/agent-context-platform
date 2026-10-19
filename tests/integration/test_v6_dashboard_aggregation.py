@@ -1,7 +1,9 @@
 """Actual persisted aggregation, attribution, coverage and policy predicates."""
 
 import asyncio
+from collections import Counter
 from datetime import timedelta
+from math import isfinite
 
 import pytest
 from v6_summary_fixtures import params
@@ -18,6 +20,50 @@ from tests.integration.test_v6_policy_fencing import browser
 
 pytestmark = pytest.mark.integration
 BASE = "/api/v6/organizations/org-a"
+
+
+async def test_live_reduction_preserves_weighted_latency_distinct_clients_and_buckets(summary_db):
+    from app.models.agent import AgentActivityDocument
+
+    h = summary_db
+    for index, latency in enumerate((None, 2, 4, 100)):
+        with tenant_scope(TenantContext("org-a")):
+            row = AgentActivityDocument(
+                event_id=f"weighted-{index}",
+                client_id=f"weighted-client-{index % 2}",
+                client_type="codex",
+                operation="search_knowledge",
+                tool="search_knowledge",
+                project_id="payment-service",
+                status="failed" if index == 3 else "succeeded",
+                latency_ms=latency,
+                created_at=h.begin + timedelta(minutes=1),
+                sponsor_id="member",
+                sponsor_team_id="alpha",
+                sponsorship_revision=1,
+            )
+            await h.db.agent_activity.insert_one(row.model_dump(by_alias=True))
+    raw = await h.db.agent_activity.find(
+        {"org_id": "org-a", "created_at": {"$gte": h.begin, "$lt": h.end}}
+    ).to_list(None)
+    samples = [
+        row["latency_ms"]
+        for row in raw
+        if row.get("latency_ms") is not None and isfinite(row["latency_ms"])
+    ]
+    verified = [
+        row for row in raw if row.get("sponsor_id") and row.get("sponsorship_revision", 0) >= 1
+    ]
+    async with browser(h, "owner") as (client, headers):
+        response = await client.get(BASE + "/overview", params=params(h.query), headers=headers)
+        assert response.status_code == 200, response.text
+        result = response.json()
+    assert result["observed_count"] == sum(b["count"] for b in result["buckets"]) == len(raw)
+    assert result["outcomes"] == dict(Counter(row["status"] for row in raw))
+    assert result["measures"]["latency"]["sample_count"] == len(samples)
+    assert result["measures"]["latency"]["value"] == pytest.approx(sum(samples) / len(samples))
+    assert result["measures"]["clients"]["value"] == len({r["client_id"] for r in verified})
+    assert result["measures"]["unattributed"]["value"] == len(raw) - len(verified)
 
 
 async def test_real_counts_buckets_pages_own_team_org_and_foreign_filters(summary_db):

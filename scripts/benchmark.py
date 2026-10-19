@@ -164,7 +164,7 @@ async def run(arguments: argparse.Namespace) -> int:
         trust_env=False,
     ) as client:
 
-        async def get(path: str, **params: object) -> Any:
+        async def get(path: str, **params: str | int | float | bool | None) -> Any:
             response = await client.get(path, params=params or None)
             response.raise_for_status()
             return response

@@ -8,10 +8,10 @@ from pathlib import Path
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.initializer import initialize_database
 from app.models.content import (
     ContentIdeaDocument,
     ContentOrigin,
@@ -77,11 +77,11 @@ async def test_payment_service_fixture_discovers_linkedin_and_prepares_two_platf
         async with initialized_mongodb() as mongodb:
             database = mongodb.database
             expected_indexes = {
-                "skills": "skill_status_updated",
-                "project_context": "context_project_status_updated",
-                "memories": "memory_scope_project_status_updated",
-                "content_ideas": "content_idea_profile_updated",
-                "content_items": "content_item_profile_status_updated",
+                "skills": "tenant_skill_status_updated",
+                "project_context": "tenant_context_project_status_updated",
+                "memories": "tenant_memory_scope_project_status_updated",
+                "content_ideas": "tenant_content_idea_profile_updated",
+                "content_items": "tenant_content_item_profile_status_updated",
             }
             for collection, index_name in expected_indexes.items():
                 cursor = await database[collection].list_indexes()

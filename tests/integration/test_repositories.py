@@ -7,11 +7,11 @@ from contextlib import asynccontextmanager
 import pytest
 from bson import ObjectId
 from pymongo.errors import WriteError
+from v6_legacy_integration import initialize_database
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.indexes import INDEX_DEFINITIONS
-from app.db.initializer import initialize_database
+from app.db.tenant_schema import TENANT_INDEX_DEFINITIONS as INDEX_DEFINITIONS
 from app.models import (
     ConversationDocument,
     MemoryDocument,

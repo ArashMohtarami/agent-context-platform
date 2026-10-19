@@ -1,0 +1,16 @@
+# Disposable project-owned volumes for the full million-event/vector corpus.
+# The runner removes these on every module boundary and on exit.
+services:
+  mongodb:
+    tmpfs: !reset []
+    volumes:
+      - acceptance_mongodb_data:/data/db
+      - acceptance_mongodb_config:/data/configdb
+  mongot:
+    tmpfs: !reset []
+    volumes:
+      - acceptance_mongot_data:/data/mongot
+volumes:
+  acceptance_mongodb_data: {}
+  acceptance_mongodb_config: {}
+  acceptance_mongot_data: {}

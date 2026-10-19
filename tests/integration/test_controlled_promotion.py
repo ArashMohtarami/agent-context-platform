@@ -8,10 +8,12 @@ from datetime import UTC, datetime
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database, search_indexes_ready, seed_source
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.initializer import initialize_database
+from app.db.context_indexes import ensure_context_text_index
+from app.db.memory_indexes import ensure_memory_text_index
 from app.models.research import (
     CandidateState,
     CandidateType,
@@ -56,6 +58,9 @@ async def initialized_mongodb() -> AsyncIterator[MongoDBClient]:
     await mongodb.connect()
     try:
         await initialize_database(mongodb.database)
+        await ensure_context_text_index(mongodb.database)
+        await ensure_memory_text_index(mongodb.database)
+        await search_indexes_ready(mongodb.database, ("project_context", "memories"), 2)
         yield mongodb
     finally:
         await mongodb.close()
@@ -115,6 +120,15 @@ async def test_approved_candidates_promote_to_v1_memory_and_context_with_provena
                     confidence_rationale="An explicit reviewer assessed retained evidence.",
                     authorization=grant,
                 )
+            )
+            await seed_source(
+                database,
+                research_project_id=research_id,
+                source_id="provider-docs",
+                snapshot_id="provider-v1",
+                authorization=grant,
+                document_id="provider-document",
+                chunk_id="provider-chunk",
             )
             citations = MongoResearchCitationRepository(database, research_id)
             await citations.create(

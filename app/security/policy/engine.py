@@ -1,5 +1,6 @@
 """Uncached policy resolution and a concrete shared MongoDB serialization fence."""
 
+import asyncio
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import replace
@@ -113,6 +114,32 @@ class PolicyEngine:
             tx,
         )
         if not result:
+            raise PolicyConflict("policy changed; refresh effective access")
+
+    async def confirm_read(self, anchor: Row) -> None:
+        """Linearize read delivery against governance without holding a long lock.
+
+        An atomic majority write checks the current anchor, rather than a
+        possibly stale transaction snapshot. Governance still fences mutations
+        inside its transaction; either operation must observe the other's write.
+        """
+        collection = self.store._collection("policy_anchors").with_options(
+            write_concern=WriteConcern("majority", wtimeout=3000)
+        )
+        try:
+            async with asyncio.timeout(3):
+                result = await collection.update_one(
+                    {
+                        "_id": anchor["_id"],
+                        "org_id": anchor["org_id"],
+                        "revision": anchor["revision"],
+                        "status": "active",
+                    },
+                    {"$inc": {"fence": 1}},
+                )
+        except TimeoutError:
+            raise PolicyConflict("policy confirmation timed out; refresh bounded filters") from None
+        if result.matched_count != 1:
             raise PolicyConflict("policy changed; refresh effective access")
 
     async def snapshot(self, org_id: str, subject_id: str, tx: Any = None) -> Row:

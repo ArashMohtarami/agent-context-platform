@@ -12,6 +12,7 @@ Source = Literal["gateway_activity", "governance"]
 Scope = Literal["own", "team", "org"]
 MAX_REPORT_ROWS = 5000
 MAX_REPORT_BYTES = 2 * 1024 * 1024
+REPORT_TTL_SECONDS = 300
 SERVED_DAYS = 90
 
 
@@ -135,7 +136,7 @@ class CoverageDTO(BaseModel):
     checked_at: datetime | None
     storage_retention: Literal["installation_managed", "undeclared"]
     served_history_days: int = SERVED_DAYS
-    report_ttl_seconds: int = 600
+    report_ttl_seconds: int = REPORT_TTL_SECONDS
     collection_contract: str
     gaps: list[HistoryGap] = Field(default_factory=list)
 

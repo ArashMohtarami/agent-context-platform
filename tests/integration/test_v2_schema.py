@@ -8,12 +8,12 @@ from datetime import UTC, datetime
 import pytest
 from bson import ObjectId
 from pymongo.errors import WriteError
+from v6_legacy_integration import initialize_database, seed_projects
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.indexes import INDEX_DEFINITIONS
-from app.db.initializer import initialize_database
 from app.db.migrations.v006_creator_content_schema import V2_CONTENT_COLLECTIONS
+from app.db.tenant_schema import TENANT_INDEX_DEFINITIONS as INDEX_DEFINITIONS
 from app.models.content import (
     ContentIdeaDocument,
     ContentItemDocument,
@@ -22,6 +22,7 @@ from app.models.content import (
 )
 from app.repositories.content_repository import (
     MongoContentIdeaRepository,
+    MongoContentItemRepository,
     MongoContentMetricRepository,
     MongoCreatorProfileRepository,
 )
@@ -54,6 +55,7 @@ async def test_v2_schema_migration_is_idempotent_and_enforces_lifecycle_values()
     try:
         async with initialized_mongodb() as mongodb:
             database = mongodb.database
+            await seed_projects(database, ["payment-service"])
             await initialize_database(database)
 
             names = set(await database.list_collection_names())
@@ -93,6 +95,16 @@ async def test_v2_schema_migration_is_idempotent_and_enforces_lifecycle_values()
             )
             assert (await ideas.list()).items == (idea,)
 
+            stored_item = await MongoContentItemRepository(database, profile_id).create(
+                ContentItemDocument(
+                    profile_id=profile_id,
+                    content_id="schema-content",
+                    platform="linkedin",
+                    content_type="post",
+                    title="Fictional schema content",
+                    body="A retained fixture for manual descriptive metrics.",
+                )
+            )
             metrics = MongoContentMetricRepository(database, profile_id)
             metric = await metrics.create(
                 ContentMetricDocument(
@@ -124,21 +136,20 @@ async def test_v2_schema_migration_is_idempotent_and_enforces_lifecycle_values()
             )
             assert older.items == (metric,)
             invalid_metric = metric.model_dump(by_alias=True, mode="python")
+            invalid_metric["_id"] = ObjectId()
+            invalid_metric["metric_id"] = "invalid-observation"
             invalid_metric["metrics"] = {"views": -1}
-            with pytest.raises(WriteError):
+            with pytest.raises(WriteError) as rejected:
                 await database["content_metrics"].insert_one(invalid_metric)
+            assert rejected.value.code == 121
 
-            invalid = ContentItemDocument(
-                profile_id=profile_id,
-                content_id="invalid-status",
-                platform="linkedin",
-                content_type="post",
-                title="Invalid stored lifecycle",
-                body="MongoDB must reject an invalid lifecycle value.",
-            ).model_dump(by_alias=True, mode="python")
+            invalid = stored_item.model_dump(by_alias=True, mode="python")
+            invalid["_id"] = ObjectId()
+            invalid["content_id"] = "invalid-status"
             invalid["status"] = "not-a-content-status"
-            with pytest.raises(WriteError):
+            with pytest.raises(WriteError) as rejected:
                 await database["content_items"].insert_one(invalid)
+            assert rejected.value.code == 121
     finally:
         async with initialized_mongodb() as mongodb:
             for collection_name in V2_CONTENT_COLLECTIONS:

@@ -3,14 +3,26 @@
 from math import isfinite
 
 from app.identity.repository import Row
-from app.summaries.models import Source
+from app.summaries.models import Source, SummaryQuery
 
 
-def fields(source: Source) -> Row:
-    if source == "governance":
-        return {"_access_decision": {"$eq": ["$action", "access_request_decided"]}}
-    return {
-        "_latency": {
+def overview_pipeline(query: SummaryQuery) -> list[Row]:
+    """Reduce permitted events once before faceting the compact measure groups.
+
+    This is a live bounded aggregation, not a stored rollup or historical cache.
+    No actor/content projection or independent full-event facet is needed for
+    an overview. Exact distinct-client and weighted-latency semantics survive
+    reduction by bucket, outcome and verified client.
+    """
+    gateway = query.source == "gateway_activity"
+    verified = {
+        "$and": [
+            {"$ne": [{"$ifNull": ["$sponsor_id", None]}, None]},
+            {"$gte": [{"$ifNull": ["$sponsorship_revision", 0]}, 1]},
+        ]
+    }
+    latency = (
+        {
             "$cond": [
                 {
                     "$and": [
@@ -23,24 +35,82 @@ def fields(source: Source) -> Row:
                 None,
             ]
         }
+        if gateway
+        else None
+    )
+    grouping: Row = {
+        "_id": {
+            "bucket": {
+                "$dateTrunc": {
+                    "date": "$created_at",
+                    "unit": query.bucket,
+                    "timezone": query.timezone,
+                }
+            },
+            "outcome": "$status" if gateway else {"$literal": "committed"},
+            "client": {"$cond": [verified, "$client_id", None]} if gateway else None,
+        },
+        "count": {"$sum": 1},
     }
+    if gateway:
+        grouping.update(
+            {
+                "verified": {"$sum": {"$cond": [verified, 1, 0]}},
+                "unattributed": {"$sum": {"$cond": [verified, 0, 1]}},
+                "latency_count": {"$sum": {"$cond": [{"$ne": [latency, None]}, 1, 0]}},
+                "latency_sum": {"$sum": latency},
+            }
+        )
+    else:
+        grouping["reviews"] = {
+            "$sum": {"$cond": [{"$eq": ["$action", "access_request_decided"]}, 1, 0]}
+        }
+    result: Row = {
+        "total": [{"$group": {"_id": None, "count": {"$sum": "$count"}}}],
+        "outcomes": [{"$group": {"_id": "$_id.outcome", "count": {"$sum": "$count"}}}],
+        "buckets": [
+            {"$group": {"_id": "$_id.bucket", "count": {"$sum": "$count"}}},
+            {
+                "$set": {
+                    "end": {
+                        "$dateAdd": {
+                            "startDate": "$_id",
+                            "unit": query.bucket,
+                            "amount": 1,
+                            "timezone": query.timezone,
+                        }
+                    }
+                }
+            },
+            {"$sort": {"_id": 1}},
+        ],
+    }
+    result.update(facets(query.source))
+    return [{"$group": grouping}, {"$facet": result}]
 
 
 def facets(source: Source) -> Row:
     if source == "governance":
-        return {"reviews": [{"$match": {"_access_decision": True}}, {"$count": "count"}]}
+        return {"reviews": [{"$group": {"_id": None, "count": {"$sum": "$reviews"}}}]}
     return {
         "clients": [
-            {"$match": {"actor_kind": "machine"}},
-            {"$group": {"_id": "$actor_id"}},
+            {"$match": {"_id.client": {"$ne": None}}},
+            {"$group": {"_id": "$_id.client"}},
             {"$count": "count"},
         ],
-        "verified": [{"$match": {"actor_kind": "machine"}}, {"$count": "count"}],
+        "verified": [{"$group": {"_id": None, "count": {"$sum": "$verified"}}}],
         "latency": [
-            {"$match": {"_latency": {"$ne": None}}},
-            {"$group": {"_id": None, "count": {"$sum": 1}, "mean": {"$avg": "$_latency"}}},
+            {"$match": {"latency_count": {"$gt": 0}}},
+            {
+                "$group": {
+                    "_id": None,
+                    "count": {"$sum": "$latency_count"},
+                    "sum": {"$sum": "$latency_sum"},
+                }
+            },
+            {"$set": {"mean": {"$divide": ["$sum", "$count"]}}},
         ],
-        "unattributed": [{"$match": {"attribution": "legacy_unattributed"}}, {"$count": "count"}],
+        "unattributed": [{"$group": {"_id": None, "count": {"$sum": "$unattributed"}}}],
     }
 
 

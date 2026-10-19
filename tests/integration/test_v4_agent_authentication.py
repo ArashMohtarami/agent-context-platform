@@ -6,14 +6,16 @@ from contextlib import asynccontextmanager
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.indexes import INDEX_DEFINITIONS
-from app.db.initializer import initialize_database
+from app.db.tenant_schema import TENANT_INDEX_DEFINITIONS as INDEX_DEFINITIONS
 from app.models.agent import AgentClientDocument
+from app.models.project import ProjectDocument
 from app.repositories.agent_repository import MongoAgentClientRepository
 from app.repositories.api_key_repository import MongoApiKeyRepository
+from app.repositories.project_repository import MongoProjectRepository
 from app.security.principal import AuthenticationError
 from app.services.agent_client_service import AgentClientService
 from app.services.api_key_service import ApiKeyService
@@ -49,6 +51,25 @@ async def test_codex_and_claude_credentials_are_independent_and_revoke_independe
     try:
         async with initialized_mongodb() as mongodb:
             database = mongodb.database
+            projects = MongoProjectRepository(database)
+            await projects.create(
+                ProjectDocument(
+                    project_id="payments",
+                    name="Fictional payments",
+                    description="Synthetic regression fixture",
+                    repository="https://example.invalid/fictional.git",
+                    environment="test",
+                )
+            )
+            await projects.create(
+                ProjectDocument(
+                    project_id="wallet",
+                    name="Fictional wallet",
+                    description="Synthetic regression fixture",
+                    repository="https://example.invalid/fictional.git",
+                    environment="test",
+                )
+            )
             clients = MongoAgentClientRepository(database)
             api_keys = MongoApiKeyRepository(database)
             service = AgentClientService(clients, ApiKeyService(api_keys))

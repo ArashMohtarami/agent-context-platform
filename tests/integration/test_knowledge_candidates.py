@@ -7,10 +7,10 @@ from datetime import UTC, datetime
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database, seed_source
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.initializer import initialize_database
 from app.models.research import (
     CandidateState,
     CandidateType,
@@ -86,6 +86,15 @@ async def test_candidate_approval_persists_event_without_mutating_v1_memory_or_c
                     confidence_rationale="A reviewer assessed retained evidence.",
                     authorization=grant,
                 )
+            )
+            await seed_source(
+                database,
+                research_project_id=research_id,
+                source_id="provider-docs",
+                snapshot_id="provider-v1",
+                authorization=grant,
+                document_id="provider-document",
+                chunk_id="provider-chunk",
             )
             citations = MongoResearchCitationRepository(database, research_id)
             await citations.create(

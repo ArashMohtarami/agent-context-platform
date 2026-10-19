@@ -7,10 +7,10 @@ from contextlib import asynccontextmanager
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database
 
 from app.core.config import Settings, get_settings
 from app.db.client import MongoDBClient
-from app.db.initializer import initialize_database
 from app.db.memory_indexes import (
     describe_memory_text_index,
     describe_memory_vector_index,
@@ -19,6 +19,8 @@ from app.db.memory_indexes import (
 )
 from app.embeddings.types import EmbeddingVector
 from app.memory.errors import MemoryNotFoundError, MemorySupersessionError
+from app.models.agent import AgentClientDocument
+from app.repositories.agent_repository import MongoAgentClientRepository
 from app.repositories.memory_repository import MongoMemoryRepository
 from app.repositories.project_repository import MongoProjectRepository
 from app.repositories.skill_chunk_repository import MongoSkillChunkRepository
@@ -350,6 +352,18 @@ async def test_agent_memory_shares_durable_knowledge_without_leaking_operational
             repository=f"git@example.invalid:sampleco/{project_id}.git",
             environment="test",
         )
+        for identifier, kind in ((claude_id, "claude_code"), (codex_id, "codex")):
+            await MongoAgentClientRepository(mongodb.database).create(
+                AgentClientDocument(
+                    client_id=identifier,
+                    client_type=kind,
+                    name="Fictional memory regression client",
+                    owner_id="integration",
+                    scopes=["memory:read", "memory:write"],
+                    project_ids=[project_id],
+                    project_mode="include",
+                )
+            )
         global_memory = await memories.create_memory(
             memory_type="preference",
             content="Shared strict typing rule.",
@@ -410,8 +424,8 @@ async def test_agent_memory_shares_durable_knowledge_without_leaking_operational
 
         assert await mongodb.database["_schema_migrations"].count_documents({"version": 27}) == 1
         assert {
-            "memory_scope_project_client_external_id_uq",
-            "memory_scope_project_client_status_updated",
+            "tenant_memory_scope_project_client_external_id_uq",
+            "tenant_memory_scope_project_client_status_updated",
         }.issubset(indexes)
         claude_ids = {result.memory.id for result in claude}
         codex_ids = {result.memory.id for result in codex}

@@ -10,3 +10,19 @@ COLLECTION_OWNERSHIP = {
     "review_authorship": "tenant owned; verified human authorship; unknown sponsors denied",
     "_management_policy_control": "installation metadata",
 }
+
+
+TRANSIENT_STATE = {
+    "evaluation._SnapshotGrants": (
+        "tenant-owned authority inputs; one synchronous evaluation only; decoded rows/hashes "
+        "are never reused across requests or snapshots; ancestry, expiry, membership and org "
+        "checks still run; no storage, secret material or persistent cache"
+    ),
+}
+READ_CONFIRMATION = {
+    "PolicyEngine.confirm_read": (
+        "current org/subject visibility is re-evaluated by Summaries.confirm_current; "
+        "bounded atomic majority write on the unchanged active org anchor linearizes delivery; "
+        "governance retains transactional fencing and retention narrowing advances revision"
+    ),
+}

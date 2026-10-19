@@ -6,10 +6,10 @@ from contextlib import asynccontextmanager
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database, seed_projects, seed_source
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.initializer import initialize_database
 from app.models.research import (
     CitationLocator,
     CitationRelation,
@@ -59,6 +59,7 @@ async def test_generated_skill_proposal_persists_without_changing_v1_skill_docum
     try:
         async with initialized_mongodb() as mongodb:
             database = mongodb.database
+            await seed_projects(database, [project_id])
             await MongoResearchProjectRepository(database).create(
                 ResearchProjectDocument(
                     research_project_id=research_id,
@@ -79,6 +80,13 @@ async def test_generated_skill_proposal_persists_without_changing_v1_skill_docum
                     confidence_rationale="Explicitly reviewed retained evidence.",
                     authorization=grant,
                 )
+            )
+            await seed_source(
+                database,
+                research_project_id=research_id,
+                source_id="provider-docs",
+                snapshot_id="provider-v2",
+                authorization=grant,
             )
             await MongoResearchCitationRepository(database, research_id).create(
                 ResearchCitationDocument(
@@ -142,7 +150,7 @@ async def test_generated_skill_proposal_persists_without_changing_v1_skill_docum
             assert persisted is not None
             assert persisted.trust_level == "generated"
             assert persisted.source_citation_ids == ["provider-support"]
-            assert "skill_update_proposal_project_id_uq" in indexes
+            assert "tenant_skill_update_proposal_project_id_uq" in indexes
             assert migration is not None
             assert after == before
             assert await database["skills"].count_documents({"skill_id": skill_id}) == skill_count

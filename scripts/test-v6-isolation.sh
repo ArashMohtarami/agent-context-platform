@@ -10,8 +10,11 @@ report_dir="${V6_REPORT_DIR:-$(mktemp -d /tmp/acp-v6-evidence.XXXXXXXX)}"
 mkdir -p "$report_dir"
 python="${V6_TEST_PYTHON:-$V6_REPOSITORY_ROOT/.venv/bin/python}"
 compose=(docker compose -f tests/infrastructure/v6-isolation.compose.yml)
+if [[ "${V6_TEST_VOLUME_STORAGE:-0}" == "1" ]]; then
+    compose+=(-f tests/infrastructure/v6-volume-storage.compose.yml)
+fi
 oidc_compose=(docker compose -f tests/infrastructure/v6-oidc.compose.yml)
-if [[ "${V6_DEPLOYMENT_TESTS:-0}" == "1" || "${V6_DASHBOARD_HOSTING:-0}" == "1" ]]; then
+if [[ "${V6_DEPLOYMENT_TESTS:-0}" == "1" || "${V6_DASHBOARD_HOSTING:-0}" == "1" || "${V6_FULL_ACCEPTANCE:-0}" == "1" ]]; then
     oidc_compose+=(-f tests/infrastructure/v6-oidc-production.compose.yml)
 fi
 cleanup() {
@@ -21,7 +24,7 @@ cleanup() {
         docker logs "acp-v6-oidc-keycloak-$V6_TEST_RUN" >"$report_dir/provider.log" 2>&1 || true
         "${oidc_compose[@]}" down --remove-orphans >/dev/null 2>&1 || true
     fi
-    "${compose[@]}" down --remove-orphans >/dev/null 2>&1 || true
+    "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
     rm -rf -- "$V6_TEST_DIR"
 }
 trap cleanup EXIT
@@ -70,11 +73,46 @@ PY
 }
 
 fresh_stack() {
-    "${compose[@]}" down --remove-orphans >/dev/null 2>&1
+    "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1
     start_stack
 }
 
+run_release_modules() {
+    local failed=0 module module_report
+    local modules=(tests/integration/test_*.py)
+    if [[ "$#" -gt 0 ]]; then
+        [[ "${V6_LEGACY_DEVELOPMENT_ONLY:-0}" == "1" ]] || return 2
+        modules=("$@")
+    fi
+    for module in "${modules[@]}"; do
+        if [[ "${V6_LEGACY_DEVELOPMENT_ONLY:-0}" == "1" && "$module" == tests/integration/test_v6_* ]]; then
+            continue
+        fi
+        module_report="$report_dir/modules/$(basename "$module" .py)"
+        mkdir -p "$module_report"
+        if ! V6_REPORT_DIR="$module_report" "$python" tests/infrastructure/v6_release.py "$module_report" "$module"; then
+            failed=1
+        fi
+        docker logs "acp-v6-phase2-mongodb-$V6_TEST_RUN" >"$module_report/mongodb.log" 2>&1 || true
+        docker logs "acp-v6-phase2-mongot-$V6_TEST_RUN" >"$module_report/mongot.log" 2>&1 || true
+        # Each module gets new tmpfs storage: dropped databases still retain
+        # engine/journal state, which otherwise exhausts this bounded container.
+        fresh_stack
+    done
+    "$python" tests/infrastructure/v6_release.py --reconcile "$report_dir" "$@"
+    return "$failed"
+}
+
 start_stack
+if [[ "${V6_LEGACY_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
+    run_release_modules "$@"
+    exit 0
+fi
+if [[ "${V6_SECURITY_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
+    "$python" -m pytest -q tests/integration/test_v6_security_acceptance.py \
+        tests/integration/test_v6_tenant_adoption.py --junitxml="$report_dir/security-development.xml" "$@"
+    exit 0
+fi
 if [[ "${V6_SUMMARIES_DEVELOPMENT_ONLY:-0}" == "1" ]]; then
     for target in dashboard_aggregation report_revocation; do
         "$python" -m pytest -q "tests/integration/test_v6_${target}.py" --junitxml="$report_dir/${target}.xml" "$@"
@@ -193,6 +231,14 @@ real_tests=(tests/integration/test_v6_tenant_isolation.py
 # small replica set across dozens of create/drop/index fixtures can exhaust its
 # cgroup with retained engine state; that is not authentication evidence.
 fresh_stack
+if [[ "${V6_FULL_ACCEPTANCE:-0}" == "1" ]]; then
+    export V6_DEPLOYMENT_TESTS=1 V6_DASHBOARD_HOSTING=1 V6_PHASE10_BROWSER=1
+    export V6_BROWSER_DESCRIPTOR="$V6_TEST_DIR/release-browser.json"
+    # The helper supplies only disposable legacy credentials, disables dotenv
+    # in the test process, and refuses skips/failures in the complete suite.
+    run_release_modules
+    exit 0
+fi
 "$python" -m pytest -q "${real_tests[@]}" --junitxml="$report_dir/real.xml"
 if [[ "${V6_LOCAL_IDENTITY_TESTS:-0}" == "1" ]]; then
     fresh_stack

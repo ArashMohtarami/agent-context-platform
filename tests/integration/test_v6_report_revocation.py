@@ -1,8 +1,9 @@
 """Real policy-rechecked, expiring, redacted bounded CSV downloads."""
 
+import asyncio
 import csv
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 from io import StringIO
 from uuid import uuid4
 
@@ -51,6 +52,8 @@ async def test_real_csv_matches_detail_aggregate_and_retention_no_foreign_conten
         )
         assert created.status_code == 201, created.text
         report = created.json()
+        expires = datetime.fromisoformat(report["expires_at"].replace("Z", "+00:00"))
+        assert timedelta(0) < expires - utc_now() <= timedelta(minutes=5)
         downloaded = await client.get(report["download_path"], headers=headers)
         assert downloaded.status_code == 200, downloaded.text
         assert downloaded.headers["cache-control"] == "no-store"
@@ -81,7 +84,13 @@ async def test_real_csv_matches_detail_aggregate_and_retention_no_foreign_conten
             h.declaration.model_copy(update={"retained_from": h.begin + timedelta(minutes=3)}),
         )
     async with browser(h, "owner") as (client, headers):
-        retained = await client.get(report["download_path"], headers=headers)
+        stale = await client.get(report["download_path"], headers=headers)
+        assert stale.status_code == 403
+        fresh = await client.post(
+            BASE + "/reports", json=h.query.model_dump(mode="json"), headers=headers
+        )
+        assert fresh.status_code == 201, fresh.text
+        retained = await client.get(fresh.json()["download_path"], headers=headers)
         overview = await client.get(BASE + "/overview", params=params(h.query), headers=headers)
         assert retained.status_code == 200
         assert (
@@ -130,6 +139,53 @@ async def test_real_revoked_policy_active_session_and_expired_reports_fail(summa
         assert expired.status_code == 403 and "event_id" not in expired.text
         wrong = await client.get(report["download_path"].replace("org-a", "org-b"), headers=headers)
         assert wrong.status_code == 403
+
+
+async def test_expired_export_grant_during_render_cannot_reuse_longer_activity_rights(
+    summary_db, monkeypatch
+):
+    from app.summaries.service import Summaries
+
+    h = summary_db
+
+    async def issue(tuples, expires):
+        return await h.governance.issue(
+            "org-a",
+            "owner",
+            Issue(
+                subject_id="other",
+                role="auditor",
+                parent_id=h.root,
+                expected_parent_generation=4,
+                tuples=tuples,
+                expires_at=expires,
+            ),
+        )
+
+    await issue((grant("activity:read:org"),), utc_now() + timedelta(days=1))
+    exporting = await issue((grant("reports:export"),), utc_now() + timedelta(seconds=10))
+    original = Summaries.confirm_current
+    reached = False
+
+    async def expire(self, *args, **kwargs):
+        nonlocal reached
+        reached = True
+        # A persisted grant expires naturally without an anchor mutation.
+        # Actual CSV rendering and the final fresh policy evaluation still run.
+        remaining = (exporting["expires_at"] - utc_now()).total_seconds()
+        assert remaining > 0, "the fixture must reach delivery before expiry"
+        await asyncio.sleep(remaining + 0.05)
+        await original(self, *args, **kwargs)
+
+    async with browser(h, "other") as (client, headers):
+        created = await client.post(
+            BASE + "/reports", json=h.query.model_dump(mode="json"), headers=headers
+        )
+        assert created.status_code == 201, created.text
+        monkeypatch.setattr(Summaries, "confirm_current", expire)
+        refused = await client.get(created.json()["download_path"], headers=headers)
+        assert reached
+        assert refused.status_code == 403 and "event_id" not in refused.text
 
 
 async def test_real_governance_csv_formula_neutralization_and_body_redaction(summary_db):

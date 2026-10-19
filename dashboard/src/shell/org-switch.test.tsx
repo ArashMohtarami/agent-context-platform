@@ -26,6 +26,7 @@ describe('organization boundary', () => {
     });
     const {queries} = mount('/o/org-a/workspace');
     await screen.findByRole('heading', {name: 'Welcome, Fictional Alice'});
+    expect(screen.getByRole('link', {name: 'Agent Context Organization console · My workspace'})).toHaveAttribute('href', '/o/org-a/workspace');
     queries.setQueryData(['organization', 'org-a', 'private-sentinel'], 'alpha-only');
     await user.selectOptions(screen.getByLabelText('Active organization'), 'org-b');
     await screen.findByText('Approved SSO required');

@@ -6,10 +6,10 @@ from contextlib import asynccontextmanager
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.initializer import initialize_database
 from app.models.agent import ProjectBindingType, ProjectResolutionStatus
 from app.models.project import ProjectDocument
 from app.repositories.agent_repository import MongoProjectBindingRepository
@@ -77,7 +77,7 @@ async def test_project_binding_resolves_ssh_and_https_without_filesystem_access(
             assert https.project_id == project_id
             assert await database["_schema_migrations"].count_documents({"version": 26}) == 1
             assert (
-                "project_binding_repository_locator_uq"
+                "tenant_project_binding_repository_locator_uq"
                 in await database["project_bindings"].index_information()
             )
     finally:

@@ -19,6 +19,7 @@ import pytest
 from bson import ObjectId
 from fastapi import FastAPI
 from mcp.shared.memory import create_connected_server_and_client_session
+from v6_legacy_integration import unified_search_ready
 
 from app.core.config import get_settings
 from app.main import create_app
@@ -96,6 +97,7 @@ async def running_application(project_ids: list[str], source: str) -> AsyncItera
     application = create_app(get_settings())
     async with application.router.lifespan_context(application):
         database = application.state.mongodb.database
+        await unified_search_ready(database, get_settings().embedding_dimensions)
         keys = ApiKeyService(MongoApiKeyRepository(database))
         # Every scope, so a refusal in these tests is about a tool's own grant
         # or a project boundary rather than about this credential.

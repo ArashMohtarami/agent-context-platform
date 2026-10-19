@@ -9,10 +9,10 @@ from pathlib import Path
 import pytest
 from bson import ObjectId
 from pymongo.errors import WriteError
+from v6_legacy_integration import initialize_database
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.initializer import initialize_database
 from app.embeddings.types import EmbeddingVector
 from app.repositories.skill_chunk_repository import MongoSkillChunkRepository
 from app.repositories.skill_repository import MongoSkillRepository

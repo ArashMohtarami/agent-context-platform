@@ -23,6 +23,30 @@ def grants(row: Mapping[str, Any], field: str = "tuples") -> tuple[Grant, ...]:
     return tuple(Grant.model_validate(value) for value in row[field])
 
 
+class _SnapshotGrants:
+    """Decode/hash each immutable input row once during one synchronous evaluation.
+
+    This object never outlives effective(); authority, members and generations
+    are still rechecked from the next request's fresh database snapshot.
+    """
+
+    def __init__(self) -> None:
+        self.parsed: dict[tuple[int, str], tuple[Grant, ...]] = {}
+        self.hashes: dict[int, str] = {}
+
+    def grants(self, row: Row, field: str = "tuples") -> tuple[Grant, ...]:
+        key = (id(row), field)
+        if key not in self.parsed:
+            self.parsed[key] = grants(row, field)
+        return self.parsed[key]
+
+    def ceiling_hash(self, row: Row) -> str:
+        key = id(row)
+        if key not in self.hashes:
+            self.hashes[key] = ceiling_hash(self.grants(row, "ceiling"))
+        return self.hashes[key]
+
+
 def active_chain(
     row: Row,
     assignments: Mapping[str, Row],
@@ -31,8 +55,11 @@ def active_chain(
     now: datetime,
     teams: Mapping[str, Row] | None = None,
     team_links: Mapping[tuple[str, str], Row] | None = None,
+    *,
+    _parsed: _SnapshotGrants | None = None,
 ) -> tuple[Row, ...]:
     """Generations and membership revisions never reattach old descendants."""
+    parsed = _parsed if _parsed is not None else _SnapshotGrants()
     chain: list[Row] = []
     seen: set[str] = set()
     while True:
@@ -51,7 +78,7 @@ def active_chain(
             or user["status"] != "active"
             or member["revision"] != row["subject_revision"]
             or member["role"] != row["role"]
-            or row["ceiling_hash"] != ceiling_hash(grants(row, "ceiling"))
+            or row["ceiling_hash"] != parsed.ceiling_hash(row)
         ):
             raise PolicyDenied("assignment ancestry is unavailable")
         if teams is not None and member["role"] == "team_lead" and not row.get("team_id"):
@@ -96,7 +123,7 @@ def active_chain(
                         g.action == "grants:delegate"
                         and g.resource_kind == "team"
                         and g.selection().contains(row["team_id"])
-                        for g in grants(parent)
+                        for g in parsed.grants(parent)
                     )
                 )
                 or (
@@ -111,8 +138,8 @@ def active_chain(
             or not can_appoint(parent["role"], row["role"])
             or not set(row["allowed_roles"]) <= set(parent["allowed_roles"])
             or any(
-                not covered(g, grants(parent, "ceiling"))
-                for g in (*grants(row), *grants(row, "ceiling"))
+                not covered(g, parsed.grants(parent, "ceiling"))
+                for g in (*parsed.grants(row), *parsed.grants(row, "ceiling"))
             )
         ):
             raise PolicyDenied("assignment ancestry is unavailable")
@@ -216,13 +243,16 @@ def effective(
     teams: Mapping[str, Row] | None = None,
     team_links: Mapping[tuple[str, str], Row] | None = None,
 ) -> tuple[tuple[Grant, ...], list[Row]]:
+    parsed = _SnapshotGrants()
     tuples: list[Grant] = []
     explanations: list[Row] = []
     for row in assignments.values():
         if row["org_id"] != org_id or row["subject_id"] != subject_id:
             continue
         try:
-            chain = active_chain(row, assignments, members, users, now, teams, team_links)
+            chain = active_chain(
+                row, assignments, members, users, now, teams, team_links, _parsed=parsed
+            )
         except PolicyDenied:
             explanations.append(
                 {
@@ -232,7 +262,7 @@ def effective(
                 }
             )
             continue
-        valid = grants(row)
+        valid = parsed.grants(row)
         tuples.extend(valid)
         explanations.append(
             {

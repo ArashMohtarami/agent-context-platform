@@ -8,14 +8,14 @@ from datetime import UTC, datetime
 import pytest
 from bson import ObjectId
 from pymongo.errors import WriteError
+from v6_legacy_integration import initialize_database, seed_projects
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.indexes import INDEX_DEFINITIONS
-from app.db.initializer import initialize_database
 from app.db.migrations.v001_initial_schema import V1_COLLECTIONS
 from app.db.migrations.v006_creator_content_schema import V2_CONTENT_COLLECTIONS
 from app.db.migrations.v013_research_schema import V3_RESEARCH_COLLECTIONS
+from app.db.tenant_schema import TENANT_INDEX_DEFINITIONS as INDEX_DEFINITIONS
 from app.models.research import (
     ResearchChunkDocument,
     ResearchDocumentDocument,
@@ -61,6 +61,7 @@ async def test_v3_schema_migration_is_idempotent_and_preserves_v1_v2_collections
     try:
         async with initialized_mongodb() as mongodb:
             database = mongodb.database
+            await seed_projects(database, ["payments-api"])
             await initialize_database(database)
 
             names = set(await database.list_collection_names())

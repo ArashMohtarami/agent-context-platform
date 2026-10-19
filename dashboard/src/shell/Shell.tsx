@@ -64,7 +64,7 @@ function Shell() {
     if (auth.dirty) setTarget(selected); else void change(selected);
   };
   return <div className="shell private-surface">
-    <header className="topbar"><div className="topbar-start"><Button variant="quiet" className="mobile-menu" aria-label="Open navigation" onClick={() => setDrawer(true)}><Icon name="menu"/></Button><Link className="brand" to={base + '/workspace'}><img src={mark} alt=""/><span>Agent Context<span className="brand-caption">Organization console</span></span></Link><span className="header-divider"/><span className="breadcrumb">{pageName}</span></div>
+    <header className="topbar"><div className="topbar-start"><Button variant="quiet" className="mobile-menu" aria-label="Open navigation" onClick={() => setDrawer(true)}><Icon name="menu"/></Button><Link className="brand" aria-label="Agent Context Organization console · My workspace" to={base + '/workspace'}><img src={mark} alt=""/><span>Agent Context{' '}<span className="brand-caption">Organization console</span></span></Link><span className="header-divider"/><span className="breadcrumb">{pageName}</span></div>
       <div className="topbar-actions"><Select label="Active organization" aria-label="Active organization" value={me.policy_context.org_id} disabled={busy} onChange={event => selectOrganization(event.target.value)}>{organizations.map(item => <option value={item.org_id} key={item.org_id}>{item.name}</option>)}</Select><ThemeButton/><Button variant="quiet" onClick={() => {void auth.logout();}} aria-label="Sign out"><Icon name="exit"/><span className="theme-label">Sign out</span></Button></div>
     </header>
     <aside className="sidebar">{navigation}</aside>

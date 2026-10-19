@@ -11,6 +11,7 @@ import pytest
 from bson import ObjectId
 from fastapi import FastAPI
 from mcp.shared.memory import create_connected_server_and_client_session
+from v6_legacy_integration import unified_search_ready
 
 from app.core.config import get_settings
 from app.embeddings.types import EmbeddingVector
@@ -79,6 +80,9 @@ async def application_for(run_id: str) -> AsyncIterator[tuple[FastAPI, str, str,
     application = create_app(settings)
     async with application.router.lifespan_context(application):
         application.state.embeddings = GatewayEmbedder()
+        await unified_search_ready(
+            application.state.mongodb.database, settings.embedding_dimensions
+        )
         clients: AgentClientService = application.state.agent_client_service
         codex_id = f"phase2-codex-{run_id}"
         claude_id = f"phase2-claude-{run_id}"

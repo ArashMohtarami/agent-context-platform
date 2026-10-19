@@ -24,7 +24,7 @@ async def summary_db(managed_agents_db):
     yield await prepare_summary(managed_agents_db)
 
 
-async def prepare_summary(h):
+async def prepare_summary(h, *, begin=None, end=None):
     root = await h.db.policy_assignments.find_one({"_id": h.root})
     caps = (
         grant("activity:read:org"),
@@ -101,7 +101,7 @@ async def prepare_summary(h):
     h.coverage_start = (await h.db["_managed_agents_control"].find_one({"_id": "installation"}))[
         "created_at"
     ]
-    h.begin = normalize_mongo_timestamp(utc_now() - timedelta(hours=2))
+    h.begin = normalize_mongo_timestamp(begin or utc_now() - timedelta(hours=2))
     h.event_ids = {}
     for org, specs in (
         (
@@ -136,7 +136,7 @@ async def prepare_summary(h):
                     document.model_dump(mode="python", by_alias=True)
                 )
                 h.event_ids[event_id] = str(document.id)
-    h.end = utc_now()
+    h.end = normalize_mongo_timestamp(end or utc_now())
     h.query = SummaryQuery(start=h.begin, end=h.end, scope="org")
     h.declaration = Checkpoint(
         source="gateway_activity",

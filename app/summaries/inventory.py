@@ -4,7 +4,9 @@ STORAGE = {
     "agent_activity": "tenant-owned; event-time sponsorship and shared metadata predicate",
     "governance_events": "tenant-owned; audit predicate; control records excluded",
     "governance_outbox": "tenant-owned; transactional report/checkpoint governance delivery only",
-    "policy_anchors": "tenant-owned; shared policy fence for every summary/report operation",
+    "policy_anchors": (
+        "tenant-owned; final majority CAS for reads; transactional governance and retention fence"
+    ),
     "organization_memberships": "tenant-owned; current subject and immutable event-time capture",
     "team_memberships": "tenant-owned; event-time capture only; no historical read join",
     "_managed_agents_control": "installation metadata; verified schema42 activation prerequisite",
@@ -24,7 +26,8 @@ ROUTES = {
         "CSRF+Origin+recent MFA; reports:export; same visibility; transactional receipt/audit"
     ),
     "GET /api/v6/organizations/{org_id}/reports/{report_id}/download": (
-        "recipient/current policy+membership generation; expiry/MFA; same predicate and retention"
+        "recipient/current policy+membership generation; expiry/MFA; same predicate and retention; "
+        "fresh reports:export check after rendering, separate from activity rights"
     ),
 }
 EXISTING_READS = {

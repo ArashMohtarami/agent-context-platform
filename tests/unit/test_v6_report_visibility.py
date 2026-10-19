@@ -8,6 +8,7 @@ import pytest
 
 from app.security.policy.engine import PolicyEngine
 from app.security.policy.evaluation import PolicyDenied
+from app.summaries.models import REPORT_TTL_SECONDS
 from app.summaries.reports import Reports, csv_cell
 from tests.unit.test_v6_dashboard_read_models import g, query, snapshot
 
@@ -35,6 +36,7 @@ def test_csv_formula_prefixes_are_neutralized_even_when_quoted_or_whitespace_pre
 
 
 def test_export_requires_export_permission_and_the_same_activity_visibility():
+    assert REPORT_TTL_SECONDS == 300  # Phase0 ready/download lifetime contract
     engine = PolicyEngine(Mock(), human_management=True, managed_agents=True)
     reports = Reports(engine)
     export = g("reports:export", "organization", "org-a")

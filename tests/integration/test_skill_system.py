@@ -8,19 +8,24 @@ from pathlib import Path
 import pytest
 from bson import ObjectId
 from httpx import ASGITransport, AsyncClient
+from v6_legacy_integration import initialize_database
 
 from app.api.routes.skills import router as skills_router
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.initializer import initialize_database
+from app.repositories.api_key_repository import MongoApiKeyRepository
+from app.repositories.credential_repository import MongoCredentialResolver
 from app.repositories.skill_chunk_repository import MongoSkillChunkRepository
 from app.repositories.skill_repository import MongoSkillRepository
+from app.security.scopes import ALL_SCOPES
+from app.services.api_key_service import ApiKeyService
+from app.services.auth_service import AuthService
 from app.services.skill_service import SkillService
 from app.skills.chunker import MarkdownSkillChunker
 from app.skills.errors import SkillVersionConflictError
 from app.skills.importer import SkillImporter
 from app.skills.parser import SkillParser
-from tests.api_doubles import open_application
+from tests.api_doubles import authenticated_application
 
 pytestmark = [
     pytest.mark.integration,
@@ -120,12 +125,20 @@ async def test_complete_skill_import_version_chunk_search_and_api_lifecycle(
         assert all(chunk.skill_version == "1.0.0" for chunk in version_one_chunks.items)
         assert any("preserved_code_block" in chunk.content for chunk in version_one_chunks.items)
 
-        # Built open, because what this checks is that the router and the
-        # live database agree. Whether a credential is required is decided
-        # elsewhere and tested there.
-        application = open_application(skills_router, mongodb=mongodb)
+        issued = await ApiKeyService(MongoApiKeyRepository(mongodb.database)).create_key(
+            name="synthetic-skill-regression", scopes=list(ALL_SCOPES)
+        )
+        headers = {"Authorization": "Bearer " + issued.token}
+        application = authenticated_application(
+            skills_router,
+            mongodb=mongodb,
+            auth=AuthService(MongoCredentialResolver(mongodb.database)),
+            tenant_control_database=mongodb.database,
+        )
         transport = ASGITransport(app=application)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", headers=headers
+        ) as client:
             listed = await client.get(
                 "/api/v1/skills",
                 params={"category": "phase4-integration"},
@@ -173,7 +186,9 @@ async def test_complete_skill_import_version_chunk_search_and_api_lifecycle(
         assert (await skill_repository.get_active(skill_id)) == version_two
 
         transport = ASGITransport(app=application)
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(
+            transport=transport, base_url="http://test", headers=headers
+        ) as client:
             current = await client.get(f"/api/v1/skills/{skill_id}")
             historical = await client.get(
                 f"/api/v1/skills/{skill_id}",

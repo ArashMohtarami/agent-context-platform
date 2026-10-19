@@ -255,7 +255,7 @@ async def test_real_totp_replay_login_challenge_race_and_single_use_recovery(ide
         )
     )
     assert sum(result.status_code == 200 for result in results) == 1
-    assert all(result.status_code in {200, 401, 503} for result in results)
+    assert all(result.status_code in {200, 401, 409, 503} for result in results)
     await h.login(recovery=codes[0])
     assert (await h.row())["amr"] == ["password", "recovery"]
     await h.public()
