@@ -1,5 +1,12 @@
 # Memory
 
+All runtime records and search candidates described here belong to one trusted
+organization. `global` means organization-global, with explicit action/resource
+policy; it never means a null-org or cross-installation corpus. Imported skills
+are tenant-owned copies of canonical Git. Private agent memory also retains
+verified client ownership and is not revealed by human management visibility.
+
+
 Memory keeps useful facts across tasks and sessions: a preference, convention,
 correction, or operational note. Writes are intentional; the platform does not
 watch conversations or extract memories automatically. Reviewed research

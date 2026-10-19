@@ -1,5 +1,23 @@
 # Codex integration
 
+## Managed installation setup
+
+Complete the [organization console](dashboard.md) cutovers first. A lead
+approves bounded client policy and verified sponsor/team; the authenticated
+recipient generates their token once. Do not use a legacy operator key recipe
+to bypass managed issuance. Leads cannot recover another worker's plaintext.
+Copy explicitly into a private file/approved secret store; retries return metadata
+and lost delivery needs revoke/replacement. Never store a token in source or
+browser local/session storage.
+
+Each credential is bound to one organization. Key/client policy intersects current
+sponsor, team and delegation rights per action/resource in REST and every MCP
+preflight, including active sessions. Browser cookies cannot authenticate this
+bearer surface. Provider API keys remain separate. Template edits/disable do not
+change assigned clients or keys. See [managed agents](managed-agents.md)
+for rotation, expiry, custody, revocation and normal-machine review refusal.
+
+
 Codex reaches this platform as an MCP server. Nothing about Codex is modified, forked, or patched;
 it is configured, and it spawns a process that talks to the Context API.
 
@@ -106,9 +124,9 @@ database credentials: it reaches the platform through the API and nothing else.
 | `MCP_API_BASE_URL` | The Context API address | `http://127.0.0.1:8000` |
 | `MCP_SERVER_NAME` | Name Codex shows for the server | `agent-context-platform` |
 | `MCP_REQUEST_TIMEOUT_SECONDS` | Timeout for one API request | `30` |
-| `MCP_SCOPES` | Comma-separated scopes; empty grants all | empty |
-| `MCP_PROJECT_IDS` | Comma-separated projects; empty grants all | empty |
-| `MCP_PROFILE_IDS` | Comma-separated creator profiles; empty grants all | empty |
+| `MCP_SCOPES` | Comma-separated scopes; empty adds no local narrowing; backend policy still applies | empty |
+| `MCP_PROJECT_IDS` | Comma-separated projects; empty adds no local narrowing; backend policy still applies | empty |
+| `MCP_PROFILE_IDS` | Comma-separated creator profiles; empty adds no local narrowing; backend policy still applies | empty |
 | `MCP_API_TOKEN_FILE` | File holding a bearer token for the API | unset |
 | `LOG_LEVEL` | `DEBUG`…`CRITICAL`; logs go to stderr | `INFO` |
 
@@ -118,13 +136,17 @@ Narrowing is how you hand one Codex session one project:
 env = { MCP_API_BASE_URL = "http://127.0.0.1:8000", MCP_PROJECT_IDS = "payment-service", MCP_SCOPES = "search:read,context:read,context:write,memory:read,memory:write" }
 ```
 
-That session can then reach global knowledge and `payment-service`, and nothing else — enforced
-before a request is built, so a refused call never leaves the process.
+That local filter permits only `payment-service` and eligible organization-global
+sources; the API still intersects current action/resource and sponsor policy.
+Local settings alone grant nothing.
 
-When the API requires a key, issue one for this session and point `MCP_API_TOKEN_FILE` at it:
+For an unmanaged legacy rehearsal only, the historical operator issuance below
+requires explicit org context and is refused under managed policy. Current
+managed installations use recipient-only generation described above, then set
+`MCP_API_TOKEN_FILE`:
 
 ```bash
-docker compose exec -T context-api python -m app.cli.contextctl --json keys create \
+docker compose exec -T context-api python -m app.cli.contextctl --json --org-id YOUR_ORG keys create \
   --name codex-payments \
   --scope search:read --scope context:read --scope context:write \
   --scope memory:read --scope memory:write \
@@ -180,7 +202,7 @@ The last step is what makes the next session cheaper. It is a call Codex makes o
 asked or when it judges something worth keeping — nothing here watches a conversation and saves it.
 
 **Always pass `project_id`.** Project context and project memory are unreachable without it, and no
-tool will guess. Without it, search can use global knowledge and the authenticated
+tool will guess. Without it, search can use explicitly permitted organization-global knowledge and the authenticated
 client's own agent memory, never another project's context or memory.
 `list_projects` finds the identifier.
 
@@ -259,7 +281,7 @@ grant. The message names a missing scope. Correct the intended grant or local
 restriction; removing a local filter cannot widen the API credential.
 
 **A project's context is missing.** The call almost certainly omitted `project_id`, which addresses
-global/client-operational knowledge, without project-owned records. Nothing
+permitted organization-global/client-operational knowledge, without project-owned records. Nothing
 infers a project.
 
 **The protocol stream is corrupted.** Something wrote to stdout. If you wrote a custom launcher,

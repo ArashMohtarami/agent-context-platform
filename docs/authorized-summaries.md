@@ -1,5 +1,9 @@
 # Authorized summaries and reports
 
+The final policy-fence expiry race remains a release blocker: the current checks
+have not yet passed the complete expiry/revocation acceptance gate. See
+[verification and known limits](verification.md) before relying on report delivery.
+
 Phase 8 establishes the server read contracts; the [Phase 14 UI](dashboard-monitoring.md) consumes them. It requires an activated
 Phase 7 installation, verified human browser sessions and current organization
 policy. Existing bearer/MCP interfaces cannot authenticate these routes with a

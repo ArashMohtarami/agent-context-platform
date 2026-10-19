@@ -1,196 +1,144 @@
 # Agent Context Platform
 
-Self-hosted knowledge for coding agents. Store reviewed skills, project decisions,
-intentional memories, research evidence, and content history once, then retrieve
-them through a shared MCP gateway or REST API.
+Self-hosted knowledge for coding agents and an organization console for people.
+Store reviewed skills, project decisions, intentional memories, research evidence
+and content history, then retrieve them through MCP, versioned bearer APIs or
+session-authenticated human workflows.
 
-Codex, Claude Code, Gemini CLI, and compatible MCP clients use the same knowledge
-and authorization rules. Each client can have its own credential and project
-grants. Embeddings run locally; MongoDB and MongoDB Community Search provide
-lexical, vector, and hybrid retrieval.
+Codex, Claude Code, Gemini CLI and compatible clients share the same services.
+Organizations have explicit ownership and action/resource grants. Embeddings run
+locally; MongoDB and MongoDB Community Search provide lexical, vector and hybrid
+retrieval. Installation database and backup operators remain trusted across
+organizations. **Release readiness is not yet approved:** see
+[verification and known limits](docs/verification.md).
 
-[Interactive usage guide](docs/usage-guide.html) · [Architecture](docs/architecture.md) ·
-[Self-host the introduction website](docs/website.md) · [Contributing](CONTRIBUTING.md)
+[Usage guide](docs/usage-guide.html) · [Console](docs/dashboard.md) ·
+[Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md)
 
 ## What you can do
 
-- **Retrieve project knowledge:** search Git-versioned skills, one project's
-  recorded context, and allowed memories together within a token budget.
-- **Share decisions across agents:** keep actor provenance, explicit project
-  bindings, client scopes, and revision checks for concurrent edits.
-- **Save memories intentionally:** use global, project, agent, or project-agent
-  scopes; archive or supersede records while preserving history.
-- **Research with evidence:** ingest bounded text, Markdown, PDF, public web
-  pages, and public repositories; retain snapshots, claims, citations, and
-  contradictions. Review and promote approved findings explicitly.
-- **Prepare technical content:** manage creator preferences, ideas, briefs,
-  drafts, immutable versions, review, and manual export. The calling agent writes
-  prose. The included publisher records a human-confirmed publication receipt.
-- **Operate your own service:** use authenticated APIs, structured logs, metrics,
-  backups, verified restores, and local embedding models.
+- Retrieve permitted project context, organization-imported skills and memories
+  within explicit source filters and token budgets.
+- Share verified decisions across agents with actor provenance, bindings,
+  immutable history and revision-aware updates.
+- Save memories intentionally in organization-global, project, agent or
+  project-agent scope; private client ownership remains enforced.
+- Manage invited people, teams, bounded delegation, access requests and sponsored
+  clients through the [organization console](docs/organization-management.md).
+- Research bounded sources with snapshots, claims, citations, contradictions,
+  independent review and separately authorized promotion.
+- Prepare creator briefs/drafts and immutable versions. The caller writes prose;
+  publication records a manual receipt and sends nothing to external platforms.
+- Inspect authorized content-free monitoring and governance history, with declared
+  coverage, event-time attribution and bounded expiring reports.
 
-The repository includes a [skill catalog](docs/skill-catalog.md), a fictional
-[payment service knowledge example](examples/payment-service/README.md), a
-[small Notes API](examples/starter-notes-api/README.md), and an isolated
-[async Django example](examples/django-async/README.md).
-
-V6 setup requires explicit [legacy adoption](docs/tenant-adoption.md) and
-[tenant isolation cutover](docs/tenant-isolation.md) before domain traffic is enabled.
-
-V6 Phase 3 optionally adds [invitation-only local identity](docs/local-identity.md),
-MFA and a separate session-only browser API after that isolation gate. It remains
-disabled by default. Human sessions start without corpus assignments. V6 Phase 4 optionally adds [approved OIDC providers, identity linking and
-organization switching](docs/sso-identity.md), also disabled by default.
-V6 Phase 5 optionally adds [coupled grants and bounded delegation](docs/management-policy.md),
-with transactional governance audit and shared policy fencing.
-After verified human and sponsored-machine management, V6 Phase 8 adds
-[authorized event summaries and expiring CSV reports](docs/authorized-summaries.md).
-V6 Phase 9 adds the [professional console foundation](docs/dashboard-foundation.md)
-for sign-in, organization switching, effective access and My security. Its
-[frontend source and verification scripts](dashboard/README.md) live in `dashboard/`;
-serving it requires explicit activation. Phase 10 adds
-[management workflows](docs/dashboard-management.md), Phase 11 adds the
-[knowledge workspace](docs/dashboard-knowledge.md), and Phase 12 adds the
-[evidence-backed research console](docs/dashboard-research.md). Phase 13 adds the
-[creator studio](docs/dashboard-creator.md) with independent review and manual publication receipts.
-Phase 14 adds [authorized monitoring and governance audit views](docs/dashboard-monitoring.md).
-The workflows below assume completed setup and organization-bound credentials.
-Provisioning, import, and administrative commands require `--org-id`; human
-management uses verified human sessions and explicit resource assignments.
+Roles do not bypass corpus policy. Read-A/write-B never becomes write-A; new
+managed assignments default to NONE. Human cookies do not authenticate V1–V5/MCP,
+and machine bearer credentials do not authenticate session-only `/api/v6`.
 
 ## Quick start
 
-Run from this checkout. You need Docker with Compose v2, Python 3.12+, OpenSSL,
-and `make`. The credential example below also uses `jq`. A small deployment
-should have several GB of available RAM; MongoDB, search indexes, and the local
-model each consume memory. See [deployment](docs/deployment.md) and
-[production readiness](docs/production-readiness.md) before sizing a host.
+Start with the [HTTPS console deployment guide](docs/dashboard-deployment.md) and
+[maintenance migration/recovery procedure](docs/migration-recovery.md). A fresh
+checkout does not anonymously create an owner, adopt data or activate tenants.
+The V6 flags are disabled by default. An operator must complete the staged
+cutovers and verify their gates before admitting domain traffic.
 
-```bash
+Build inputs require Docker Compose 2.24.4+, Python 3.12+, OpenSSL and the pinned
+Node toolchain for frontend development. From a reviewed checkout:
+
+```sh
 python3.12 -m venv .venv
 ./scripts/generate-dev-secrets.sh
 ./scripts/prepare-docker-wheels.sh
-docker compose config --quiet
-docker compose up -d --build --wait
-curl --fail http://127.0.0.1:8000/health/ready
-make import-skills
+docker compose -f docker-compose.yml -f deploy/console/compose.yml build context-api console
 ```
 
-The secrets generator creates an ignored `.env` and database secret files without
-printing their values. You can instead configure `.env.example` and provision
-the referenced files yourself. The wheel script downloads the pinned Python
-dependencies into an ignored build cache; rerun it when lock files change.
-The first startup may download the default local embedding model. Subsequent
-starts reuse the model volume. Offline deployments need preloaded wheels,
-container images, and model files.
+The secrets helper creates ignored development files; it does not provide a
+publicly trusted TLS certificate, local owner or production IdP configuration.
+Follow the deployment guide for exact-origin HTTPS, mounted keys, local mail
+handoff and optional external OIDC. Offline installations must preload pinned
+images, Python wheels, npm packages and model files. Never expose database/search
+ports or password/MCP administration over public HTTP.
 
-Only the API is bound to the host, on `127.0.0.1:8000`. MongoDB and `mongot` stay
-on the private Docker network. The health endpoints need no credential;
-knowledge APIs and metrics require scoped keys.
+After explicit adoption and activation, the operator imports reviewed Git skills
+into the selected organization:
 
-Create a read-only key inside the service, where the private database is reachable:
-
-```bash
-umask 077
-docker compose exec -T context-api python -m app.cli.contextctl --json keys create \
-  --name local-reader --scope skills:read --scope search:read \
-  | jq -er .key > ./secrets/local-reader-key
+```sh
+python -m app.cli.contextctl --org-id YOUR_ORG skills import --directory ./skills
 ```
 
-Install the host CLI and query the imported skills:
-
-```bash
-.venv/bin/python -m pip install -r requirements-dev.lock \
-  --extra-index-url https://download.pytorch.org/whl/cpu
-.venv/bin/python -m pip install --no-deps -e .
-export CONTEXTCTL_API_BASE_URL=http://127.0.0.1:8000
-export CONTEXTCTL_API_TOKEN_FILE="$PWD/secrets/local-reader-key"
-.venv/bin/contextctl search "safe async database transactions"
-```
-
-The key grants reading and searching skills. To create projects or store context,
-issue the corresponding write scopes and explicit project grants, following the
-[walkthrough](docs/usage-guide.html#16-from-zero-to-a-project-and-reviewed-content).
-Avoid granting publication, research approval, promotion, or client administration
-to an agent that only needs coding assistance.
-
-Stop the stack while retaining its volumes with `docker compose down`.
+Run operator commands inside the configured private API/operator container.
+For managed agent access, approve bounded client policy, then have the verified
+recipient generate their own token once in the console. Use a separate private
+token file for each client; no other worker or lead can recover that plaintext.
+Legacy `keys create` is not the managed issuance path.
 
 ## Connect an agent
 
-Start the platform and import skills first, then follow the relevant guide:
-
 | Client | Connection | Setup |
 | --- | --- | --- |
-| Codex | Local stdio launcher | [Codex integration](docs/codex.md) |
-| Claude Code | Streamable HTTP `/mcp` | [Claude Code integration](docs/clients/claude-code.md) |
-| Gemini CLI | Streamable HTTP `/mcp` | [Gemini CLI integration](docs/clients/gemini-cli.md) |
-| Other MCP clients | Shared capability contract | [Client onboarding](docs/client-onboarding.md) |
+| Codex | Local stdio launcher | [Codex](docs/codex.md) |
+| Claude Code | Streamable HTTP `/mcp` | [Claude Code](docs/clients/claude-code.md) |
+| Gemini CLI | Streamable HTTP `/mcp` | [Gemini CLI](docs/clients/gemini-cli.md) |
+| Other clients | Shared capability contract | [Onboarding](docs/client-onboarding.md) |
 
-Use a separate platform credential for each client. Remote access requires HTTPS;
-configure a reverse proxy rather than exposing database or search ports. Provider
-API keys are separate from Agent Context credentials. Local embeddings keep this
-platform's embedding work on your host; your chosen agent can still send retrieved
-context to its own model provider.
-
-A useful agent workflow is to resolve an explicit project, call `search_knowledge`
-for the current task, inspect relevant sources, and save only verified decisions
-or requested memories. Retrieved text is labeled data. The server does not
-automatically store entire conversations or treat research results as approved
-knowledge.
+Remote access uses the exact HTTPS console/API origin. Provider API keys are
+separate from platform credentials. Current key, client, sponsor, team and
+parent policy intersect per action/resource on ordinary REST and MCP preflight,
+including already connected sessions. Retrieved text remains data; your chosen
+agent may send retrieved context to its model provider.
 
 ## Documentation
 
-The [HTML usage guide](docs/usage-guide.html) opens directly in a browser and works
-offline. Its editable sources and runnable walkthroughs live in
-[docs/guide](docs/guide). The [introduction website](website/) can be built and
-served independently on a public IP; see [website deployment](docs/website.md).
+The [HTML guide](docs/usage-guide.html) opens offline. Its source registry includes
+maintained implemented docs; legacy bearer examples are labelled separately from
+managed human workflows. The [marketing site](docs/website.md) is independently
+hostable and has no console session, runtime data or secret mounts.
 
 | Topic | Guide |
 | --- | --- |
-| Architecture and code navigation | [Architecture](docs/architecture.md), [codebase onboarding](docs/onboarding.md) |
-| Storage and retrieval | [Database](docs/database.md), [skills](docs/skills.md), [embeddings](docs/embeddings.md), [retrieval](docs/retrieval.md) |
-| Projects and memories | [Projects](docs/projects.md), [memory](docs/memory.md), [unified search](docs/search.md) |
-| Interfaces | [MCP](docs/mcp.md), [CLI](docs/cli.md), [client profiles](docs/client-profiles.md) |
-| Evidence-backed research | [Research workflow](docs/research.md) |
-| Technical content | [Creator profiles](docs/creator.md), [storage](docs/content-storage.md), [publication review](docs/content-publication-safety.md), [manual publishing](docs/content-publishing.md) |
-| Operations | [Deployment](docs/deployment.md), [security](docs/security.md), [backup and recovery](docs/backup.md), [observability](docs/observability.md) |
-| V6 maintenance foundation (domain traffic stays sealed after adoption) | [Tenant adoption](docs/tenant-adoption.md) |
-| Organization console foundation | [Setup and security](docs/dashboard-foundation.md), [frontend scripts](dashboard/README.md), [dependency review](dashboard/DEPENDENCIES.md) |
-| Licenses and dependency notices | [MIT License](LICENSE), [third-party notices](docs/third-party-notices.md) |
+| Console and people | [Dashboard](docs/dashboard.md), [organization management](docs/organization-management.md) |
+| Identity and grants | [Local/MFA](docs/local-identity.md), [SSO](docs/sso-identity.md), [policy](docs/management-policy.md), [managed clients](docs/managed-agents.md) |
+| Architecture/storage | [Architecture](docs/architecture.md), [database](docs/database.md), [code navigation](docs/onboarding.md) |
+| Knowledge | [Projects](docs/projects.md), [memory](docs/memory.md), [skills](docs/skills.md), [retrieval](docs/retrieval.md) |
+| Research/creator | [Research console](docs/dashboard-research.md), [creator studio](docs/dashboard-creator.md), [publication safety](docs/content-publication-safety.md) |
+| Monitoring | [Dashboard policy](docs/dashboard-monitoring.md), [authorized summaries](docs/authorized-summaries.md) |
+| Interfaces | [MCP](docs/mcp.md), [CLI](docs/cli.md), [permission templates](docs/client-profiles.md) |
+| Operations | [Console deployment](docs/dashboard-deployment.md), [migration/recovery](docs/migration-recovery.md), [backup](docs/backup.md), [security](docs/security.md) |
+| Readiness and licenses | [Verification](docs/verification.md), [MIT License](LICENSE), [dependency notices](docs/third-party-notices.md) |
+
+The repository includes a [skill catalog](docs/skill-catalog.md), fictional
+[payment-service](examples/payment-service/README.md), [Notes API](examples/starter-notes-api/README.md)
+and isolated [async Django](examples/django-async/README.md) examples.
 
 ## Development and verification
 
-After installing the development dependencies above:
+Install the exact development lock with the documented CPU wheel index before
+running Python checks. Frontend source, Node pin, lockfile, scripts and notices
+live in [`dashboard/`](dashboard/README.md).
 
-```bash
-.venv/bin/python -m pytest
-.venv/bin/python -m ruff check .
-.venv/bin/python -m ruff format --check .
-.venv/bin/python -m mypy app
+```sh
+python -m pytest tests/unit -q
+python -m ruff check .
+python -m mypy app
+npm --prefix dashboard ci
+npm --prefix dashboard run lint
+npm --prefix dashboard run typecheck
+npm --prefix dashboard run test:unit
+npm --prefix dashboard run build
 ```
 
-The default suite requires no vendor account or paid model call. Tests that need
-a real embedding model are opt-in. To test MongoDB and search integration, use a
-disposable Compose deployment with its own database and volumes:
-
-```bash
-make verify-mongodb
-make verify-mongot
-docker compose --profile test run --rm --build test
-```
-
-The integration suite writes fixtures; use an isolated environment as described
-in [Contributing](CONTRIBUTING.md). The default Compose deployment is one API
-process, one database replica-set member, and one search process. It provides
-durability through backups, with no automatic host failover. Load-test your own
-corpus before choosing resource limits.
+The [complete release gate](docs/verification.md) also needs real disposable
+MongoDB/mongot, supported OIDC and all browser/MCP/client journeys. Required skips
+and exceeded budgets remain unresolved. Test fixtures write data: never use live
+volumes or real recipients. The supplied single-node topology has no automatic
+host failover; recovery depends on independently stored backups and rehearsal.
 
 ## License
 
-The project's original code, documentation, skills, and examples are available
-under the [MIT License](LICENSE). MongoDB, `mongot`, Python dependencies, model
-weights, and material you ingest retain their own licenses. See
-[third-party notices](docs/third-party-notices.md) for these boundaries.
-
-The implemented console has a [same-origin TLS deployment and distribution guide](docs/dashboard-deployment.md), including local-only/OIDC operation and isolated recovery gates.
+Original code, documentation, skills and examples use the [MIT License](LICENSE).
+Dependencies, MongoDB/search images, model weights and ingested material retain
+their own licenses. Frontend distribution includes source, lockfile, license
+inventory and notices; generated builds, browser artifacts and private plans are
+excluded from clean source exports.

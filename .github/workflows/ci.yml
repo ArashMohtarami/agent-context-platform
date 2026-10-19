@@ -38,6 +38,8 @@ jobs:
           python -m mypy app
       - name: Build reviewed static documentation
         run: python website/build.py
+      - name: Verify rebuilt guide and extracted source/site contracts
+        run: python -m pytest tests/documentation -q
       - name: Check public release inventory
         run: python scripts/prepare_open_source_release.py --check
 

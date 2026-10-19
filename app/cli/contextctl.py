@@ -58,7 +58,8 @@ examples:
   contextctl skills list --limit 5
   contextctl search "how do we prevent duplicate payments?" --project-id payment-service
   contextctl --json memory search "typing conventions" | jq .results
-  contextctl keys create --name codex --scope search:read --scope skills:read
+  contextctl --org-id YOUR_ORG skills import --directory ./skills
+  contextctl --org-id YOUR_ORG organizations adopt --adoption-id YOUR_ADOPTION --dry-run
 
 exit codes:
   0  the command succeeded
@@ -70,7 +71,13 @@ configuration:
   CONTEXTCTL_API_BASE_URL        where the Context API listens (default http://127.0.0.1:8000)
   CONTEXTCTL_API_TOKEN_FILE      file holding a bearer token, when the API requires one
   CONTEXTCTL_REQUEST_TIMEOUT_SECONDS
-  MONGODB_*                      only for import, reindex, keys, backup, and restore
+  MONGODB_*                      private operator provisioning/import/cutover/backup commands
+
+trust boundaries:
+  --org-id is required for tenant operator work; it is not bearer authority.
+  Managed credentials use approved recipient-only issuance, not keys create.
+  Backup/restore cover the whole installation and refuse --org-id.
+  Human browser sessions authenticate /api/v6 only; bearer clients use V1-V5/MCP.
 """
 _UNEXPECTED = "the command failed for an unexpected reason"
 _NOT_CONFIGURED = "this command needs the platform's database settings, and they are not set"

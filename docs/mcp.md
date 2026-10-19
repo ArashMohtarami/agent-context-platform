@@ -197,13 +197,14 @@ about a tool's shape.
 
 | Setting | Effect |
 | --- | --- |
-| `MCP_SCOPES` | Comma-separated scopes. Empty grants every scope. |
-| `MCP_PROJECT_IDS` | Comma-separated projects. Empty grants every project. |
-| `MCP_PROFILE_IDS` | Comma-separated creator profiles. Empty grants every profile. |
+| `MCP_SCOPES` | Optional local scope restriction. Empty adds no narrowing; backend policy still applies. |
+| `MCP_PROJECT_IDS` | Optional local project restriction; empty never widens authenticated rights. |
+| `MCP_PROFILE_IDS` | Optional local creator-profile restriction; empty never widens authenticated rights. |
 | `MCP_API_TOKEN` / `MCP_API_TOKEN_FILE` | Sent to the API as a bearer token, never logged |
 
-An unconfigured server grants everything, which is the documented local case: a stdio server is
-reachable only by the process that spawned it. Narrowing is a deployment decision, and the two
+Empty local filter settings add no further narrowing; they do not grant backend
+authority. An unconfigured credential or missing trusted org fails closed. Local
+stdio process access does not bypass current sponsor/resource policy. The two
 halves narrow independently — `MCP_SCOPES=search:read,context:read` with
 `MCP_PROJECT_IDS=payment-service` gives an agent read-only retrieval inside one project. For V2
 creator data, `MCP_PROFILE_IDS=personal-brand` is checked before a request reaches the API. It is

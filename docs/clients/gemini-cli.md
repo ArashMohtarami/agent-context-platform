@@ -1,5 +1,23 @@
 # Gemini CLI remote MCP
 
+## Managed installation setup
+
+Complete the [organization console](../dashboard.md) cutovers first. A lead
+approves bounded client policy and verified sponsor/team; the authenticated
+recipient generates their token once. Do not use a legacy operator key recipe
+to bypass managed issuance. Leads cannot recover another worker's plaintext.
+Copy explicitly into a private file/approved secret store; retries return metadata
+and lost delivery needs revoke/replacement. Never store a token in source or
+browser local/session storage.
+
+Each credential is bound to one organization. Key/client policy intersects current
+sponsor, team and delegation rights per action/resource in REST and every MCP
+preflight, including active sessions. Browser cookies cannot authenticate this
+bearer surface. Provider API keys remain separate. Template edits/disable do not
+change assigned clients or keys. See [managed agents](../managed-agents.md)
+for rotation, expiry, custody, revocation and normal-machine review refusal.
+
+
 Gemini CLI connects to the same client-neutral Streamable HTTP endpoint used by
 Codex and Claude Code:
 

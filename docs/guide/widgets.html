@@ -11,9 +11,9 @@
     <div id="config-panel" role="tabpanel" aria-labelledby="tab-codex">
       <div class="form-grid">
         <div><label for="config-project">Project ID (one project in this recipe)</label><input id="config-project" value="payment-service" spellcheck="false"></div>
-        <div><label for="config-owner">Owner ID</label><input id="config-owner" value="your-owner-id" spellcheck="false"></div>
-        <div><label for="config-url">Full Streamable HTTP endpoint</label><input id="config-url" value="http://127.0.0.1:8000/mcp" spellcheck="false"></div>
-        <div><label for="config-access">Granted work</label><select id="config-access"><option value="coding">Coding + research proposals</option><option value="readonly">Read-only retrieval</option><option value="creator">Content planning + drafts</option></select></div>
+        <div><label for="config-owner">Descriptive owner label (not authority)</label><input id="config-owner" value="your-owner-id" spellcheck="false"></div>
+        <div><label for="config-url">Full Streamable HTTP endpoint</label><input id="config-url" value="https://console.example.test/mcp" spellcheck="false"></div>
+        <div><label for="config-access">Requested local filter</label><select id="config-access"><option value="coding">Coding + research proposals</option><option value="readonly">Read-only retrieval</option><option value="creator">Content planning + drafts</option></select></div>
         <div><label for="config-location">Client configuration scope</label><select id="config-location"><option value="user">Personal / all repositories</option><option value="project">This repository</option></select></div>
         <div><label for="config-checkout">Absolute platform checkout (Codex stdio)</label><input id="config-checkout" value="/absolute/path/to/agent-context-platform" spellcheck="false"></div>
       </div>
@@ -24,32 +24,6 @@
   </div>
 </div>
 <!-- END config -->
-
-<!-- START starter -->
-<div class="widget" id="project-starter">
-  <div class="widget-header"><h3>Fill once, reuse for every project</h3><span class="badge">COPYABLE RECIPE</span></div>
-  <div class="widget-body">
-    <div class="form-grid">
-      <div><label for="starter-mode">Starting point</label><select id="starter-mode"><option value="new">New Notes API</option><option value="existing">Existing repository</option></select></div>
-      <div><label for="starter-framework">Existing project framework</label><select id="starter-framework"><option value="fastapi">FastAPI</option><option value="django">Django / async Django</option><option value="other">Another framework</option></select></div>
-      <div><label for="starter-platform-dir">Absolute platform checkout</label><input id="starter-platform-dir" value="/home/you/projects/agent" spellcheck="false"></div>
-      <div><label for="starter-work-dir">Absolute working project folder</label><input id="starter-work-dir" value="/home/you/projects/notes-api" spellcheck="false"></div>
-      <div><label for="starter-project">Stable project ID</label><input id="starter-project" value="notes-api" spellcheck="false"></div>
-      <div><label for="starter-name">Project display name</label><input id="starter-name" value="My Notes API"></div>
-      <div><label for="starter-repository">Repository URL (metadata; does not create a remote)</label><input id="starter-repository" value="https://github.com/your-account/notes-api" spellcheck="false"></div>
-      <div><label for="starter-owner">Owner ID</label><input id="starter-owner" value="your-owner-id" spellcheck="false"></div>
-      <div><label for="starter-profile">Writing profile ID</label><input id="starter-profile" value="your-writing-profile" spellcheck="false"></div>
-      <div><label for="starter-content">Unique content ID for this lesson</label><input id="starter-content" value="notes-api-retry-lesson" spellcheck="false"></div>
-      <div><label for="starter-title">Content title</label><input id="starter-title" value="One retry, one note"></div>
-      <div><label for="starter-destination">Content destination</label><select id="starter-destination"><option value="linkedin">LinkedIn post</option><option value="medium">Medium article</option><option value="github">GitHub Markdown</option></select></div>
-    </div>
-    <p class="config-note">Linux/macOS Bash recipe. Replace the example names and paths with your own, then follow steps 1–12 below. IDs use 1–80 lowercase letters, digits and hyphens. The form creates text only; no commands, credentials or network calls run here.</p>
-    <p id="starter-error" class="field-error" role="status" hidden></p>
-    <div id="starter-output" class="config-output"></div>
-    <noscript><p>Use the placeholder block in step 1 and the static client configurations below. JavaScript only personalizes the recipe.</p></noscript>
-  </div>
-</div>
-<!-- END starter -->
 
 <!-- START workflow -->
 <div class="widget" id="workflow-simulator">
@@ -71,10 +45,10 @@
 <div class="widget" id="memory-simulator">
   <div class="widget-header"><h3>Who can see a memory?</h3><span class="badge">SCOPE EXPLORER</span></div>
   <div class="widget-body">
-    <p class="muted">The sample records below were written by Codex for payment-service. Assume every viewer has memory:read and both projects in its grant.</p>
+    <p class="muted">The sample records below were written by Codex for payment-service. Assume one fictional organization and explicit memory:read grants for its global resource and both projects. Private records still require the authenticated client.</p>
     <div class="sim-controls"><div><label for="memory-agent">Viewer</label><select id="memory-agent"><option value="codex">Codex</option><option value="claude">Claude Code</option><option value="gemini">Gemini CLI</option></select></div><div><label for="memory-project">Query project</label><select id="memory-project"><option value="payment-service">payment-service</option><option value="storefront-web">storefront-web</option><option value="">No project / global query</option></select></div></div>
-    <div class="visibility-cards"><div class="visibility-card" data-scope="global"><h4>Global</h4><p>Prefer explicit examples in technical explanations.</p><span class="visibility-status"></span></div><div class="visibility-card" data-scope="project"><h4>Project</h4><p>Refund ledger entries are append-only.</p><span class="visibility-status"></span></div><div class="visibility-card" data-scope="agent"><h4>Agent</h4><p>Codex operational preference for its own workflow.</p><span class="visibility-status"></span></div><div class="visibility-card" data-scope="project_agent"><h4>Project + agent</h4><p>Codex's temporary payment-service follow-up note.</p><span class="visibility-status"></span></div></div>
-    <p class="sim-caption">This shows eligibility before text relevance and explicit scope filters. Global knowledge remains available under a project-restricted credential; project restriction does not make global data private.</p>
+    <div class="visibility-cards"><div class="visibility-card" data-scope="global"><h4>Organization-global</h4><p>Prefer explicit examples in technical explanations.</p><span class="visibility-status"></span></div><div class="visibility-card" data-scope="project"><h4>Project</h4><p>Refund ledger entries are append-only.</p><span class="visibility-status"></span></div><div class="visibility-card" data-scope="agent"><h4>Agent</h4><p>Codex operational preference for its own workflow.</p><span class="visibility-status"></span></div><div class="visibility-card" data-scope="project_agent"><h4>Project + agent</h4><p>Codex's temporary payment-service follow-up note.</p><span class="visibility-status"></span></div></div>
+    <p class="sim-caption">This illustrates scope eligibility inside one organization before relevance and filters. Organization-global memory needs its explicit policy; project or management visibility does not grant it or another client’s private memory.</p>
   </div>
 </div>
 <!-- END memory -->

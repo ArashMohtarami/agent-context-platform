@@ -1,4 +1,10 @@
-V6 Phase 2 adds the scoped runtime at migration **37**, following the adopted schema at revision `4dc1d6b` (migration 36). It adds no human dashboard, membership system, self-registration, owner claim, or tenant restore API.
+# Tenant isolation and stage-37 activation
+
+This guide describes the schema-37 isolation stage after preserved schema-36
+adoption. The current runtime also implements human identity, management and the
+console; those require the subsequent [staged cutovers](migration-recovery.md).
+Do not substitute current head 42 into a command that deliberately activates
+stage 37. There is no public registration, anonymous owner claim or tenant restore.
 
 Every domain collection is tenant-owned. The authoritative catalog is `app/db/tenant_schema.py:TENANT_COLLECTIONS`; the reference/identity catalog is `app/db/tenant_inventory.py`. All 37 collections pass through `TenantCollection`, including auxiliary skill chunks and content versions. Installation exceptions are the schema ledger, mongot health probe, organization registry, tenant control, preservation manifests, and quarantine. Backups, restored-check collections, canonical Git files, embedding model files, and raw shared process metrics belong to the installation operator. Runtime skill imports, memory (including `global`), embeddings attached to domain records, jobs, and replay results belong to one organization.
 

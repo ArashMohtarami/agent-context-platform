@@ -421,19 +421,19 @@ index, and returns no scores. It remains useful when `mongot` is unavailable.
 
 ## Project isolation
 
-Skills are global knowledge: neither `skills` nor `skill_chunks` carries a `project_id`, so that
-part of retrieval has no project owner. Memory can also belong to an
+Runtime skills and chunks are tenant-owned imports without a `project_id`; their
+organization-global policy is explicit, not an installation-shared fallback. Memory can also belong to an
 authenticated client. The filters preserve these ownership boundaries on every
 candidate:
 
-- Global skills and shared global memory are available to permitted readers.
+- Organization-imported skills and organization-global memory require their explicit permitted resources.
 - Content owned by a project is visible only to that project.
 - A request naming no project cannot retrieve project context or project memory.
 - An authenticated client can retrieve only its own agent-scoped memory.
   Project-agent memory also requires its explicit authorized project.
 
 The rule is applied three times over, because one layer failing must not become a leak: the
-repository is bound to its project when it is built, the search pre-filters on `project_id`
+repository is bound to trusted organization/project, the search pre-filters on `org_id` and action-specific resources
 inside the query, and the service checks every candidate again before ranking. None of the three
 trusts the caller to have scoped the query correctly. [projects.md](projects.md) and
 [memory.md](memory.md) document the rest of the isolation contract.

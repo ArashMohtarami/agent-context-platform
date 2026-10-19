@@ -122,16 +122,17 @@ docker compose logs context-api | jq -c 'select(.level == "WARNING" or .level ==
 
 ## Metrics
 
-`GET /metrics` renders every counter and latency summary this process holds, in
-the Prometheus text exposition format. It requires **`system:read`**, the same
-scope readiness diagnostics use: a metrics body carries no knowledge, but it
-does describe the shape and health of a deployment, and an endpoint that
-answers anybody tells anybody when the platform is struggling.
+`GET /metrics` renders process-local counters and last-observation latency
+summaries in Prometheus format. It is installation-operator-only: mount a
+separate random credential and set `OPERATOR_METRICS_TOKEN_FILE`. Tenant keys,
+including `system:read`, do not authorize raw shared metrics. An unset token path
+disables access. Configure the private installation scraper with that credential;
+do not embed it in a dashboard, example URL or browser bundle.
 
-```bash
-contextctl keys create --name prometheus --scope system:read
-curl -s -H "Authorization: Bearer $KEY" http://127.0.0.1:8000/metrics
-```
+These values are not historical organization chart series. The
+[monitoring console](dashboard-monitoring.md) uses separate authorized events and
+declared coverage, retention and population. Never infer employee presence,
+productivity or model cost from last observations.
 
 A scrape runs **no dependency checks**. It walks a dictionary and returns; the
 readiness gauges are whatever `/health/ready` last wrote. Monitoring must not be

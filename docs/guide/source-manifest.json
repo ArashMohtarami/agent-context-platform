@@ -1,18 +1,18 @@
 [
   {
     "path": "README.md",
-    "sha256": "38b4ebd1bd4354fc32158376f26be2754f0713dbb42af5ccc2d01965495d5b16",
-    "lines": 196
+    "sha256": "7ca5c2952070c7960f57458fe696b7fb16e5f861097905f240b7d96553d42a86",
+    "lines": 144
   },
   {
     "path": "docs/architecture.md",
-    "sha256": "a37e51725d81dc45eb6f453062528a617e8ec6d5fc87b6af32ae1d9ef91b229f",
-    "lines": 108
+    "sha256": "6c47fc0a50b55f44af759962d3ae8342a01c9ea872b592d3edc4402e3bbf96c3",
+    "lines": 125
   },
   {
     "path": "docs/authorized-summaries.md",
-    "sha256": "4d3ab848bf466def84ba557617f6da029c72542980eca3ed4a870d1348da89ea",
-    "lines": 136
+    "sha256": "28ac39bab742131aea20523bef2e1e754a871c1261b59bc390bb275e26a6e782",
+    "lines": 140
   },
   {
     "path": "docs/backup.md",
@@ -21,13 +21,13 @@
   },
   {
     "path": "docs/cli.md",
-    "sha256": "e09e2ccdcfcd94f200d1014e97b5a2c03336c53fa2b59d4e568a4023760b3058",
-    "lines": 452
+    "sha256": "3c87356890b54490f9b7f80333d59826949e3e2b793b4bb5181009adab2d13a6",
+    "lines": 439
   },
   {
     "path": "docs/client-onboarding.md",
-    "sha256": "a1812488ec4367ad1b9e1bd8f1bd66a6bb8f0dd55e1422b2d4737d554f9f642b",
-    "lines": 106
+    "sha256": "8ae63698477a6d110d46d2d367e6691a0620c4cc47a460e82b697da7ab0e55df",
+    "lines": 124
   },
   {
     "path": "docs/client-profiles.md",
@@ -36,18 +36,18 @@
   },
   {
     "path": "docs/clients/claude-code.md",
-    "sha256": "98e04fd65aa0e7c1ac8465cb2d31576ee9ec75d05d7565d26644d43d332f8a45",
-    "lines": 254
+    "sha256": "f48e0ab42c0b18410a235bd451818d1513e372988f04f9489493c7cb210eb2e8",
+    "lines": 272
   },
   {
     "path": "docs/clients/gemini-cli.md",
-    "sha256": "847d04e434dda9ec2f8c2da36d50699cdb68ede1dfa9a9f68f08eaaffbcd0dd1",
-    "lines": 394
+    "sha256": "ca316d68190e67b80f8305cee82ebedad2acce2896ae37958bb0ff8547adaeee",
+    "lines": 412
   },
   {
     "path": "docs/codex.md",
-    "sha256": "a0910f6676e0cc7e930ba69ea0eb50a2a90d60837f0068b3ece9e3874f84f578",
-    "lines": 292
+    "sha256": "9edcb8c0cd15db4380bd07fef32ee785f9e5ae260eaa01448969b9f63cd8b6a1",
+    "lines": 314
   },
   {
     "path": "docs/content-discovery.md",
@@ -86,8 +86,8 @@
   },
   {
     "path": "docs/content-schema.md",
-    "sha256": "b886b4ed2c250e15e932c465e66302fab9a195f0832c77678e9fddb3b54cbd57",
-    "lines": 122
+    "sha256": "05d1f3bf219817e803403b74479b2fb7031457b39cb27f2589fd43f740ce0778",
+    "lines": 125
   },
   {
     "path": "docs/content-skills.md",
@@ -111,13 +111,13 @@
   },
   {
     "path": "docs/dashboard-deployment.md",
-    "sha256": "024d47be336662a52fdb6bf43aacf07a8eee9ccaafb715a0052385f362d8ad90",
-    "lines": 235
+    "sha256": "1eec3ace7685f9252e3c349de1a72d8ec533015fcc9b7a81ea03eebc3e0f38f3",
+    "lines": 315
   },
   {
     "path": "docs/dashboard-foundation.md",
-    "sha256": "a263effc9ba14015b12d65850df1a38d483b6143c3bea01ee8faf17ec02839a1",
-    "lines": 124
+    "sha256": "da44b3964f5c8dcc5bf857778895a50888c4ad6b6d462f798b0a42cafb9126d5",
+    "lines": 125
   },
   {
     "path": "docs/dashboard-knowledge.md",
@@ -126,13 +126,13 @@
   },
   {
     "path": "docs/dashboard-management.md",
-    "sha256": "806db6df0d5c8d51b18f1d68983c0751b3c521f12399190f38e4af3be2af7276",
+    "sha256": "0582ff1967b1ffc16427b02f1b736827636368c17aaca63ba597b88c4873bfd6",
     "lines": 140
   },
   {
     "path": "docs/dashboard-monitoring.md",
-    "sha256": "5aebea885f18ba94aea510965016c7d0d4bf3bec3fd8f8ff330296f42d7a8003",
-    "lines": 101
+    "sha256": "64ff7af19c79fdb5ac0ee857b17f598f5f7772f4db2a9e39401a1c4076782ab1",
+    "lines": 115
   },
   {
     "path": "docs/dashboard-research.md",
@@ -140,9 +140,14 @@
     "lines": 98
   },
   {
+    "path": "docs/dashboard.md",
+    "sha256": "768f03903b312ff1d1553b3caef59f4b02cce466f8799d60df3b400c7dbead81",
+    "lines": 147
+  },
+  {
     "path": "docs/database.md",
-    "sha256": "888a84fcf148d7edd844c98d85d38e453ff7c47e0b3ad35c877dbd973f41bdd1",
-    "lines": 131
+    "sha256": "eb8be84950bbd07d54467c5a62f727a90a8a9172e954d8ec6d26f8e834078f0e",
+    "lines": 172
   },
   {
     "path": "docs/deployment.md",
@@ -156,12 +161,12 @@
   },
   {
     "path": "docs/human-organization-management.md",
-    "sha256": "9a75f2f8c90d48e28335c9cecd67fe5e9897fdb7825896529ecbff7ffb87ae6d",
-    "lines": 261
+    "sha256": "810211b701c711a104476c44b318849b4d3b5055bc2fe291e893e4af3688512f",
+    "lines": 264
   },
   {
     "path": "docs/local-identity.md",
-    "sha256": "8a2a2fb642fb6fe5c7e079c84825095cca5b05c8752bee89d7f439d95e34323c",
+    "sha256": "8615250126da6547382f57779626faddcc21d74d7033310dfd48f5500a773c3a",
     "lines": 212
   },
   {
@@ -171,18 +176,23 @@
   },
   {
     "path": "docs/management-policy.md",
-    "sha256": "7d27a0df256d0eb23f58ef1dda49969d7e4b2d9c0354af59cca3b7a4fdfbb5d6",
-    "lines": 257
+    "sha256": "1ab2a0437de6a4c9186bfe99d96fbe0f807957ae57a113d6e0342870b0b899d3",
+    "lines": 264
   },
   {
     "path": "docs/mcp.md",
-    "sha256": "15ebe99b2578ed56468c2c41b1cb80fecefa520e5841e60170241c7958942852",
-    "lines": 380
+    "sha256": "93626caff001c60925bcdfc45db65e15d44e7aa938577433f4c91cd28778b955",
+    "lines": 381
   },
   {
     "path": "docs/memory.md",
-    "sha256": "133133d70e5bd7a6cbd3fbb3e597682fe29da306949747117b1295930c519016",
-    "lines": 204
+    "sha256": "d31a05bf688f313d106ed3dac2198351e22ac65b351662cda8fad594f3a58b62",
+    "lines": 211
+  },
+  {
+    "path": "docs/migration-recovery.md",
+    "sha256": "fe9aca5bc72ee78fa3ab22f29acfc3b49c91010dac5c851a1d340302f8ffe93d",
+    "lines": 129
   },
   {
     "path": "docs/mongodb-tutorial.md",
@@ -196,13 +206,18 @@
   },
   {
     "path": "docs/observability.md",
-    "sha256": "d595469b18efcab6927ef07503c678fd1ccf12d26ee51a287f124a4efcc764b4",
-    "lines": 354
+    "sha256": "2b24ffdec3472e0d60a47b41556026417a73082218499ed032cf0c7260252d6c",
+    "lines": 355
   },
   {
     "path": "docs/onboarding.md",
     "sha256": "cfc675c09c620b3e38f84142c659d111e87fe7469f71cd52d8371aa2a30d0fe5",
     "lines": 1386
+  },
+  {
+    "path": "docs/organization-management.md",
+    "sha256": "ab148546a427e4be95ea72d36fb9b71629c0dccee60666297bfdf2df05fbd3f7",
+    "lines": 155
   },
   {
     "path": "docs/production-readiness.md",
@@ -211,7 +226,7 @@
   },
   {
     "path": "docs/projects.md",
-    "sha256": "6313bc81c4b9c4e3fad97598100b306adb3b38341119e61d9322466e2a4c52cd",
+    "sha256": "da968a41f5d00d68787b1318dac5e48a7c45e336a11eee0b695574cf91bc14ef",
     "lines": 196
   },
   {
@@ -221,18 +236,18 @@
   },
   {
     "path": "docs/retrieval.md",
-    "sha256": "ba9f62ac89959cd3a5a8e832ce7029ca850ddc8ca3e4ffe93cdcbb59f782ef38",
+    "sha256": "2eb84a4aa262083ceb03094c1c8155ba721d64c60c28dd7857a726377408e39c",
     "lines": 504
   },
   {
     "path": "docs/search.md",
-    "sha256": "23673871fef3348ccc3048e365e8a86c6064fe0a9390c1048d82cb7407318080",
-    "lines": 234
+    "sha256": "69e222745bdc7aaa0456e4276f6d03437134a0ff4d49f250064c6d342a1a5165",
+    "lines": 241
   },
   {
     "path": "docs/security.md",
-    "sha256": "559a72e402dba8ebff4ed8a54f32489b668723fe1b7bfe97a0a933e0094d1bbd",
-    "lines": 395
+    "sha256": "e545766659cb54327766b42d5db1c6dab1ffdcb71f36e6a1a57d3368fc72dfc1",
+    "lines": 170
   },
   {
     "path": "docs/skill-catalog.md",
@@ -241,8 +256,8 @@
   },
   {
     "path": "docs/skills.md",
-    "sha256": "2b5894eb15064afae902563034802260c829c6a3361344aece0e402c78b3085e",
-    "lines": 181
+    "sha256": "b5b3f242c9cf39d4d3f50de7073ff2db727ee27fb41087a3a08db887065ec196",
+    "lines": 188
   },
   {
     "path": "docs/sso-identity.md",
@@ -251,13 +266,13 @@
   },
   {
     "path": "docs/tenant-adoption.md",
-    "sha256": "9a6902f43b06e66e5b84a05d8898bfe9ac12a73b12bc601c1d84c15a2c295420",
-    "lines": 154
+    "sha256": "037ed70dc7dc7122b4c5bbbe90ebe0673252bc4f11b04f0c16a80441799f3878",
+    "lines": 150
   },
   {
     "path": "docs/tenant-isolation.md",
-    "sha256": "588caa71372cfc2d77a5fcaccd75a052dbe2e59479639ceacad47a4400f292eb",
-    "lines": 49
+    "sha256": "e824cf9890fbceb161b324cf669203bcd4f05b465b35aa45fcf685de272b11c7",
+    "lines": 55
   },
   {
     "path": "docs/third-party-notices.md",
@@ -265,8 +280,13 @@
     "lines": 87
   },
   {
+    "path": "docs/verification.md",
+    "sha256": "2a642e6fa78009aef7d38efb937859f9014693e922a6bfb0283cb5ad20f15d3d",
+    "lines": 88
+  },
+  {
     "path": "docs/website.md",
-    "sha256": "bcb7093de85b02dcd2e3aad4495b99b9fb25582ea431d3dd977a61aa639668a3",
-    "lines": 117
+    "sha256": "54c59b48e1c8ff1071a6d229cb99d6f7cd06d00e59c351d34e5d3fca6588fd91",
+    "lines": 124
   }
 ]

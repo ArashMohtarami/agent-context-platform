@@ -62,13 +62,16 @@ Migration 7 adds an empty-default `tone_preferences` field to creator profiles,
 an empty-default profile allow-list to API keys, and an optional profile target
 in audit records. It safely backfills only those defaults before reconciling
 the affected strict validators. An empty key allow-list preserves the V1
-meaning of access to every profile.
+meaning of access to every profile for that historical schema. V6 adoption
+records it as explicit `all_in_org` in the selected organization; new managed
+NONE policy is distinct and never serialized as an empty legacy ALL array.
 
 Backups already dump the complete configured MongoDB database and record a
 collection-count manifest. Consequently the new collections are included in
 new backups and verified restores automatically; no separate content database
-or backup path exists. Restore checks compare the full count total, including
-these V2 collections, after restoring into isolated temporary collections.
+or backup path exists. Managed restore verification compares each collection count and required
+metadata, including these V2 collections, in isolated temporary storage. A
+combined count alone cannot establish preservation.
 
 Migration 12 backfills the existing `content_metrics` collection with a `source` (default `manual`) and an empty `provider_metadata` object, then restores strict validation. Captures remain append-only and use the existing profile/content/platform/captured-at index; it adds no collection, external analytics dependency, or V1 change. The API and MCP boundary are documented in [content-metrics.md](content-metrics.md).
 
