@@ -95,7 +95,7 @@ run_release_modules() {
         fi
         docker logs "acp-v6-phase2-mongodb-$V6_TEST_RUN" >"$module_report/mongodb.log" 2>&1 || true
         docker logs "acp-v6-phase2-mongot-$V6_TEST_RUN" >"$module_report/mongot.log" 2>&1 || true
-        # Each module gets new tmpfs storage: dropped databases still retain
+        # Each module gets fresh disposable storage: dropped databases retain
         # engine/journal state, which otherwise exhausts this bounded container.
         fresh_stack
     done
@@ -227,7 +227,7 @@ real_tests=(tests/integration/test_v6_tenant_isolation.py
 # rehearsal. The complete selector is then run without skips or deselection.
 "$python" -m pytest -q "${real_tests[@]}" -k 'not operator_cutover' \
     --junitxml="$V6_REAL_EVIDENCE_XML"
-# Each selector gets fresh tmpfs storage and search workers. Reusing the same
+# Each selector gets fresh disposable storage and search workers. Reusing the same
 # small replica set across dozens of create/drop/index fixtures can exhaust its
 # cgroup with retained engine state; that is not authentication evidence.
 fresh_stack

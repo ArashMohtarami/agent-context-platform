@@ -263,6 +263,9 @@ class Settings(McpSettings):
     # One API process serves retrieval concurrently but not unboundedly, and a
     # pool larger than the work in flight only moves the queue into MongoDB.
     mongodb_max_pool_size: int = Field(default=50, ge=1, le=500)
+    # The console overlay maintains a small ready pool for concurrent authenticated
+    # directory requests; short-lived operator commands keep the lazy default.
+    mongodb_min_pool_size: int = Field(default=0, ge=0, le=500)
 
     # Where backups are written, and how long each tier is kept. The directory
     # is created private and must not be inside anything the platform serves:
@@ -490,6 +493,13 @@ class Settings(McpSettings):
         if any(character.isspace() or ord(character) < 32 for character in value):
             raise ValueError("EMBEDDING_MODEL must not contain whitespace or control characters")
         return value
+
+    @model_validator(mode="after")
+    def validate_mongodb_pool(self) -> "Settings":
+        """Refuse a minimum that the configured pool can never maintain."""
+        if self.mongodb_min_pool_size > self.mongodb_max_pool_size:
+            raise ValueError("MONGODB_MIN_POOL_SIZE must not exceed MONGODB_MAX_POOL_SIZE")
+        return self
 
     @model_validator(mode="after")
     def validate_password_source(self) -> "Settings":

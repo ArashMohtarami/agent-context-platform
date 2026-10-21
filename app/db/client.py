@@ -42,6 +42,7 @@ def create_mongodb_client(settings: Settings) -> AsyncMongoClient[MongoDocument]
         # request that never returns.
         timeoutMS=settings.mongodb_timeout_ms,
         maxPoolSize=settings.mongodb_max_pool_size,
+        minPoolSize=settings.mongodb_min_pool_size,
         uuidRepresentation="standard",
         tz_aware=True,
         tzinfo=UTC,

@@ -162,6 +162,7 @@ async def hosted_stack(h, origin, tls, root, *, local_only=False):
         assert api["environment"][key] == "true"
     assert api["environment"]["MCP_REMOTE_ALLOW_LOOPBACK_HTTP"] == "false"
     assert api["environment"]["API_FORWARDED_ALLOW_IPS"] == proxy_ip
+    assert api["environment"]["MONGODB_MIN_POOL_SIZE"] == "50"
     assert console["build"]["target"] == "console"
     assert api["build"]["target"] == "production"
     # Retain shipped security/health/routing settings; replace ONLY test I/O and topology.

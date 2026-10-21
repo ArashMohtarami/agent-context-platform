@@ -28,7 +28,8 @@
     "tests/integration/test_v6_report_revocation.py::test_real_csv_matches_detail_aggregate_and_retention_no_foreign_content",
     "tests/integration/test_v6_report_revocation.py::test_real_revoked_policy_active_session_and_expired_reports_fail",
     "tests/integration/test_v6_report_revocation.py::test_real_governance_csv_formula_neutralization_and_body_redaction",
-    "tests/integration/test_v6_report_revocation.py::test_real_large_report_refuses_partial_delivery_and_empty_foreign_filter"
+    "tests/integration/test_v6_report_revocation.py::test_real_large_report_refuses_partial_delivery_and_empty_foreign_filter",
+    "tests/integration/test_v6_report_revocation.py::test_expired_export_grant_during_render_cannot_reuse_longer_activity_rights"
   ],
   "local-mfa-session-csrf": [
     "tests/integration/test_v6_local_identity.py::test_real_enrollment_owner_intent_and_hashed_private_storage",
@@ -39,7 +40,8 @@
     "tests/integration/test_v6_local_identity.py::test_real_strict_validators_identity_uniqueness_and_fail_closed_migration",
     "tests/integration/test_v6_local_identity.py::test_real_recovery_replacement_password_change_and_explicit_mfa_removal",
     "tests/integration/test_v6_local_identity.py::test_real_second_membership_requires_existing_identity_proof_and_own_sessions_only",
-    "tests/integration/test_v6_local_identity.py::test_real_account_throttle_and_password_enumeration_resistance"
+    "tests/integration/test_v6_local_identity.py::test_real_account_throttle_and_password_enumeration_resistance",
+    "tests/integration/test_v6_local_identity.py::test_real_expiry_during_joined_authority_read_never_extends_session"
   ],
   "oidc-linking-provider-boundary": [
     "tests/integration/test_v6_oidc_provider.py::test_real_provider_link_login_assurance_and_rp_logout",
@@ -50,7 +52,8 @@
     "tests/integration/test_v6_oidc_provider.py::test_schema_39_guard_resume_and_old_runtime_refusal",
     "tests/integration/test_v6_org_switch.py::test_explicit_local_switch_rotates_session_csrf_and_rejects_old_context",
     "tests/integration/test_v6_org_switch.py::test_required_target_needs_its_own_real_provider_not_local_or_org_a_oidc",
-    "tests/integration/test_v6_org_switch.py::test_local_only_and_explicit_break_glass_have_no_automatic_fallback"
+    "tests/integration/test_v6_org_switch.py::test_local_only_and_explicit_break_glass_have_no_automatic_fallback",
+    "tests/integration/test_v6_org_switch.py::test_joined_session_rechecks_exact_bindings_and_verified_identity"
   ],
   "delegation-fencing-self-grant-owner": [
     "tests/integration/test_v6_policy_fencing.py::test_real_parent_revoke_or_narrow_wins_against_child_issue",
@@ -70,7 +73,10 @@
     "tests/integration/test_v6_access_request_races.py::test_real_parent_revoke_wins_against_concurrent_approval_with_shared_anchor",
     "tests/integration/test_v6_access_request_races.py::test_real_two_concurrent_approvals_create_exactly_one_assignment_and_decision",
     "tests/integration/test_v6_access_request_races.py::test_real_concurrent_invite_acceptance_consumes_one_challenge_atomically",
-    "tests/integration/test_v6_access_request_races.py::test_real_parent_revoke_wins_against_invite_claim_without_consuming_secret"
+    "tests/integration/test_v6_access_request_races.py::test_real_parent_revoke_wins_against_invite_claim_without_consuming_secret",
+    "tests/integration/test_v6_policy_fencing.py::test_real_bounded_snapshot_matches_transaction_and_excludes_foreign_members",
+    "tests/integration/test_v6_policy_fencing.py::test_real_join_keeps_transaction_snapshot_but_revoke_fences_delivery",
+    "tests/integration/test_v6_policy_fencing.py::test_real_current_control_guard_refuses_even_an_older_transaction"
   ],
   "sponsorship-rest-stdio-http-mcp": [
     "tests/integration/test_v6_managed_client_revocation.py::test_real_rest_current_sponsor_client_key_team_parent_revocation",
@@ -120,7 +126,9 @@
     "tests/integration/test_v6_dashboard_aggregation.py::test_declared_measures_match_permitted_raw_samples_and_timezone_boundaries",
     "tests/integration/test_v6_dashboard_aggregation.py::test_governance_diff_redacts_payload_and_preserves_missing_snapshots",
     "tests/integration/test_v6_dashboard_aggregation.py::test_second_organization_positive_metadata_counts_use_matching_ids",
-    "tests/integration/test_v6_security_acceptance.py::test_monitoring_revoke_during_read_or_final_cas_never_returns_stale_totals"
+    "tests/integration/test_v6_security_acceptance.py::test_monitoring_revoke_during_read_or_final_cas_never_returns_stale_totals",
+    "tests/integration/test_v6_dashboard_aggregation.py::test_real_cached_overview_invalidates_for_late_insert_update_delete_and_revoke",
+    "tests/integration/test_v6_dashboard_aggregation.py::test_metadata_identity_boundary_never_supplies_corpus_or_bearer_authority"
   ],
   "coupled-human-machine-corpus": [
     "tests/integration/test_v6_knowledge_adapters.py::test_repeated_id_human_search_skill_versions_and_cursors_are_tenant_bound",

@@ -24,7 +24,7 @@ def grants(row: Mapping[str, Any], field: str = "tuples") -> tuple[Grant, ...]:
 
 
 class _SnapshotGrants:
-    """Decode/hash each immutable input row once during one synchronous evaluation.
+    """Decode/hash/index immutable rows during one synchronous evaluation.
 
     This object never outlives effective(); authority, members and generations
     are still rechecked from the next request's fresh database snapshot.
@@ -33,6 +33,8 @@ class _SnapshotGrants:
     def __init__(self) -> None:
         self.parsed: dict[tuple[int, str], tuple[Grant, ...]] = {}
         self.hashes: dict[int, str] = {}
+        self.targets: dict[int, Selector] = {}
+        self.bounds: dict[int, dict[tuple[str, str], tuple[bool, set[str]]]] = {}
 
     def grants(self, row: Row, field: str = "tuples") -> tuple[Grant, ...]:
         key = (id(row), field)
@@ -45,6 +47,29 @@ class _SnapshotGrants:
         if key not in self.hashes:
             self.hashes[key] = ceiling_hash(self.grants(row, "ceiling"))
         return self.hashes[key]
+
+    def target(self, row: Row) -> Selector:
+        key = id(row)
+        if key not in self.targets:
+            self.targets[key] = Selector.model_validate(row["targets"])
+        return self.targets[key]
+
+    def covers(self, parent: Row, grant: Grant) -> bool:
+        if grant.selector == "none":
+            return True
+        key = id(parent)
+        if key not in self.bounds:
+            index: dict[tuple[str, str], tuple[bool, set[str]]] = {}
+            for value in self.grants(parent, "ceiling"):
+                pair = value.action, value.resource_kind
+                _, ids = index.setdefault(pair, (False, set()))
+                if value.selector == "include":
+                    ids.update(value.ids)
+                if value.selector == "all_in_org":
+                    index[pair] = True, ids
+            self.bounds[key] = index
+        all_in_org, ids = self.bounds[key].get((grant.action, grant.resource_kind), (False, set()))
+        return all_in_org or (grant.selector == "include" and set(grant.ids) <= ids)
 
 
 def active_chain(
@@ -118,7 +143,7 @@ def active_chain(
                     and row.get("team_id")
                     and row["remaining_depth"] == 0
                     and not row["allowed_roles"]
-                    and Selector.model_validate(row["targets"]).mode == "none"
+                    and parsed.target(row).mode == "none"
                     and any(
                         g.action == "grants:delegate"
                         and g.resource_kind == "team"
@@ -128,17 +153,15 @@ def active_chain(
                 )
                 or (
                     not row.get("team_delegation")
-                    and Selector.model_validate(parent["targets"]).contains(row["subject_id"])
+                    and parsed.target(parent).contains(row["subject_id"])
                 )
             )
-            or not Selector.model_validate(row["targets"]).within(
-                Selector.model_validate(parent["targets"])
-            )
+            or not parsed.target(row).within(parsed.target(parent))
             or row["role"] not in parent["allowed_roles"]
             or not can_appoint(parent["role"], row["role"])
             or not set(row["allowed_roles"]) <= set(parent["allowed_roles"])
             or any(
-                not covered(g, parsed.grants(parent, "ceiling"))
+                not parsed.covers(parent, g)
                 for g in (*parsed.grants(row), *parsed.grants(row, "ceiling"))
             )
         ):

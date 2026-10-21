@@ -33,6 +33,24 @@ current session/org/policy context and recent MFA for privileged work. Rotation,
 logout, revoke, org switching and sensitive identity changes invalidate old
 contexts. No persistent browser token or `VITE_*` secret is used.
 
+Each authenticated request reads current user, membership and organization
+authority from the exact stored session bindings, including their epochs and
+revisions. The internal read join follows the exact hashed session to its verified
+same-org membership before reading global user and login-identity records. It is
+not a directory source and never matches email/name. Joined identity rows stay
+private. Expiry is checked again after authority reads and in the final atomic
+session update. No authority rows are cached across requests. Session mutations
+join the exact original context bindings on their existing transaction session;
+the anchor, user, membership and browser-session write fences remain required.
+Policy reads use one bounded org-filtered aggregation for the current ancestry
+inputs, including reads on an existing transaction session. Global users join
+through same-org membership IDs; row-count, execution-time and MongoDB
+document-size limits refuse excess work instead of returning partial authority.
+Installation controls are checked before private joins on ordinary reads and
+outside an older transaction snapshot on transactional reads. The shared policy
+anchor still fences revocation against issuance and delivery. This is not a
+persistent policy cache.
+
 Invitation-only local enrollment uses Argon2id through the maintained password
 library, with pinned work parameters and bounded concurrency. It does not use the
 machine-token hash or reversible password encryption. MFA seeds use versioned
@@ -119,9 +137,11 @@ last observations are not historical series or productivity measures.
 are not raw backups. See [monitoring](dashboard-monitoring.md),
 [observability](observability.md) and [backup](backup.md).
 
-The final policy-fence expiry race remains a release blocker: the current checks
-have not yet passed the complete expiry/revocation acceptance gate. See
-[verification and known limits](verification.md) before relying on report delivery.
+Report delivery reevaluates natural grant expiry synchronously after its final
+policy-anchor check, with no subsequent database await. Four real MongoDB cases
+pass for export/activity expiry during rendering and the final fence. Complete
+final-source expiry/revocation reconciliation remains required; see
+[verification and known limits](verification.md) before deployment.
 
 
 ## Deployment, queries and untrusted rendering
@@ -140,6 +160,14 @@ paths. Strict validators and tenant-first natural-key indexes supplement
 repository guards. Managed mutations use expected revisions and current policy.
 Request body, concurrency, auth-work, candidate and pagination limits bound work.
 Limits are safeguards, not demonstrated throughput promises.
+
+Evidence ingestion retries at most five confirmed-aborted internal storage
+transactions, with bounded backoff and a fresh session/policy fence each time.
+Unknown commit outcomes, caller-owned transactions, human review decisions and
+credential issuance are not automatically replayed by this storage hook. A
+policy revision change still refuses the operation.
+This distinguishes MongoDB's
+[transient transaction and unknown commit labels](https://www.mongodb.com/docs/manual/core/transactions-in-applications/).
 
 Markdown rendering disables raw HTML, scripts and unsafe URL schemes. Research
 documents remain untrusted evidence. Skills are canonical reviewed Git imports;

@@ -141,9 +141,12 @@ async def test_real_revoked_policy_active_session_and_expired_reports_fail(summa
         assert wrong.status_code == 403
 
 
+@pytest.mark.parametrize("pause_at", ["after_render", "final_cas"])
+@pytest.mark.parametrize("expiring_action", ["reports:export", "activity:read:org"])
 async def test_expired_export_grant_during_render_cannot_reuse_longer_activity_rights(
-    summary_db, monkeypatch
+    summary_db, monkeypatch, pause_at, expiring_action
 ):
+    from app.security.policy.engine import PolicyEngine
     from app.summaries.service import Summaries
 
     h = summary_db
@@ -162,9 +165,17 @@ async def test_expired_export_grant_during_render_cannot_reuse_longer_activity_r
             ),
         )
 
-    await issue((grant("activity:read:org"),), utc_now() + timedelta(days=1))
-    exporting = await issue((grant("reports:export"),), utc_now() + timedelta(seconds=10))
-    original = Summaries.confirm_current
+    lasting_action = (
+        "activity:read:org" if expiring_action == "reports:export" else "reports:export"
+    )
+    await issue((grant(lasting_action),), utc_now() + timedelta(days=1))
+    exporting = await issue((grant(expiring_action),), utc_now() + timedelta(seconds=10))
+    target, method = (
+        (Summaries, "confirm_current")
+        if pause_at == "after_render"
+        else (PolicyEngine, "confirm_read")
+    )
+    original = getattr(target, method)
     reached = False
 
     async def expire(self, *args, **kwargs):
@@ -182,7 +193,7 @@ async def test_expired_export_grant_during_render_cannot_reuse_longer_activity_r
             BASE + "/reports", json=h.query.model_dump(mode="json"), headers=headers
         )
         assert created.status_code == 201, created.text
-        monkeypatch.setattr(Summaries, "confirm_current", expire)
+        monkeypatch.setattr(target, method, expire)
         refused = await client.get(created.json()["download_path"], headers=headers)
         assert reached
         assert refused.status_code == 403 and "event_id" not in refused.text

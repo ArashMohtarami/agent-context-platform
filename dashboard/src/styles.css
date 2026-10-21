@@ -325,3 +325,11 @@ summary {cursor:pointer; min-height:2.75rem; display:flex; align-items:center; g
 .audit-diff th:first-child { width: 22%; }
 .audit-diff th, .audit-diff td { padding: .75rem .5rem; vertical-align: top; }
 .audit-diff pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: .5rem; }
+
+/* Preserve readable event columns inside the keyboard-scrollable region. */
+.activity-events .table-scroll table { min-width: 64rem; table-layout: fixed; }
+.activity-events th:nth-child(1), .activity-events th:nth-child(2) { width: 20%; }
+.activity-events th:nth-child(3) { width: 35%; }
+.activity-events th:nth-child(4) { width: 25%; }
+.activity-events td { vertical-align: top; }
+.activity-events td p { margin: .35rem 0; }

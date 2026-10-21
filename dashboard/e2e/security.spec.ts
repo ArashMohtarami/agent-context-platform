@@ -1,5 +1,6 @@
 import { control, environment, expect, localLogin, noStoredCredentials, test } from './fixture';
 import { api, authoring, goto } from './management-fixture';
+import { prepare as prepareMonitoring, query as monitoringQuery } from './monitoring-fixture';
 
 test('host cookies cannot cross bearer surfaces and every session mutation checks Origin and CSRF', async ({page}) => {
   await localLogin(page);
@@ -71,6 +72,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 test('actual 200 percent browser zoom preserves named navigation, dialog focus and keyboard return', async ({}, info) => {
+  const monitoring = await prepareMonitoring();
   const profile = await mkdtemp(path.join(tmpdir(), 'acp-phase16-zoom-'));
   const context = await chromium.launchPersistentContext(profile, {
     headless: true, viewport: null, ignoreHTTPSErrors: true,
@@ -104,6 +106,24 @@ test('actual 200 percent browser zoom preserves named navigation, dialog focus a
       const png = Buffer.from(capture.data as string, 'base64');
       expect(png.readUInt32BE(16)).toBe(await page.evaluate(() => Math.round(innerWidth * devicePixelRatio)));
       await writeFile(info.outputPath('actual-browser-200-percent-' + theme + '.png'), png);
+    }
+    await goto(page, 'audit?' + monitoringQuery(monitoring, {source: 'governance', scope: 'org'}));
+    await expect(page.getByRole('table', {name: 'Governance events'})).toBeVisible();
+    const timeline = page.getByRole('region', {name: 'Governance events', exact: true});
+    await timeline.scrollIntoViewIfNeeded(); await timeline.focus();
+    await timeline.press('ArrowRight');
+    await expect.poll(() => timeline.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+    expect(await page.evaluate(() => devicePixelRatio)).toBe(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    for (const theme of ['light', 'dark']) {
+      if (await page.evaluate(() => document.documentElement.dataset.theme) !== theme)
+        await page.getByRole('button', {name: theme === 'dark' ? 'Use dark theme' : 'Use light theme'}).click();
+      for (const edge of ['start', 'end']) {
+        await timeline.evaluate((element, selected) => {element.scrollLeft = selected === 'start' ? 0 : element.scrollWidth;}, edge);
+        await timeline.scrollIntoViewIfNeeded();
+        const capture = await cdp.send('Page.captureScreenshot', {format: 'png', captureBeyondViewport: false});
+        await writeFile(info.outputPath(`actual-audit-200-percent-${theme}-${edge}.png`), Buffer.from(capture.data as string, 'base64'));
+      }
     }
     await cdp.detach();
     await noStoredCredentials(page);

@@ -3,7 +3,7 @@
 import asyncio
 import os
 import shutil
-from datetime import timedelta
+from datetime import UTC, timedelta
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -90,7 +90,16 @@ async def isolated_database(tmp_path):
         pytest.skip("explicit disposable MongoDB and mongot required; no integration evidence")
     parsed = urlparse(uri)
     assert parsed.hostname == "127.0.0.1" and "directConnection=true" in parsed.query
-    client = AsyncMongoClient(uri, tz_aware=True, serverSelectionTimeoutMS=5000)
+    # Match the shipped console's transport/UTC codec. This initializes
+    # connections only; it never preloads domain data or authorization decisions.
+    client = AsyncMongoClient(
+        uri,
+        tz_aware=True,
+        tzinfo=UTC,
+        minPoolSize=50,
+        maxPoolSize=50,
+        serverSelectionTimeoutMS=5000,
+    )
     hello = await client.admin.command("hello")
     assert hello.get("setName") == "acp_v6_phase2" and hello.get("isWritablePrimary")
     database = client["acp_v6_phase2_" + uuid4().hex]
@@ -170,8 +179,12 @@ async def isolated_database(tmp_path):
         )
         yield database
     finally:
-        await client.drop_database(database.name)
-        await client.close()
+        try:
+            await client.drop_database(database.name)
+        finally:
+            # A failed disposable drop must still close its sockets. Keep the
+            # original cleanup error visible to pytest and the release gate.
+            await client.close()
 
 
 def token(label):

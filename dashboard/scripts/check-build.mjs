@@ -7,7 +7,7 @@ for (const asset of assets.filter(name => name.endsWith('.js'))) {
   if (/localStorage|sessionStorage|access_token|refresh_token|id_token|VITE_[A-Z_]+|Bearer /.test(content.toString('utf8'))) throw new Error('Credential or persistent browser storage reference requires review');
   bytes += gzipSync(content).length;
 }
-if (bytes > 300 * 1024) throw new Error(`Initial JavaScript exceeds 300 KiB gzip: ${bytes}`);
+if (bytes > 300 * 1024) throw new Error(`All JavaScript chunks exceed 300 KiB gzip: ${bytes}`);
 const html = await readFile(new URL('../dist/index.html', import.meta.url), 'utf8');
 if (/https?:\/\//.test(html) || /sourceMappingURL/.test(html)) throw new Error('External dependency or source map in entrypoint');
 console.log(`JavaScript gzip (all chunks): ${bytes} bytes; budget: ${300 * 1024} bytes`);

@@ -1,8 +1,8 @@
 # Monitoring and audit UI (V6 Phase 14)
 
-The final policy-fence expiry race remains a release blocker: the current checks
-have not yet passed the complete expiry/revocation acceptance gate. See
-[verification and known limits](verification.md) before relying on report delivery.
+Complete-source release acceptance remains pending. The final-fence natural
+expiry regression now passes its focused real MongoDB gate. See
+[verification and known limits](verification.md).
 
 My workspace, Team overview and Leadership overview use the Phase 8 authorized
 read model. Navigation reflects explicit metadata grants; server policy remains
@@ -69,7 +69,10 @@ MongoDB's documented [conditional single-document atomicity](https://www.mongodb
 and [transaction conflict behavior](https://www.mongodb.com/docs/manual/core/transactions-production-consideration/).
 Up to three attempts refresh session/policy after a transient database conflict.
 An exhausted/bounded query returns an error, never invented observations.
-Three-second operation deadlines and no-disk-spill bounds remain; these limits
+Detail/report operations have three-second database deadlines; a cold overview
+has a ten-second ceiling and can reuse a bounded source-invalidated aggregate
+cache. Its displayed generation time remains the original observation time.
+Every reuse still rechecks current policy. No-disk-spill bounds remain; these limits
 are not measured production throughput promises. There are no new dependencies,
 collections, migration versions or background collectors.
 
@@ -77,7 +80,8 @@ Reports require a separate `reports:export` organization grant and recent MFA.
 Preparation records bounded filters; download rechecks recipient, current
 membership/policy revision, retention and five-minute expiry. After rendering,
 delivery independently rechecks `reports:export` as well as activity visibility;
-longer-lived activity rights cannot replace an expired export grant. Reports are at most
+longer-lived activity rights cannot replace an expired export grant. Expiry is
+checked synchronously after the final database await. Reports are at most
 5,000 rows and 2 MiB, with server-side spreadsheet-formula neutralization.
 Narrowing served retention invalidates earlier report receipts; request a new
 report under the current boundary. The

@@ -89,7 +89,7 @@ class Governance:
     async def mutate(
         self, org_id: str, subject_id: str, operation: Callable[[Row, Any], Awaitable[Row]]
     ) -> Row:
-        # Only governance commands retry; EVERY retry rereads policy and ancestry.
+        # EVERY governance retry rereads policy and ancestry.
         # Expected resource/generation revisions in the command remain mandatory.
         for attempt in range(3):
             try:

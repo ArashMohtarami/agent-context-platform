@@ -2,6 +2,7 @@
 
 import asyncio
 from contextlib import asynccontextmanager
+from copy import deepcopy
 from datetime import timedelta
 from types import SimpleNamespace
 
@@ -23,7 +24,7 @@ from app.identity.sso import SSOIdentity
 from app.main import create_app, start_authentication
 from app.models.common import utc_now
 from app.security.policy.engine import PolicyEngine
-from app.security.policy.evaluation import PolicyDenied
+from app.security.policy.evaluation import PolicyConflict, PolicyDenied
 from app.security.policy.governance import Governance
 from app.security.policy.models import Grant, Issue, Selector
 from app.security.principal import AuthenticationError
@@ -201,6 +202,95 @@ def child(parent):
         tuples=(grant("context:read"),),
         expires_at=utc_now() + timedelta(days=1),
     )
+
+
+async def test_real_bounded_snapshot_matches_transaction_and_excludes_foreign_members(policy_db):
+    h = policy_db
+    await appoint_lead(h)
+    user = await h.store.find("users", {"_id": "member"})
+    member = await h.store.find(
+        "organization_memberships", {"org_id": "org-a", "user_id": "member"}
+    )
+    foreign_user = {**deepcopy(user), "_id": "foreign-only-b"}
+    await h.store.insert("users", foreign_user)
+    for subject in ("lead", "foreign-only-b"):
+        await h.store.insert(
+            "organization_memberships",
+            {
+                **deepcopy(member),
+                "_id": "membership-b-" + subject,
+                "org_id": "org-b",
+                "user_id": subject,
+            },
+        )
+    direct = await h.engine.snapshot("org-a", "owner")
+    async with h.engine.transaction() as tx:
+        transactional = await h.engine.snapshot("org-a", "owner", tx)
+    for key in ("anchor", "member", "user", "assignments", "members", "users"):
+        assert direct[key] == transactional[key]
+    assert {g.model_dump_json() for g in direct["tuples"]} == {
+        g.model_dump_json() for g in transactional["tuples"]
+    }
+    # A global identity alone never brings a foreign membership into the query.
+    inputs = await h.engine.read_inputs("org-a", "foreign-only-b")
+    assert all(row["org_id"] == "org-a" for row in inputs["member_rows"])
+    assert "foreign-only-b" not in {row["_id"] for row in inputs["user_rows"]}
+    assert len([row for row in inputs["member_rows"] if row["user_id"] == "lead"]) == 1
+    assert (await h.engine.snapshot("org-a", "lead"))["tuples"]
+    await h.store.update(
+        "organization_memberships",
+        {"org_id": "org-a", "user_id": "lead"},
+        {
+            "$set": {"status": "suspended"},
+            "$inc": {"revision": 1},
+        },
+    )
+    with pytest.raises(PolicyDenied):
+        await h.engine.snapshot("org-a", "lead")
+
+
+async def test_real_join_keeps_transaction_snapshot_but_revoke_fences_delivery(policy_db):
+    h = policy_db
+    await appoint_lead(h)
+    member = await h.store.find("organization_memberships", {"org_id": "org-a", "user_id": "lead"})
+    async with h.engine.transaction() as tx:
+        before = await h.engine.snapshot("org-a", "lead", tx)
+        assert before["tuples"]
+        await h.governance.membership_status(
+            "org-a", "owner", "lead", member["revision"], suspended=True
+        )
+        # A second joined read must use the SAME transaction's snapshot.
+        # Losing session=tx would incorrectly observe the concurrent suspension.
+        after = await h.engine.snapshot("org-a", "lead", tx)
+        assert after["anchor"] == before["anchor"]
+        assert after["member"] == before["member"]
+        assert {g.model_dump_json() for g in after["tuples"]} == {
+            g.model_dump_json() for g in before["tuples"]
+        }
+    # The snapshot cannot authorize delivery after the committed revoke.
+    with pytest.raises(PolicyConflict):
+        await h.engine.confirm_read(after["anchor"])
+    with pytest.raises(PolicyDenied):
+        await h.engine.snapshot("org-a", "lead")
+
+
+async def test_real_current_control_guard_refuses_even_an_older_transaction(policy_db):
+    h = policy_db
+    controls = h.db["_management_policy_control"]
+    removed = None
+    try:
+        async with h.engine.transaction() as tx:
+            assert (await h.engine.snapshot("org-a", "owner", tx))["tuples"]
+            removed = await controls.find_one_and_delete({"_id": "installation"})
+            assert removed is not None
+            with pytest.raises(PolicyDenied):
+                await h.engine.snapshot("org-a", "owner")
+            # An older policy snapshot cannot bypass a current installation seal.
+            with pytest.raises(PolicyDenied):
+                await h.engine.snapshot("org-a", "owner", tx)
+    finally:
+        if removed is not None:
+            await controls.insert_one(removed)
 
 
 @pytest.mark.parametrize("narrow", [False, True])

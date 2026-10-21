@@ -1,5 +1,18 @@
 import { control, environment, expect, localLogin, noStoredCredentials, open, providerLogin, test } from './fixture';
 
+test('a deferred screen asset failure preserves context and offers a safe reload', async ({page}) => {
+  await localLogin(page, 'owner');
+  await page.route('**/assets/People-*.js', route => route.abort('failed'));
+  await page.getByRole('link', {name: 'People', exact: true}).click();
+  await expect(page.getByText('This workspace could not load.', {exact: false})).toBeVisible();
+  await expect(page.getByRole('region', {name: 'Current organization context'})).toContainText('Fictional Alpha');
+  await expect(page.getByRole('main')).toHaveCount(1);
+  await noStoredCredentials(page);
+  await page.unroute('**/assets/People-*.js');
+  await page.getByRole('button', {name: 'Reload workspace', exact: true}).click();
+  await expect(page.getByRole('table', {name: 'Organization people'})).toBeVisible();
+});
+
 test('distribution gateway serves only console routes and real API/MCP/asset errors over TLS', async ({page}) => {
   await open(page, '/console/sign-in');
   const env = await environment();

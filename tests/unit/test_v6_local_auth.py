@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from argon2 import Type, extract_parameters
 from pydantic import ValidationError
+from pymongo.errors import DuplicateKeyError, OperationFailure
 
 from app.identity.crypto import (
     AuthBusy,
@@ -17,7 +18,72 @@ from app.identity.crypto import (
     random_token,
 )
 from app.identity.models import MANAGEMENT_ACTIONS, LoginInput, RootTuple
+from app.identity.repository import IdentityStore
 from app.identity.service import LocalIdentity, local_subject, member_dto
+from app.models.common import utc_now
+
+
+async def test_throttle_initial_upsert_collision_counts_once_and_uncertain_errors_stop():
+    collection = Mock(find_one_and_update=AsyncMock())
+    store = IdentityStore(Mock())
+    store._collection = Mock(return_value=collection)
+    collection.find_one_and_update.side_effect = [
+        DuplicateKeyError("synthetic collision"),
+        {"count": 2},
+    ]
+    assert await store.throttle_bucket("opaque-test-bucket", utc_now()) == {"count": 2}
+    assert collection.find_one_and_update.await_count == 2
+    assert collection.find_one_and_update.await_args_list[0].kwargs["upsert"] is True
+    assert not collection.find_one_and_update.await_args_list[1].kwargs.get("upsert", False)
+    collection.find_one_and_update.reset_mock()
+    collection.find_one_and_update.side_effect = OperationFailure("synthetic unavailable")
+    with pytest.raises(OperationFailure):
+        await store.throttle_bucket("opaque-test-bucket", utc_now())
+    collection.find_one_and_update.assert_awaited_once()
+
+
+async def test_installation_control_join_is_bounded_fresh_and_returns_only_flags():
+    from app.identity.repository import COLLECTION_OWNERSHIP, CONTROL_COLLECTIONS
+
+    assert CONTROL_COLLECTIONS <= set(COLLECTION_OWNERSHIP) | {"_tenant_control"}
+    collection = Mock(aggregate=AsyncMock())
+    cursor = Mock(
+        to_list=AsyncMock(
+            side_effect=[
+                [
+                    {
+                        "_id": "installation",
+                        "control_0": [{"_id": "installation"}],
+                        "cursor_secret": b"private",
+                    }
+                ],
+                [{"_id": "installation", "control_0": []}],
+                [],
+            ]
+        )
+    )
+    collection.aggregate.return_value = cursor
+    store = IdentityStore(Mock())
+    store._collection = Mock(return_value=collection)
+    checks = [
+        ("_local_identity_control", {"schema_version": 42}),
+        ("_tenant_control", {"stage": "managed", "worker_schema_versions": [42]}),
+    ]
+    assert await store.control_flags(checks) == dict.fromkeys((n for n, _ in checks), True)
+    assert await store.control_flags(checks) == {
+        "_local_identity_control": True,
+        "_tenant_control": False,
+    }
+    assert not any((await store.control_flags(checks)).values())
+    assert collection.aggregate.await_count == 3
+    for unsafe in [
+        [("users", {})],
+        [("_tenant_control", {"_id": "caller-choice"})],
+        checks * 2,
+        [],
+    ]:
+        with pytest.raises(ValueError):
+            await store.control_flags(unsafe)
 
 
 async def test_passwords_are_argon2id_with_explicit_parameters_and_random_salts():

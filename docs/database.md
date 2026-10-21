@@ -68,6 +68,14 @@ Strict validators, repository guards and compound indexes protect application
 writes, not against a trusted database administrator. Whole-database archives
 include all ownership classes and are installation-operator-only.
 
+Overview aggregates use bounded process memory classified in the summary
+inventory. MongoDB change streams invalidate source changes before reuse;
+authorization is never cached. The data cache and observation cursors are
+recreated after restart/restore. An organization/time covering index supports
+cold activity aggregation; normal tenant index reconciliation creates it without
+changing stored identities or migration versions. See
+[authorized summaries](authorized-summaries.md) for limits and observation times.
+
 ## Identity and idempotency
 
 Namespaced natural keys produce deterministic BSON ObjectIds where the domain

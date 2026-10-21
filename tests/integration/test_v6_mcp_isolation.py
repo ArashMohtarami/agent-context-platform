@@ -47,6 +47,17 @@ from app.services.client_profile_service import ClientProfileService
 pytestmark = pytest.mark.integration
 
 
+def application_settings(db):
+    """Share fixture configuration without constructing an unused second API."""
+    return Settings(
+        _env_file=None,
+        mongodb_uri="mongodb://127.0.0.1:1",
+        mongodb_database=db.name,
+        mongodb_username="unused",
+        mongodb_password="unused-fixture-config",
+    )
+
+
 def application(db):
     app = FastAPI()
     for router in (
@@ -65,13 +76,7 @@ def application(db):
     app.state.tenant_control_database = db
     app.state.mongodb = SimpleNamespace(database=db)
     app.state.embeddings = None
-    app.state.settings = Settings(
-        _env_file=None,
-        mongodb_uri="mongodb://127.0.0.1:1",
-        mongodb_database=db.name,
-        mongodb_username="unused",
-        mongodb_password="unused-fixture-config",
-    )
+    app.state.settings = application_settings(db)
     app.state.auth = AuthService(MongoCredentialResolver(db), MongoAgentClientRepository(db))
     app.state.audit = AuditService(None)
     app.state.agent_session_service = AgentSessionService(MongoAgentSessionRepository(db))

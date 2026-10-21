@@ -1,7 +1,7 @@
 # Console deployment and distribution
 
 **Release readiness is not approved.** See [verification and known limits](verification.md)
-for the unresolved authorization-expiry and overview workload gates. The following
+for the outstanding complete acceptance gate. The following
 describes implemented deployment behavior, not permission to deploy.
 
 
@@ -66,6 +66,14 @@ passes API/MCP errors without interception and disables proxy caches/buffering.
 The app rechecks HTTPS, cookie/bearer separation, CSRF/Origin and current policy.
 An external load balancer is not implicitly trusted: this template terminates
 TLS directly; changing that topology needs a new reviewed trust configuration.
+
+The console overlay sets `MONGODB_MIN_POOL_SIZE=50` and retains the bounded
+`MONGODB_MAX_POOL_SIZE=50`. The driver maintains ready connections for concurrent
+authenticated directory work; base API/CLI configuration keeps a minimum of zero.
+Budget these pools per API process and replica-set server, and tune both values
+together for the installation. A minimum above the maximum refuses startup.
+This caches connections, never authority or identity records. See the official
+[PyMongo pool configuration](https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/connection-pools/).
 
 Only `/console/` extensionless navigation uses the SPA fallback. Missing files,
 `/console/assets/*`, APIs, MCP and other paths retain their errors. HTML and API

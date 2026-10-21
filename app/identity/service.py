@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from pymongo.asynchronous.client_session import AsyncClientSession
-from pymongo.errors import DuplicateKeyError, PyMongoError
+from pymongo.errors import PyMongoError
 
 from app.identity.crypto import (
     AuthBusy,
@@ -57,7 +57,7 @@ class LocalIdentity:
         self.policy_engine: PolicyEngine | None = None
 
     async def enabled(self) -> None:
-        marker = await self.store.find(
+        marker_query: tuple[str, Row] = (
             "_local_identity_control",
             {
                 "_id": "installation",
@@ -68,7 +68,7 @@ class LocalIdentity:
                 else 38,
             },
         )
-        control = await self.store.find(
+        control_query: tuple[str, Row] = (
             "_tenant_control",
             {
                 "_id": "installation",
@@ -80,23 +80,19 @@ class LocalIdentity:
                 else [37],
             },
         )
-        if not marker or not control:
-            raise AuthRejected("local identity is unavailable")
+        checks = [marker_query, control_query]
         if self.sso:
-            await self.sso.enabled()
+            checks.append(self.sso.installation_control())
         if self.policy_engine and self.policy_engine.human_management:
-            await self.policy_engine.enabled()
+            checks.extend(self.policy_engine.installation_controls())
+        flags = await self.store.control_flags(checks)
+        if not all(flags[name] for name, _ in checks):
+            raise AuthRejected("local identity is unavailable")
 
     async def throttle(self, namespace: str, value: str, maximum: int) -> None:
         now = utc_now()
         key = digest("throttle", f"{namespace}:{value}:{int(now.timestamp()) // 60}")
-        try:
-            await self.store.insert(
-                "auth_throttles", {"_id": key, "count": 0, "expires_at": now + timedelta(hours=1)}
-            )
-        except DuplicateKeyError:
-            pass
-        row = await self.store.update("auth_throttles", {"_id": key}, {"$inc": {"count": 1}})
+        row = await self.store.throttle_bucket(key, now + timedelta(hours=1))
         if row is None or row["count"] > maximum:
             raise AuthBusy("authentication is temporarily busy")
 

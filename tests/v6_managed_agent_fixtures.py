@@ -192,9 +192,9 @@ async def managed_agents_db(management_db):
             expected_team_generation=1,
         ),
     )
-    from tests.integration.test_v6_mcp_isolation import application
+    from tests.integration.test_v6_mcp_isolation import application_settings
 
-    settings = application(h.db).state.settings
+    settings = application_settings(h.db)
     h.app.state.settings = settings.model_copy(
         update={
             "v6_browser_origin": "https://identity.example",

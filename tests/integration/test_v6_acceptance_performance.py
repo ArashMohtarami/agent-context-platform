@@ -1,4 +1,4 @@
-"""Measured disposable workloads. Targets are reported separately from correctness assertions."""
+"""Measured disposable workloads; declared upper latency budgets are release gates."""
 
 import asyncio
 import json
@@ -39,6 +39,15 @@ def evidence(tmp_path, name, data):
     data["hardware"] = {
         "platform": platform.platform(),
         "logical_cpus": os.cpu_count(),
+        "cpu_model": next(
+            (
+                line.split(":", 1)[1].strip()
+                for line in Path("/proc/cpuinfo").read_text().splitlines()
+                if line.startswith("model name")
+            ),
+            "unreported",
+        ),
+        "host_load_average_1_5_15_min": list(os.getloadavg()),
         "memory_kib": Path("/proc/meminfo").read_text().splitlines()[0],
         "host": "shared; not the dedicated Phase0 reference host",
         "mongodb_cpu_limit": 2,
@@ -50,7 +59,10 @@ def evidence(tmp_path, name, data):
     (directory / (name + ".json")).write_text(json.dumps(data, indent=2) + "\n")
 
 
-async def test_measured_bounded_argon2_work_and_policy_reads(managed_agents_db, tmp_path):
+@pytest.mark.parametrize("policy_shape", ["repeated", "distinct"])
+async def test_measured_bounded_argon2_work_and_policy_reads(
+    managed_agents_db, tmp_path, policy_shape
+):
     h = managed_agents_db
     passwords = PasswordWork()
     secret = "synthetic-benchmark-password-only"
@@ -71,8 +83,54 @@ async def test_measured_bounded_argon2_work_and_policy_reads(managed_agents_db, 
     # Fill the real organization policy to the reviewed 100-assignment workload.
     from app.security.policy.models import Issue
 
+    project_ids = []
+    if policy_shape == "distinct":
+        from app.identity.models import MANAGEMENT_ACTIONS
+        from app.management.memberships import Memberships
+        from app.management.models import RootApproval
+        from app.models.project import ProjectDocument
+        from app.security.policy.models import Grant, Selector
+
+        with tenant_scope(TenantContext("org-a")):
+            for number in range(100):
+                project = ProjectDocument(
+                    project_id=f"policy-performance-{number:03d}",
+                    name=f"Fictional project {number}",
+                    description="Distinct-resource policy workload",
+                    repository="https://example.test/repo",
+                    environment="disposable",
+                )
+                await h.db.projects.insert_one(project.model_dump(by_alias=True))
+                project_ids.append(project.project_id)
+            root = await h.db.policy_assignments.find_one({"_id": h.root})
+            extra = tuple(
+                Grant(
+                    action="context:read",
+                    resource_kind="project",
+                    selector="include",
+                    ids=project_ids[offset : offset + 50],
+                )
+                for offset in (0, 50)
+            )
+            approved = await Memberships(h.engine).operator_approve_root(
+                "org-a",
+                "owner",
+                RootApproval(
+                    tuples=tuple(
+                        Grant.model_validate(x)
+                        for x in root["tuples"]
+                        if x["action"] in MANAGEMENT_ACTIONS
+                    ),
+                    ceiling=tuple(Grant.model_validate(x) for x in root["ceiling"]) + extra,
+                    targets=Selector.model_validate(root["targets"]),
+                    allowed_roles=tuple(root["allowed_roles"]),
+                    expires_at=utc_now() + timedelta(days=5),
+                ),
+                "fictional-independent-high-cardinality-policy-review",
+            )
+            h.root_generation = approved["generation"]
     existing = await h.db.policy_assignments.count_documents({"org_id": "org-a"})
-    for _ in range(max(0, 100 - existing)):
+    for number in range(max(0, 100 - existing)):
         await h.governance.issue(
             "org-a",
             "owner",
@@ -81,7 +139,16 @@ async def test_measured_bounded_argon2_work_and_policy_reads(managed_agents_db, 
                 role="contributor",
                 parent_id=h.root,
                 expected_parent_generation=h.root_generation,
-                tuples=(h.domain[0],),
+                tuples=(
+                    Grant(
+                        action="context:read",
+                        resource_kind="project",
+                        selector="include",
+                        ids=[project_ids[number]],
+                    ),
+                )
+                if project_ids
+                else (h.domain[0],),
                 expires_at=utc_now() + timedelta(days=1),
             ),
         )
@@ -124,7 +191,7 @@ async def test_measured_bounded_argon2_work_and_policy_reads(managed_agents_db, 
         await client.close()
     evidence(
         tmp_path,
-        "auth-policy-performance",
+        "auth-policy-performance-" + policy_shape,
         {
             "password": distribution(serial),
             "password_target_ms": [100, 500],
@@ -139,12 +206,18 @@ async def test_measured_bounded_argon2_work_and_policy_reads(managed_agents_db, 
             "policy_target_p95_ms": 50,
             "policy_workload": {
                 "stored_assignments": assignment_count,
-                "grant_shape": "repeated bounded same-resource assignments",
+                "grant_shape": policy_shape,
+                "distinct_project_resources": len({i for g in snapshot["tuples"] for i in g.ids}),
             },
             "database_command_roundtrips": distribution(database),
-            "database_measurement": "PyMongo command durations; includes network, not server CPU",
+            "database_measurement": "sum of PyMongo command durations; parallel reads overlap; "
+            "includes network, not server CPU",
         },
     )
+    # A faster hash with the same pinned work parameters is permitted. Reducing
+    # the parameters to meet a latency budget is not.
+    assert distribution(serial)["p95_ms"] <= 500
+    assert distribution(policy)["p95_ms"] <= 50
 
 
 @pytest.mark.parametrize("org_a_tenths", [9, 5], ids=["skewed-90-10", "even-50-50"])
@@ -208,6 +281,11 @@ async def test_measured_skewed_events_bounded_real_overview_and_twenty_readers(
     } == expected
     seed_seconds = perf_counter() - start_seed
     query = SummaryQuery(start=begin, end=end, scope="org")
+    raw_filter = {"org_id": "org-a", "created_at": {"$gte": max(begin, h.begin), "$lt": end}}
+    # Verify the permitted population independently, outside the timed load.
+    # Repeating a 900k-row validation count after EACH reader completes would
+    # silently add twenty full scans that contend with the remaining readers.
+    raw = await h.db.agent_activity.count_documents(raw_filter)
     samples, statuses, successful = [], [], []
     async with browser(h, "owner") as (client, headers):
 
@@ -223,9 +301,6 @@ async def test_measured_skewed_events_bounded_real_overview_and_twenty_readers(
                 successful.append(elapsed)
                 # The checkpoint limits retained history; do not mistake total
                 # stored rows for the currently served authorized population.
-                raw = await h.db.agent_activity.count_documents(
-                    {"org_id": "org-a", "created_at": {"$gte": max(begin, h.begin), "$lt": end}}
-                )
                 assert response.json()["observed_count"] == raw
 
         await read()  # cold request separate from 20 concurrent readers
@@ -233,6 +308,7 @@ async def test_measured_skewed_events_bounded_real_overview_and_twenty_readers(
         cold_status = statuses.pop()
         successful.clear()
         await asyncio.gather(*(read() for _ in range(20)))
+    assert await h.db.agent_activity.count_documents(raw_filter) == raw
     evidence(
         tmp_path,
         f"overview-performance-{org_a_tenths}0-{10 - org_a_tenths}0",
@@ -242,6 +318,9 @@ async def test_measured_skewed_events_bounded_real_overview_and_twenty_readers(
             "skew": f"{org_a_tenths}0/{10 - org_a_tenths}0",
             "seed_seconds": seed_seconds,
             "concurrency": 20,
+            "authenticated_subjects": 1,
+            "query_variants": 1,
+            "cache_condition": "one cold fill then concurrent identical authorized queries",
             "warm_all_attempts": distribution(samples),
             "warm_successful": distribution(successful) if successful else None,
             "cold_ms": cold,
@@ -255,19 +334,26 @@ async def test_measured_skewed_events_bounded_real_overview_and_twenty_readers(
     )
     # Refusals are never recorded as fast successful responses. The measurements
     # retain the exact status population for assessment against the target.
-    # A one-hour subset is within the shipped 5000-row cap. The current
-    # receipt/download policy and CSV renderer perform all actual work.
+    # Exercise the complete shipped row cap. Select the exclusive timestamp
+    # of row 5001 outside the timed work, then generate all 5000 real rows.
     from app.summaries.models import MAX_REPORT_ROWS
     from app.summaries.reports import Reports
 
-    narrow = SummaryQuery(start=begin, end=begin + timedelta(hours=1), scope="org")
+    dates = (
+        await h.db.agent_activity.find(raw_filter, {"created_at": 1, "_id": 0})
+        .sort("created_at", 1)
+        .limit(MAX_REPORT_ROWS + 1)
+        .to_list(MAX_REPORT_ROWS + 1)
+    )
+    assert len(dates) == MAX_REPORT_ROWS + 1
+    narrow = SummaryQuery(start=begin, end=dates[-1]["created_at"], scope="org")
     with tenant_scope(TenantContext("org-a")):
         reports = Reports(h.engine)
         started = perf_counter()
         receipt = await reports.create("org-a", "owner", narrow)
         csv, metadata = await reports.download("org-a", "owner", receipt["report_id"])
         elapsed = (perf_counter() - started) * 1000
-    assert 0 < metadata["observed_count"] <= MAX_REPORT_ROWS
+    assert metadata["observed_count"] == MAX_REPORT_ROWS
     evidence(
         tmp_path,
         f"report-performance-{org_a_tenths}0-{10 - org_a_tenths}0",
@@ -283,6 +369,8 @@ async def test_measured_skewed_events_bounded_real_overview_and_twenty_readers(
     assert cold_status == 200
     assert successful, "no successful overview in the concurrent workload"
     assert statuses == [200] * 20, "unchanged permitted overview workload must serve every reader"
+    assert distribution(successful)["p95_ms"] <= 1000
+    assert elapsed <= 30000
 
 
 async def test_measured_sponsor_offboarding_with_five_hundred_verified_clients(
@@ -344,3 +432,171 @@ async def test_measured_sponsor_offboarding_with_five_hundred_verified_clients(
             "transport_evidence": "separate active REST/stdio/HTTP MCP integration cases",
         },
     )
+    assert commit_ms <= 1000
+
+
+async def test_measured_foreground_directory_during_bounded_real_ingestion(
+    managed_agents_db, tmp_path, monkeypatch, performance_embeddings
+):
+    from contextlib import asynccontextmanager
+
+    from app.services.research_ingestion_service import ResearchIngestionLimiter
+    from tests.v6_research_console_fixtures import PROJECT, prepare_research
+
+    h = managed_agents_db
+    await prepare_research(h)
+    h.app.state.embeddings = performance_embeddings
+    member = await h.db.organization_memberships.find_one({"org_id": "org-a", "user_id": "member"})
+    user = await h.db.users.find_one({"_id": "member"})
+    existing = await h.db.organization_memberships.count_documents({"org_id": "org-a"})
+    for number in range(200 - existing):
+        identifier = f"contention-person-{number:03d}"
+        await h.db.users.insert_one({**user, "_id": identifier, "display_name": "Fictional person"})
+        await h.db.organization_memberships.insert_one(
+            {
+                **member,
+                "_id": identifier,
+                "user_id": identifier,
+                "display_name": "Fictional person",
+                "bootstrap_owner": False,
+                "bootstrap_intent": None,
+            }
+        )
+    active, peak = 0, 0
+    both = asyncio.Event()
+    intervals = []
+    reserve = ResearchIngestionLimiter.reserve
+
+    @asynccontextmanager
+    async def observed(self):
+        nonlocal active, peak
+        async with reserve(self):
+            active += 1
+            peak = max(peak, active)
+            if active == 2:
+                both.set()
+            start = perf_counter()
+            try:
+                yield
+            finally:
+                intervals.append((start, perf_counter()))
+                active -= 1
+
+    monkeypatch.setattr(ResearchIngestionLimiter, "reserve", observed)
+    async with (
+        browser(h, "owner") as (reader, read_headers),
+        browser(h, "member") as (writer, write_headers),
+    ):
+        base = "/api/v6/organizations/org-a/research"
+        for number in range(2):
+            response = await writer.post(
+                base + "/sources",
+                headers=write_headers,
+                json={
+                    "research_project_id": PROJECT,
+                    "source_id": f"contention-{number}",
+                    "source_type": "manual",
+                    "uri": f"manual:contention-{number}",
+                    "title": f"Fictional bounded source {number}",
+                    "source_class": "user_provided",
+                },
+            )
+            assert response.status_code == 201, response.text
+
+        async def readers():
+            async def read():
+                start = perf_counter()
+                response = await reader.get(
+                    "/api/v6/organizations/org-a/members?limit=20", headers=read_headers
+                )
+                elapsed = (perf_counter() - start) * 1000
+                assert response.status_code == 200, response.text
+                assert len(response.json()["items"]) == 20
+                return start, elapsed
+
+            return await asyncio.gather(*(read() for _ in range(20)))
+
+        await readers()  # connection warm-up is not part of the distribution
+        baseline = await readers()
+        tasks = [
+            asyncio.create_task(
+                writer.post(
+                    f"{base}/projects/{PROJECT}/sources/contention-{number}/ingest",
+                    headers=write_headers,
+                    json={
+                        "content": (
+                            f"Fictional source {number}. Bounded retries preserve evidence.\n\n"
+                            * 1024
+                        )[:8192],
+                        "content_type": "text/plain",
+                    },
+                )
+            )
+            for number in range(2)
+        ]
+        try:
+            started = asyncio.create_task(both.wait())
+            try:
+                done, _ = await asyncio.wait(
+                    [started, *tasks], timeout=10, return_when=asyncio.FIRST_COMPLETED
+                )
+                for task in done - {started}:
+                    response = task.result()
+                    assert response.status_code == 200, response.text
+                assert both.is_set(), "two real ingestion slots did not overlap"
+            finally:
+                started.cancel()
+                await asyncio.gather(started, return_exceptions=True)
+            foreground = await readers()
+            results = await asyncio.gather(*tasks)
+            for response in results:
+                assert response.status_code == 200, response.text
+                assert response.json()["job"]["status"] == "completed", response.text
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+    normal = distribution([elapsed for _, elapsed in baseline])
+    busy = distribution([elapsed for _, elapsed in foreground])
+    stored_chunks = {"org_id": "org-a", "source_id": {"$in": ["contention-0", "contention-1"]}}
+    chunk_count = await h.db.research_chunks.count_documents(stored_chunks)
+    assert chunk_count > 0
+    assert await h.db.research_chunks.distinct("embedding_model", stored_chunks) == [
+        performance_embeddings.model
+    ]
+    assert await h.db.research_chunks.distinct("embedding_dimensions", stored_chunks) == [
+        performance_embeddings.dimensions
+    ]
+    overlap = sum(any(begin <= start <= end for begin, end in intervals) for start, _ in foreground)
+    evidence(
+        tmp_path,
+        "ingestion-contention-performance",
+        {
+            "directory_population": 200,
+            "mongodb_pool_minimum": h.db.client.options.pool_options.min_pool_size,
+            "mongodb_pool_maximum": h.db.client.options.pool_options.max_pool_size,
+            "database_datetime_timezone": str(h.db.codec_options.tzinfo),
+            "foreground_readers": 20,
+            "page_size": 20,
+            "configured_ingestion_slots": 2,
+            "observed_peak_ingestions": peak,
+            "real_completed_jobs": len(results),
+            "submitted_bytes_per_job": 8192,
+            "embedding_model": performance_embeddings.model,
+            "embedding_dimensions": performance_embeddings.dimensions,
+            "embedding_torch_threads": 2,
+            "persisted_embedded_chunks": chunk_count,
+            "foreground_starts_during_ingestion": overlap,
+            "baseline": normal,
+            "with_ingestion": busy,
+            "maximum_p95_ratio": 1.25,
+            "observed_p95_ratio": busy["p95_ms"] / normal["p95_ms"],
+            "source": "two bounded local text ingestions through real session/domain/DB adapters; "
+            "no provider or authority mock",
+        },
+    )
+    assert peak == 2 and overlap == 20
+    assert normal["p95_ms"] <= 500
+    assert busy["p95_ms"] <= 500
+    assert busy["p95_ms"] <= normal["p95_ms"] * 1.25

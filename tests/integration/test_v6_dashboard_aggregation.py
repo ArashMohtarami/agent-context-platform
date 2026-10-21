@@ -22,6 +22,76 @@ pytestmark = pytest.mark.integration
 BASE = "/api/v6/organizations/org-a"
 
 
+async def test_metadata_identity_boundary_never_supplies_corpus_or_bearer_authority(summary_db):
+    h = summary_db
+    h.app.state.settings = h.app.state.settings.model_copy(update={"v6_console_enabled": True})
+    async with browser(h, "other") as (client, headers):
+        overview = await client.get(BASE + "/overview", params=params(h.query), headers=headers)
+        assert overview.status_code == 200 and overview.json()["observed_count"] == 6
+        directory = await client.get(BASE + "/members?limit=20", headers=headers)
+        assert directory.status_code == 200 and directory.json()["items"] == []
+        assert (
+            await client.get("/api/v6/organizations/org-b/members?limit=20", headers=headers)
+        ).status_code == 403
+        for supplied in (
+            headers,
+            {**headers, "X-V6-Summary-Policy": "true", "X-V6-Service-Policy": "true"},
+        ):
+            corpus = await client.get(
+                BASE + "/knowledge/context?project_id=payment-service", headers=supplied
+            )
+            assert corpus.status_code == 403 and "PRIVATE_SENTINEL" not in corpus.text
+            assert (await client.get("/api/v1/projects", headers=supplied)).status_code == 401
+
+
+async def test_real_cached_overview_invalidates_for_late_insert_update_delete_and_revoke(
+    summary_db,
+):
+    from bson import ObjectId
+    from pymongo.write_concern import WriteConcern
+
+    from app.summaries.cache import for_source
+
+    h = summary_db
+    events = h.db.agent_activity.with_options(write_concern=WriteConcern("majority"))
+    async with browser(h, "other") as (client, headers):
+
+        async def read():
+            response = await client.get(BASE + "/overview", params=params(h.query), headers=headers)
+            assert response.status_code == 200, response.text
+            return response.json()
+
+        first = await read()
+        repeated = await read()
+        assert first["observed_count"] == repeated["observed_count"] == 6
+        assert first["generated_at"] == repeated["generated_at"]
+        cache = for_source(h.engine, "gateway_activity")
+        assert cache.entries
+        foreign = await events.find_one({"org_id": "org-b"})
+        await events.insert_one({**foreign, "_id": ObjectId(), "event_id": "foreign-late-fixture"})
+        unchanged = await read()
+        assert unchanged["observed_count"] == 6
+        assert unchanged["generated_at"] == first["generated_at"]
+        # Late data, edits and removal are observed through a real change
+        # stream, including trusted operator writes outside served repositories.
+        sample = await events.find_one({"org_id": "org-a", "status": "failed"})
+        identifier = ObjectId()
+        await events.insert_one({**sample, "_id": identifier, "event_id": "late-fixture"})
+        inserted = await read()
+        assert inserted["observed_count"] == 7
+        assert inserted["outcomes"]["failed"] == first["outcomes"]["failed"] + 1
+        await events.update_one({"_id": identifier}, {"$set": {"status": "succeeded"}})
+        updated = await read()
+        assert updated["observed_count"] == 7
+        assert updated["outcomes"]["failed"] == first["outcomes"]["failed"]
+        await events.delete_one({"_id": identifier})
+        deleted = await read()
+        assert deleted["observed_count"] == 6 and deleted["outcomes"] == first["outcomes"]
+        await h.governance.change("org-a", "owner", h.executive["_id"], 1, revoke=True)
+        refused = await client.get(BASE + "/overview", params=params(h.query), headers=headers)
+        assert refused.status_code == 403 and "observed_count" not in refused.text
+
+
 async def test_live_reduction_preserves_weighted_latency_distinct_clients_and_buckets(summary_db):
     from app.models.agent import AgentActivityDocument
 

@@ -160,6 +160,13 @@ def build_settings(tmp_path: Path, **overrides: object) -> Settings:
     return Settings(**values)  # type: ignore[arg-type]
 
 
+def test_mongodb_pool_rejects_unmaintainable_minimum(tmp_path: Path) -> None:
+    assert build_settings(tmp_path).mongodb_min_pool_size == 0
+    assert build_settings(tmp_path, mongodb_min_pool_size=20).mongodb_min_pool_size == 20
+    with pytest.raises(ValidationError, match="MONGODB_MIN_POOL_SIZE must not exceed"):
+        build_settings(tmp_path, mongodb_min_pool_size=20, mongodb_max_pool_size=10)
+
+
 @pytest.mark.parametrize(
     ("overrides", "message"),
     [

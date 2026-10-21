@@ -13,6 +13,35 @@ from app.identity.sso import policy_context
 from app.models.common import utc_now
 
 
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"_id": "foreign"},
+        {"user_id": "foreign"},
+        {"provider": "https://foreign.example"},
+        {"verified_at": None},
+    ],
+)
+async def test_joined_identity_must_still_match_exact_user_provider_and_verification(change):
+    identity = {
+        "_id": "identity",
+        "user_id": "person",
+        "provider": "local",
+        "verified_at": utc_now(),
+        **change,
+    }
+    store = Mock(find=AsyncMock())
+    with pytest.raises(AuthRejected):
+        await check_policy(
+            store,
+            None,
+            {"user_id": "person", "authentication": {"method": "local", "identity_id": "identity"}},
+            {"auth_policy": "local_only"},
+            identity=identity,
+        )
+    store.find.assert_not_awaited()
+
+
 def test_policy_context_changes_on_org_session_membership_or_policy_rotation():
     row = {
         "org_id": "org-a",

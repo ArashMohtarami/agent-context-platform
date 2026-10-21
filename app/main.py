@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from pymongo.asynchronous.database import AsyncDatabase
-from pymongo.errors import PyMongoError
+from pymongo.errors import OperationFailure, PyMongoError
 
 from app.api.concurrency import RevisionConflict, revision_conflict_handler
 from app.api.middleware import (
@@ -292,9 +292,29 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 await embeddings.close()
             await mongodb.close()
 
+    @asynccontextmanager
+    async def observed_lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
+        started = False
+        try:
+            async with lifespan(application):
+                started = True
+                yield
+        except Exception as error:
+            if not started:
+                # Uvicorn's full traceback can exceed the bounded log message.
+                # Preserve a content-free cause without exception text or secrets.
+                details: dict[str, object] = {
+                    "component": "startup",
+                    "error_type": type(error).__name__,
+                }
+                if isinstance(error, OperationFailure) and error.code is not None:
+                    details["error_code"] = error.code
+                logger.error("application_startup_failed", extra=details)
+            raise
+
     application = FastAPI(
         title=settings.app_name if settings is not None else "Agent Context Platform",
-        lifespan=lifespan,
+        lifespan=observed_lifespan,
     )
     # The server generates the response to an unhandled exception outside every
     # middleware, so without this it is the one answer that would carry neither

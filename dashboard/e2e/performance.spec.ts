@@ -62,6 +62,7 @@ test('records cold browser timings at the declared CPU and network profile', asy
     cold_login: coldLogin, directory, rendered_rows: rows,
     corpus: {...corpus, description: 'real fictional persisted identities/memberships; no added assignments'},
     directory_api: {concurrency: 20, page_size: 20, samples: apiSamples, p95_ms: apiSamples[18]!.ms,
+      transport: 'First concurrent HTTPS APIRequestContext wave; outside page CDP network/CPU throttling',
       target_p95_ms: 500, query_plan: queryPlan},
     targets: {lcp_ms: 2500, cls: 0.1, interaction_ms: 200},
     interaction_definition: 'lab Event Timing samples; not a field INP claim',
@@ -69,5 +70,12 @@ test('records cold browser timings at the declared CPU and network profile', asy
   expect(rows).toBe(25); // Shipped UI page size; the separate REST workload requests 20.
   expect(corpus.source_count).toBeGreaterThanOrEqual(10000);
   expect(directory.lcp_ms).not.toBeNull();
+  expect(coldLogin.lcp_ms).not.toBeNull();
+  for (const measured of [coldLogin, directory]) {
+    expect(measured.lcp_ms!).toBeLessThanOrEqual(2500);
+    expect(measured.cls).toBeLessThanOrEqual(0.1);
+    for (const interaction of measured.interaction_ms) expect(interaction).toBeLessThanOrEqual(200);
+  }
+  expect(apiSamples[18]!.ms).toBeLessThanOrEqual(500);
   await cdp.detach();
 });

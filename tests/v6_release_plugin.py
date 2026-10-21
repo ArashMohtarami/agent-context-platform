@@ -118,6 +118,12 @@ async def admitted_legacy_organization(request, tmp_path, monkeypatch):
 
             await ensure_text_indexes(database)
             await ensure_vector_indexes(database, dimensions=settings.embedding_dimensions)
+            # Index creation is asynchronous. Require the fixture's actual
+            # derived indexes to be ready before backing up/restoring data;
+            # MongoDB/mongot health alone does not establish queryability.
+            from v6_legacy_integration import search_indexes_ready
+
+            await search_indexes_ready(database, ("skill_chunks",), 2)
         with tenant_scope(TenantContext("org-test", control["cursor_secret"])):
             yield
     finally:

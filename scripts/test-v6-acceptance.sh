@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Full gate only in new tmpfs stacks. No deployment .env or live service access.
+# Full gate only in disposable volume-backed stacks. Never reads deployment .env.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 : "${V6_ACCEPTANCE_MODEL_CACHE:?Set a private cache containing the reviewed real embedding model}"

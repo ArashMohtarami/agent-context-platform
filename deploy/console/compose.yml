@@ -13,6 +13,8 @@ services:
       V6_MANAGED_AGENTS: 'true'
       V6_CONSOLE_ENABLED: 'true'
       API_AUTH_ENABLED: 'true'
+      # Maintain ready connections before concurrent authenticated directory work.
+      MONGODB_MIN_POOL_SIZE: ${MONGODB_MIN_POOL_SIZE:-50}
       API_PROXY_HEADERS: 'true'
       API_FORWARDED_ALLOW_IPS: ${CONSOLE_PROXY_IP:-172.29.15.2}
       MCP_REMOTE_ALLOW_LOOPBACK_HTTP: 'false'

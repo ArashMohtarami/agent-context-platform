@@ -103,6 +103,16 @@ project and client ownership conditions. The summary is boosted at 1.5: it
 states the memory in one line, which matches a question more directly than the
 body it condenses.
 
+Managed search intersects the search action with each source's read action.
+Impossible NONE branches are removed without widening their AND/OR predicate.
+ALL resource identifiers use a nonempty string range inside mongot, equivalent
+to their strict identifier schema; they do not enumerate every corpus ObjectId.
+Both [vector prefilters](https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-stage/)
+and [lexical string ranges](https://www.mongodb.com/docs/search/query/operators-collectors/range/)
+retain the explicit organization condition. More complex provenance predicates
+still use bounded ID preselection and refuse work beyond that bound. Retrieved
+ownership and action/resource access are checked independently afterward.
+
 ## Index reconciliation
 
 `ensure_vector_indexes()` and `ensure_text_indexes()` are safe to run on every startup and every

@@ -1,11 +1,13 @@
 """Shared driver-boundary hooks cover REST, MCP, admin and direct services."""
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from functools import wraps
 from typing import Any
 from uuid import uuid4
 
 from pymongo.asynchronous.collection import AsyncCollection
+from pymongo.errors import PyMongoError
 
 from app.models.common import utc_now
 from app.security.policy.evaluation import PolicyDenied
@@ -23,6 +25,11 @@ AUTHORED_COLLECTIONS = frozenset(
     {"content_items", "content_ideas", "content_versions", *RESEARCH_REVIEW_STATES}
 )
 AUTHORITY_COLLECTIONS = frozenset({"api_keys", "agent_clients", "client_profiles"})
+# Only internal evidence persistence can replay a confirmed-aborted transaction.
+# These collections contain no review/issuance decision or outbound side effect.
+INGESTION_STORAGE = frozenset(
+    {"source_snapshots", "research_documents", "research_chunks", "ingestion_jobs"}
+)
 
 
 def fenced(method: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
@@ -63,27 +70,43 @@ def fenced(method: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any
             )
         if self.collection == "api_keys" and method.__name__ in {"insert_one", "insert_many"}:
             raise PolicyDenied("managed credential issuance requires verified Phase 7 sponsorship")
-        boundary = (
-            engine.domain_fence(policy, kwargs.get("session"))
-            if policy is not None and policy.engine and not policy.operator
-            else engine.operator_fence(kwargs.get("session"))
-        )
-        async with boundary as tx:
-            kwargs["session"] = tx
-            result = await method(self, *args, **kwargs)
-            # Credential/client envelopes change authority. Their governance
-            # event cannot use ordinary best-effort domain audit.
-            if self.collection in AUTHORITY_COLLECTIONS:
-                from app.security.tenant import require_tenant
+        session = kwargs.get("session")
+        attempts = 5 if self.collection in INGESTION_STORAGE and session is None else 1
+        for attempt in range(attempts):
+            boundary = (
+                engine.domain_fence(policy, session)
+                if policy is not None and policy.engine and not policy.operator
+                else engine.operator_fence(session)
+            )
+            try:
+                async with boundary as tx:
+                    # Never retain an aborted session in kwargs between attempts.
+                    result = await method(self, *args, **{**kwargs, "session": tx})
+                    # Authority changes keep their transactional audit contract.
+                    if self.collection in AUTHORITY_COLLECTIONS:
+                        from app.security.tenant import require_tenant
 
-                await engine.audit(
-                    require_tenant().org_id,
-                    policy.subject_id if policy else "installation_operator",
-                    method.__name__ + ":" + self.collection,
-                    self.collection,
-                    tx,
-                )
-            return result
+                        await engine.audit(
+                            require_tenant().org_id,
+                            policy.subject_id if policy else "installation_operator",
+                            method.__name__ + ":" + self.collection,
+                            self.collection,
+                            tx,
+                        )
+                return result
+            except PyMongoError as error:
+                if (
+                    attempt + 1 == attempts
+                    or not error.has_error_label("TransientTransactionError")
+                    or error.has_error_label("UnknownTransactionCommitResult")
+                ):
+                    raise
+                # Reenter the fence: current session, membership, sponsor and
+                # policy are checked again. A changed revision is never replayed.
+                # The other bounded ingestion may be persisting several
+                # chunks. Up to 1.5 seconds total backoff avoids immediate
+                # lockstep retries against its session/anchor transaction.
+                await asyncio.sleep(0.1 * 2**attempt)
 
     return operation
 

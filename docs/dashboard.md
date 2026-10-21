@@ -128,9 +128,10 @@ Download rechecks current authority and expiry, redacts bodies and neutralizes
 spreadsheet formulas. Reports are not database backups. See
 [monitoring policy](dashboard-monitoring.md) and [authorized summaries](authorized-summaries.md).
 
-The final policy-fence expiry race remains a release blocker: the current checks
-have not yet passed the complete expiry/revocation acceptance gate. See
-[verification and known limits](verification.md) before relying on report delivery.
+Report delivery rechecks natural grant expiry after its final policy fence.
+Overview data may reuse a bounded, source-invalidated aggregate cache, with its
+original generation time; authorization is checked for every response. Complete
+release acceptance remains pending; see [verification and known limits](verification.md).
 
 
 ## Operate and verify

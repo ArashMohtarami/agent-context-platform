@@ -11,8 +11,8 @@
   },
   {
     "path": "docs/authorized-summaries.md",
-    "sha256": "28ac39bab742131aea20523bef2e1e754a871c1261b59bc390bb275e26a6e782",
-    "lines": 140
+    "sha256": "8a1df90263dd47fc49c1f23962e26dd31d2b956f0815909cd52d4359971d11e3",
+    "lines": 170
   },
   {
     "path": "docs/backup.md",
@@ -111,8 +111,8 @@
   },
   {
     "path": "docs/dashboard-deployment.md",
-    "sha256": "1eec3ace7685f9252e3c349de1a72d8ec533015fcc9b7a81ea03eebc3e0f38f3",
-    "lines": 315
+    "sha256": "113e667e139ec845bc09666578232759a9b7c2beff8d3f84e226fc9e74a9af40",
+    "lines": 323
   },
   {
     "path": "docs/dashboard-foundation.md",
@@ -131,8 +131,8 @@
   },
   {
     "path": "docs/dashboard-monitoring.md",
-    "sha256": "64ff7af19c79fdb5ac0ee857b17f598f5f7772f4db2a9e39401a1c4076782ab1",
-    "lines": 115
+    "sha256": "c6715fabc0df58cf624a41120761f7e26aaf3cf76545cc5119b7c362f4182b47",
+    "lines": 119
   },
   {
     "path": "docs/dashboard-research.md",
@@ -141,13 +141,13 @@
   },
   {
     "path": "docs/dashboard.md",
-    "sha256": "768f03903b312ff1d1553b3caef59f4b02cce466f8799d60df3b400c7dbead81",
-    "lines": 147
+    "sha256": "ad720c96d8ab0a0e6d4987bf6fabe67e73af6c2dcac7272cad0c8800059b8902",
+    "lines": 148
   },
   {
     "path": "docs/database.md",
-    "sha256": "eb8be84950bbd07d54467c5a62f727a90a8a9172e954d8ec6d26f8e834078f0e",
-    "lines": 172
+    "sha256": "56fc86aaa50e37dad0b4f8720cd34152b5df7ff9af9e1dc2a85ee5c4785dd84c",
+    "lines": 180
   },
   {
     "path": "docs/deployment.md",
@@ -236,8 +236,8 @@
   },
   {
     "path": "docs/retrieval.md",
-    "sha256": "2eb84a4aa262083ceb03094c1c8155ba721d64c60c28dd7857a726377408e39c",
-    "lines": 504
+    "sha256": "a6be6dfbe526d4a526b7235d1494c19b011036c6f2a145520605a196e2c75683",
+    "lines": 514
   },
   {
     "path": "docs/search.md",
@@ -246,8 +246,8 @@
   },
   {
     "path": "docs/security.md",
-    "sha256": "e545766659cb54327766b42d5db1c6dab1ffdcb71f36e6a1a57d3368fc72dfc1",
-    "lines": 170
+    "sha256": "0d18ce172c698064abeba59c7a112def13868707c2a1589e7c39c9ada53ee1d6",
+    "lines": 198
   },
   {
     "path": "docs/skill-catalog.md",
@@ -281,8 +281,8 @@
   },
   {
     "path": "docs/verification.md",
-    "sha256": "2a642e6fa78009aef7d38efb937859f9014693e922a6bfb0283cb5ad20f15d3d",
-    "lines": 88
+    "sha256": "f884f922cdf60a8feb1d37995660d6e53bc8a2a075cf082e193ce1dd7f740f14",
+    "lines": 140
   },
   {
     "path": "docs/website.md",

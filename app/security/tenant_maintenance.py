@@ -86,7 +86,16 @@ class TenantMaintenanceMiddleware:
             request = Request(scope)
             database = getattr(request.app.state, "tenant_control_database", None)
             if database is not None:
-                control = await database["_tenant_control"].find_one({"_id": "installation"})
+                control = await database["_tenant_control"].find_one(
+                    {"_id": "installation"},
+                    {
+                        "schema_version": 1,
+                        "stage": 1,
+                        "worker_schema_versions": 1,
+                        "domain_traffic_enabled": 1,
+                        "cursor_secret": 1,
+                    },
+                )
                 managed = bool(
                     getattr(
                         getattr(request.app.state, "settings", None), "v6_management_policy", False
@@ -127,4 +136,10 @@ class TenantMaintenanceMiddleware:
                     )
                     await response(scope, receive, send)
                     return
+                if control is not None:
+                    # Installation metadata already read for this request only.
+                    # This secret signs org-bound cursors; it supplies no authority.
+                    scope.setdefault("state", {})["acp_tenant_cursor_secret"] = control.get(
+                        "cursor_secret"
+                    )
         await self.app(scope, receive, send)
