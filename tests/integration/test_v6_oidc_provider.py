@@ -87,7 +87,9 @@ async def test_real_code_state_pkce_replay_and_browser_substitution_fail(sso):
     foreign_browser = h.client.cookies.get("__Host-acp-login")
     h.client.cookies.clear()
     await h.callback(urls[0], 401)
-    h.client.cookies.set("__Host-acp-login", foreign_browser, domain="identity.example", path="/")
+    h.client.cookies.set(
+        "__Host-acp-login", foreign_browser, domain=h.client.base_url.host, path="/"
+    )
     swapped = "/api/v6/auth/oidc/callback?state=" + b["state"][0] + "&code=" + a["code"][0]
     await h.callback(swapped, 401)
     await h.callback(urls[1], 401)  # Consumed state cannot retry with the correct code.

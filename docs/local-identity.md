@@ -1,9 +1,9 @@
 # Local human identity and browser security
 
-Phase 3 adds an optional invitation-only local identity API. Optional
-[Phase 4 SSO and organization switching](sso-identity.md) build on these sessions.
-The dashboard, team management and effective permission engine remain unavailable.
-A browser session has no corpus access in these phases.
+The invitation-only local identity engine underlies the implemented
+[organization console](dashboard.md). [SSO and organization switching](sso-identity.md)
+build on these sessions. A browser session alone grants no corpus access;
+explicit managed assignments supply action/resource policy.
 Existing V1–V5 APIs and MCP continue to require organization-bound bearer keys.
 
 Complete the [real Phase 2 isolation gate](tenant-isolation.md) and its explicit
@@ -84,7 +84,7 @@ The operator reviews the complete delegation ceiling; no wildcard action or
 implicit corpus bypass is accepted. Owner provisioning separately records the
 approved `projects:read` and `projects:write` **directory** bootstrap policy and
 the root ceiling in a `pending_phase5` intent. No permission assignment or
-effective grant record is created. Phase 5 must activate these approved records
+effective grant record is created by identity provisioning. The policy engine activates these approved records
 through its engine; further self/corpus grants need independent approval or
 documented operator recovery. The initial-owner unique index prevents concurrent
 bootstrap claims. No web route can call this operator path.

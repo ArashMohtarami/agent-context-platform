@@ -115,8 +115,8 @@ contextctl search "refund rules" --project-id payment-service --content
 Skills, the project's own recorded context, and memory searched together and ranked against each
 other. `--content` prints each result in full; without it you get the ranking and what it cost.
 
-Naming no project excludes project context and project memory. Global knowledge
-remains eligible; a client-linked credential can also search its own operational
+Naming no project excludes project context and project memory. Organization-global knowledge
+remains eligible only with its explicit resource policy; a client-linked credential can also search its own operational
 agent memory. Projects are requested explicitly and never inferred.
 
 ### memory
@@ -127,7 +127,7 @@ contextctl memory search "refund review" --project-id payment-service
 contextctl memory search "deploys" --status superseded
 ```
 
-Naming a project searches its memory and global memory together. Archived and superseded memory is
+Naming a project searches its authorized memory and permitted organization-global memory together. Archived and superseded memory is
 excluded unless asked for.
 
 ### health
@@ -241,41 +241,28 @@ The optional `--supersedes-context-id` is only for project-context promotion. Th
 
 ### keys
 
-```bash
+`contextctl keys scopes` describes the bearer action vocabulary without database
+access. Other key commands require explicit `--org-id` and private installation
+operator credentials. Legacy issuance is refused under managed policy; it is not
+a way to bypass approved client policy or recipient-only delivery.
+
+For managed installations approve the client/sponsor envelope, then have the
+recipient authenticate and generate a credential once through the console/API.
+Leads cannot recover that token. Retry gives safe metadata, and lost delivery
+needs revoke/replacement. See [managed agents](managed-agents.md).
+
+```sh
 contextctl keys scopes
-contextctl keys create --name codex --scope search:read --scope skills:read
-contextctl keys create --name payments-agent \
-    --scope search:read --scope context:read --scope context:write \
-    --project payment-service --expires-in-days 90
-contextctl keys list [--status active] [--limit 20]
-contextctl keys revoke --key-id 0123456789abcdef
+contextctl --org-id YOUR_ORG keys list --status active --limit 20
+contextctl --org-id YOUR_ORG keys revoke --key-id PUBLIC_KEY_ID
 ```
 
-This is the only way a key comes into existence. There is deliberately no endpoint for it: one
-would need a key to call it, and a key that could mint keys could widen itself without limit.
-
-**The key is printed once.** The platform stores a hash, so a lost key cannot be recovered — issue
-a new one and revoke the old. `--json` carries it too, so a deployment script can put it straight
-into a secret store rather than a person copying it out of a terminal:
-
-```bash
-contextctl --json keys create --name ci --scope search:read | jq -r .key > ./secrets/ci-api-key
-```
-
-Naming no `--project` grants every project, which is the widest grant and so the one you choose by
-leaving the option out. Omitting `--expires-in-days` issues a key that does not expire.
-
-The same convention applies to `--profile`: include it one or more times to narrow a key to V2
-creator profiles; omit it to grant every creator profile. See [creator.md](creator.md) for the
-V2 resource scopes and examples.
-
-`revoke` keeps the record rather than deleting it, so the audit trail still has a name to attach
-past decisions to. A revoked key authenticates nothing from that point on, immediately.
-
-`keys create` does not require search to be working — only the database. Needing a healthy search
-coordinator to issue a credential would mean authentication could not be bootstrapped on a platform
-whose search is degraded, which is when you are most likely to need to. `keys scopes` needs nothing
-at all and answers wherever `contextctl` is installed.
+The historical pre-management command is `contextctl --org-id YOUR_ORG keys create`.
+Its legacy omitted project/profile arrays mean reviewed explicit `all_in_org`
+inside the adoption organization only; managed NONE is never serialized that way.
+Do not use a legacy create example for human or managed-machine provisioning.
+Revocation retains historical records/provenance. Current authority is checked
+again on requests and MCP preflight, not just at process connection time.
 
 ### backup, restore, and backups
 

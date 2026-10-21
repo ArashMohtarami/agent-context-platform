@@ -1,7 +1,9 @@
 """Actual persisted aggregation, attribution, coverage and policy predicates."""
 
 import asyncio
+from collections import Counter
 from datetime import timedelta
+from math import isfinite
 
 import pytest
 from v6_summary_fixtures import params
@@ -18,6 +20,120 @@ from tests.integration.test_v6_policy_fencing import browser
 
 pytestmark = pytest.mark.integration
 BASE = "/api/v6/organizations/org-a"
+
+
+async def test_metadata_identity_boundary_never_supplies_corpus_or_bearer_authority(summary_db):
+    h = summary_db
+    h.app.state.settings = h.app.state.settings.model_copy(update={"v6_console_enabled": True})
+    async with browser(h, "other") as (client, headers):
+        overview = await client.get(BASE + "/overview", params=params(h.query), headers=headers)
+        assert overview.status_code == 200 and overview.json()["observed_count"] == 6
+        directory = await client.get(BASE + "/members?limit=20", headers=headers)
+        assert directory.status_code == 200 and directory.json()["items"] == []
+        assert (
+            await client.get("/api/v6/organizations/org-b/members?limit=20", headers=headers)
+        ).status_code == 403
+        for supplied in (
+            headers,
+            {**headers, "X-V6-Summary-Policy": "true", "X-V6-Service-Policy": "true"},
+        ):
+            corpus = await client.get(
+                BASE + "/knowledge/context?project_id=payment-service", headers=supplied
+            )
+            assert corpus.status_code == 403 and "PRIVATE_SENTINEL" not in corpus.text
+            assert (await client.get("/api/v1/projects", headers=supplied)).status_code == 401
+
+
+async def test_real_cached_overview_invalidates_for_late_insert_update_delete_and_revoke(
+    summary_db,
+):
+    from bson import ObjectId
+    from pymongo.write_concern import WriteConcern
+
+    from app.summaries.cache import for_source
+
+    h = summary_db
+    events = h.db.agent_activity.with_options(write_concern=WriteConcern("majority"))
+    async with browser(h, "other") as (client, headers):
+
+        async def read():
+            response = await client.get(BASE + "/overview", params=params(h.query), headers=headers)
+            assert response.status_code == 200, response.text
+            return response.json()
+
+        first = await read()
+        repeated = await read()
+        assert first["observed_count"] == repeated["observed_count"] == 6
+        assert first["generated_at"] == repeated["generated_at"]
+        cache = for_source(h.engine, "gateway_activity")
+        assert cache.entries
+        foreign = await events.find_one({"org_id": "org-b"})
+        await events.insert_one({**foreign, "_id": ObjectId(), "event_id": "foreign-late-fixture"})
+        unchanged = await read()
+        assert unchanged["observed_count"] == 6
+        assert unchanged["generated_at"] == first["generated_at"]
+        # Late data, edits and removal are observed through a real change
+        # stream, including trusted operator writes outside served repositories.
+        sample = await events.find_one({"org_id": "org-a", "status": "failed"})
+        identifier = ObjectId()
+        await events.insert_one({**sample, "_id": identifier, "event_id": "late-fixture"})
+        inserted = await read()
+        assert inserted["observed_count"] == 7
+        assert inserted["outcomes"]["failed"] == first["outcomes"]["failed"] + 1
+        await events.update_one({"_id": identifier}, {"$set": {"status": "succeeded"}})
+        updated = await read()
+        assert updated["observed_count"] == 7
+        assert updated["outcomes"]["failed"] == first["outcomes"]["failed"]
+        await events.delete_one({"_id": identifier})
+        deleted = await read()
+        assert deleted["observed_count"] == 6 and deleted["outcomes"] == first["outcomes"]
+        await h.governance.change("org-a", "owner", h.executive["_id"], 1, revoke=True)
+        refused = await client.get(BASE + "/overview", params=params(h.query), headers=headers)
+        assert refused.status_code == 403 and "observed_count" not in refused.text
+
+
+async def test_live_reduction_preserves_weighted_latency_distinct_clients_and_buckets(summary_db):
+    from app.models.agent import AgentActivityDocument
+
+    h = summary_db
+    for index, latency in enumerate((None, 2, 4, 100)):
+        with tenant_scope(TenantContext("org-a")):
+            row = AgentActivityDocument(
+                event_id=f"weighted-{index}",
+                client_id=f"weighted-client-{index % 2}",
+                client_type="codex",
+                operation="search_knowledge",
+                tool="search_knowledge",
+                project_id="payment-service",
+                status="failed" if index == 3 else "succeeded",
+                latency_ms=latency,
+                created_at=h.begin + timedelta(minutes=1),
+                sponsor_id="member",
+                sponsor_team_id="alpha",
+                sponsorship_revision=1,
+            )
+            await h.db.agent_activity.insert_one(row.model_dump(by_alias=True))
+    raw = await h.db.agent_activity.find(
+        {"org_id": "org-a", "created_at": {"$gte": h.begin, "$lt": h.end}}
+    ).to_list(None)
+    samples = [
+        row["latency_ms"]
+        for row in raw
+        if row.get("latency_ms") is not None and isfinite(row["latency_ms"])
+    ]
+    verified = [
+        row for row in raw if row.get("sponsor_id") and row.get("sponsorship_revision", 0) >= 1
+    ]
+    async with browser(h, "owner") as (client, headers):
+        response = await client.get(BASE + "/overview", params=params(h.query), headers=headers)
+        assert response.status_code == 200, response.text
+        result = response.json()
+    assert result["observed_count"] == sum(b["count"] for b in result["buckets"]) == len(raw)
+    assert result["outcomes"] == dict(Counter(row["status"] for row in raw))
+    assert result["measures"]["latency"]["sample_count"] == len(samples)
+    assert result["measures"]["latency"]["value"] == pytest.approx(sum(samples) / len(samples))
+    assert result["measures"]["clients"]["value"] == len({r["client_id"] for r in verified})
+    assert result["measures"]["unattributed"]["value"] == len(raw) - len(verified)
 
 
 async def test_real_counts_buckets_pages_own_team_org_and_foreign_filters(summary_db):

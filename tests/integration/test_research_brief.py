@@ -7,10 +7,10 @@ from datetime import UTC, datetime
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database, seed_projects
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.initializer import initialize_database
 from app.models.research import (
     CitationLocator,
     CitationRelation,
@@ -68,6 +68,7 @@ async def test_phase_eight_brief_persists_structured_provenance_and_conflicts() 
     try:
         async with initialized_mongodb() as mongodb:
             database = mongodb.database
+            await seed_projects(database, [project_id])
             await MongoResearchProjectRepository(database).create(
                 ResearchProjectDocument(
                     research_project_id=research_id,
@@ -194,7 +195,7 @@ async def test_phase_eight_brief_persists_structured_provenance_and_conflicts() 
                 "legacy-contradicts"
             }
             assert any("does not claim completeness" in item for item in persisted.unknowns)
-            assert "research_brief_project_id_uq" in indexes
+            assert "tenant_research_brief_project_id_uq" in indexes
             assert migration is not None
             assert (
                 await database["knowledge_candidates"].count_documents(

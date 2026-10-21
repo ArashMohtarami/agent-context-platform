@@ -11,6 +11,48 @@ from app.models.common import utc_now
 pytestmark = pytest.mark.integration
 
 
+async def test_joined_session_rechecks_exact_bindings_and_verified_identity(sso):
+    h = sso
+    await h.setup_user()
+    await h.local_login()
+    token = h.client.cookies.get(SESSION_COOKIE)
+    row = await h.row()
+    identity = await h.db.user_identities.find_one({"_id": row["authentication"]["identity_id"]})
+    foreign_member = await h.db.organization_memberships.find_one(
+        {"org_id": "org-b", "user_id": h.user_id}
+    )
+    # Explicit raw fixture mutations test each persisted boundary independently;
+    # these are not public reinstatement or identity-linking operations.
+    changes = [
+        ("browser_sessions", {"_id": row["_id"]}, "membership_id", foreign_member["_id"]),
+        (
+            "organization_memberships",
+            {"_id": row["membership_id"]},
+            "revision",
+            row["membership_revision"] + 1,
+        ),
+        ("users", {"_id": h.user_id}, "auth_epoch", row["auth_epoch"] + 1),
+        ("organizations", {"org_id": "org-a"}, "policy_version", row["policy_version"] + 1),
+        ("user_identities", {"_id": identity["_id"]}, "provider", "https://foreign.example"),
+        ("user_identities", {"_id": identity["_id"]}, "user_id", "foreign-person"),
+        ("user_identities", {"_id": identity["_id"]}, "verified_at", None),
+        ("browser_sessions", {"_id": row["_id"]}, "revoked", True),
+    ]
+    for collection, query, field, value in changes:
+        before = await h.db[collection].find_one(query)
+        await h.db[collection].update_one(query, {"$set": {field: value}})
+        try:
+            with pytest.raises(AuthRejected):
+                await h.local.sessions.authenticate(token, touch=False)
+        finally:
+            await h.db[collection].update_one(query, {"$set": {field: before[field]}})
+        assert (await h.local.sessions.authenticate(token, touch=False))["org_id"] == "org-a"
+    assert (await h.db.organization_memberships.find_one({"_id": foreign_member["_id"]}))[
+        "status"
+    ] == "active"
+    assert not any(key.startswith("session_") for key in row)
+
+
 async def test_explicit_local_switch_rotates_session_csrf_and_rejects_old_context(sso):
     h = sso
     await h.setup_user()

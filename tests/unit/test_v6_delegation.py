@@ -220,3 +220,68 @@ def test_issuance_ceiling_does_not_confer_personal_review_authority():
     )
     validate_issue(root, command, "owner", now)
     assert not command.tuples
+
+
+def test_shared_parent_decoding_never_caches_authority_across_evaluations():
+    now, members, users, assignments = lineage()
+    lead = assignments["lead-grant"]
+    for number in range(100):
+        child = Governance.assignment(
+            str(number),
+            "org-a",
+            members["member"],
+            "lead",
+            request().tuples,
+            (),
+            Selector(),
+            (),
+            0,
+            now + timedelta(hours=1),
+            lead,
+        )
+        assignments[child["_id"]] = child
+    now = utc_now()
+    assert len(effective("org-a", "member", assignments, members, users, now)[0]) == 100
+    # Every call must recheck both the decoded ceiling commitment and the live
+    # lineage generation, even when the same Python dictionaries are reused.
+    root = assignments["root"]
+    original = deepcopy(root["ceiling"])
+    root["ceiling"] = []
+    assert effective("org-a", "member", assignments, members, users, now)[0] == ()
+    root["ceiling"] = original
+    assert len(effective("org-a", "member", assignments, members, users, now)[0]) == 100
+    root["generation"] += 1
+    assert effective("org-a", "member", assignments, members, users, now)[0] == ()
+
+
+def test_indexed_ceiling_preserves_the_action_resource_union_contract():
+    from itertools import product
+
+    from app.security.policy.evaluation import _SnapshotGrants
+    from app.security.policy.models import covered
+
+    def grant(action, kind, mode, ids=()):
+        return Grant(action=action, resource_kind=kind, selector=mode, ids=list(ids))
+
+    read_a = grant("context:read", "project", "include", ("a",))
+    write_b = grant("context:write", "project", "include", ("b",))
+    for ceiling in (
+        (),
+        (read_a, write_b),
+        (read_a, grant("context:read", "project", "include", ("b",))),
+        (read_a, grant("context:read", "skill", "all_in_org"), write_b),
+        (grant("context:write", "project", "all_in_org"),),
+        (grant("context:read", "project", "none"),),
+    ):
+        parent = {"ceiling": [g.model_dump() for g in ceiling]}
+        parsed = _SnapshotGrants()
+        for action, kind in product(("context:read", "context:write"), ("project", "skill")):
+            for mode, ids in (
+                ("none", ()),
+                ("all_in_org", ()),
+                ("include", ("a",)),
+                ("include", ("b",)),
+                ("include", ("a", "b")),
+            ):
+                request = grant(action, kind, mode, ids)
+                assert parsed.covers(parent, request) == covered(request, ceiling)

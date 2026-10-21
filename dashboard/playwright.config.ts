@@ -4,7 +4,7 @@ import path from 'node:path';
 
 process.env.V6_BROWSER_DESCRIPTOR ??= path.join(tmpdir(), `acp-dashboard-browser-${process.pid}.json`);
 export default defineConfig({
-  testDir: './e2e', fullyParallel: false, workers: 1, retries: 0, timeout: 90000,
+  testDir: './e2e', forbidOnly: true, fullyParallel: false, workers: 1, retries: 0, timeout: 90000,
   expect: {timeout: 12000},
   globalSetup: './e2e/setup.ts',
   reporter: [['list'], ['junit', {outputFile: 'test-results/browser.xml'}]],

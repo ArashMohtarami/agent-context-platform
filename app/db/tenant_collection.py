@@ -49,9 +49,11 @@ def lexical_predicate(query: Mapping[str, Any]) -> dict[str, Any]:
         elif field.startswith("$"):
             raise UnsupportedSearchPredicate("unsupported policy query operator")
         elif isinstance(value, Mapping):
-            if set(value) != {"$in"}:
+            if value == {"$gt": ""}:
+                clauses.append({"range": {"path": field, "gt": ""}})
+            elif set(value) != {"$in"}:
                 raise UnsupportedSearchPredicate("complex policy requires ID preselection")
-            if not value["$in"]:
+            elif not value["$in"]:
                 clauses.append({"compound": {"mustNot": [{"exists": {"path": "org_id"}}]}})
             else:
                 clauses.append({"in": {"path": field, "value": list(value["$in"])}})
@@ -72,12 +74,54 @@ def lexical_predicate(query: Mapping[str, Any]) -> dict[str, Any]:
     return clauses[0] if len(clauses) == 1 else {"compound": {"filter": clauses}}
 
 
-def _empty_in(value: Any) -> bool:
+def _search_identifier_types(value: Any) -> Any:
+    # field_filter uses $type:string for ALL resource IDs. Strict served
+    # Identifier fields are nonempty strings: this equivalent string range is
+    # supported inside both mongot filters, without enumerating corpus IDs.
     if isinstance(value, Mapping):
-        return any((key == "$in" and item == []) or _empty_in(item) for key, item in value.items())
+        if value == {"$type": "string"}:
+            return {"$gt": ""}
+        return {key: _search_identifier_types(item) for key, item in value.items()}
     if isinstance(value, list):
-        return any(_empty_in(item) for item in value)
-    return False
+        return [_search_identifier_types(item) for item in value]
+    return value
+
+
+def _without_empty_in(
+    query: Mapping[str, Any], non_null_strings: frozenset[str] = frozenset()
+) -> dict[str, Any] | None:
+    """Preserve AND/OR truth while removing mongot's forbidden empty INs.
+
+    None means false, {} means true. A denied private-memory branch must not
+    force an otherwise expressible shared-memory policy into ID preselection.
+    """
+    clauses: list[dict[str, Any]] = []
+    for field, value in query.items():
+        if field in {"$and", "$or"}:
+            branches = [_without_empty_in(item, non_null_strings) for item in value]
+            if field == "$and" and any(item is None for item in branches):
+                return None
+            live = [item for item in branches if item is not None]
+            if field == "$or":
+                if not live:
+                    return None
+                if any(not item for item in live):
+                    continue
+            else:
+                live = [item for item in live if item]
+                if not live:
+                    continue
+            clauses.append(live[0] if len(live) == 1 else {field: live})
+        elif isinstance(value, Mapping) and value.get("$in") == []:
+            return None
+        elif value is None and field in non_null_strings:
+            # Strict served models cannot contain null in these fields. Old
+            # generic legacy predicates sometimes include an impossible null
+            # project-context branch alongside an empty project selector.
+            return None
+        else:
+            clauses.append({field: value})
+    return clauses[0] if len(clauses) == 1 else {"$and": clauses} if clauses else {}
 
 
 class TenantCursor:
@@ -432,11 +476,28 @@ class TenantCollection:
         return await self.raw.delete_many(await self._prepared_query(filters), **kwargs)
 
     async def _search_envelope(self, *, lexical: bool) -> dict[str, Any]:
-        envelope = await self._prepared_query()
+        envelope = _search_identifier_types(await self._prepared_query())
         try:
             converted = lexical_predicate(envelope)
-            if not lexical and _empty_in(envelope):
-                raise UnsupportedSearchPredicate("mongot refuses empty vector IN filters")
+            if not lexical:
+                from app.db.tenant_inventory import MODEL_BY_COLLECTION
+
+                non_null_strings = frozenset(
+                    name
+                    for name, field in MODEL_BY_COLLECTION[self.collection].model_fields.items()
+                    if field.annotation is str
+                )
+                simplified = _without_empty_in(envelope, non_null_strings)
+                envelope = (
+                    simplified
+                    if simplified is not None
+                    else {
+                        "$and": [
+                            {"org_id": require_tenant().org_id},
+                            {"org_id": {"$ne": require_tenant().org_id}},
+                        ]
+                    }
+                )
         except UnsupportedSearchPredicate:
             rows = (
                 await self.raw.find(envelope, {"_id": 1})

@@ -59,6 +59,22 @@ AGENT_STANDARD_INDEX_DEFINITIONS: Final[dict[str, tuple[IndexModel, ...]]] = {
     "agent_activity": (
         IndexModel([("event_id", ASCENDING)], unique=True, name="agent_activity_event_id_uq"),
         IndexModel(
+            [
+                (field, ASCENDING)
+                for field in (
+                    "created_at",
+                    "status",
+                    "client_id",
+                    "sponsor_id",
+                    "sponsorship_revision",
+                    "latency_ms",
+                    "sponsor_team_id",
+                    "project_id",
+                )
+            ],
+            name="agent_activity_overview_cover",
+        ),
+        IndexModel(
             [("client_id", ASCENDING), ("created_at", DESCENDING)],
             name="agent_activity_client_created",
         ),

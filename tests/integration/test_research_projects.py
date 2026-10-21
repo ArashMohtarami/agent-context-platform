@@ -6,10 +6,10 @@ from contextlib import asynccontextmanager
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.initializer import initialize_database
 from app.repositories.project_repository import MongoProjectRepository
 from app.repositories.research_repository import MongoResearchProjectRepository
 from app.services.project_service import ProjectService

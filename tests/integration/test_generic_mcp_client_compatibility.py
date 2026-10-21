@@ -11,6 +11,7 @@ import pytest
 from bson import ObjectId
 from fastapi import FastAPI
 from mcp.shared.memory import create_connected_server_and_client_session
+from v6_legacy_integration import unified_search_ready
 
 from app.core.config import get_settings
 from app.embeddings.types import EmbeddingVector
@@ -106,6 +107,9 @@ async def compatibility_application(
     application = create_app(settings)
     async with application.router.lifespan_context(application):
         application.state.embeddings = GatewayEmbedder()
+        await unified_search_ready(
+            application.state.mongodb.database, settings.embedding_dimensions
+        )
         database = application.state.mongodb.database
         client_id = f"phase6-{variant}-{run_id}"
         project_id = f"phase6-project-{variant}-{run_id}"

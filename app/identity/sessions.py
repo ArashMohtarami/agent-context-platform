@@ -137,14 +137,30 @@ class BrowserSessions:
             "idle_expires_at": {"$gt": now},
             "expires_at": {"$gt": now},
         }
-        row = await self.store.find("browser_sessions", query, tx)
+        if kind == "human" and tx is None:
+            inputs = await self.store.read_human_session(query)
+            row = inputs.row if inputs is not None else None
+        else:
+            inputs = None
+            row = await self.store.find("browser_sessions", query, tx)
         if row is None:
             raise AuthRejected("authentication was not accepted")
         if kind == "human":
             if self.providers and not row.get("authentication"):
                 raise AuthRejected("authentication was not accepted")
-            await self.authority(row, tx)
+            if inputs is not None:
+                await self._policy_authority(
+                    row, inputs.user, inputs.member, inputs.org, tx, identity=inputs.identity
+                )
+            else:
+                await self.authority(row, tx)
+        # Authority/provider checks may take time. Expiry must still be current
+        # at delivery, including refreshes that deliberately do not extend idle.
+        now = utc_now()
+        if row["expires_at"] <= now or row["idle_expires_at"] <= now:
+            raise AuthRejected("authentication was not accepted")
         if touch:
+            query = {**query, "idle_expires_at": {"$gt": now}, "expires_at": {"$gt": now}}
             updated = await self.store.update(
                 "browser_sessions",
                 query,
@@ -164,41 +180,49 @@ class BrowserSessions:
     async def authority(
         self, row: Row, tx: AsyncClientSession | None = None
     ) -> tuple[Row, Row, Row]:
-        user = await self.store.find(
-            "users",
-            {"_id": row["user_id"], "status": "active", "auth_epoch": row["auth_epoch"]},
-            tx,
-        )
-        member = await self.store.find(
-            "organization_memberships",
-            {
-                "_id": row["membership_id"],
-                "user_id": row["user_id"],
-                "org_id": row["org_id"],
-                "revision": row["membership_revision"],
-                "status": "active",
-                "verified_at": {"$ne": None},
-            },
-            tx,
-        )
-        org = await self.store.find(
-            "organizations",
-            {
-                "org_id": row["org_id"],
-                "status": "active",
-                "policy_version": row["policy_version"],
-            },
-            tx,
-        )
+        user, member, org = await self.store.session_authority(row, tx)
+        return await self._policy_authority(row, user, member, org, tx)
+
+    async def _policy_authority(
+        self,
+        row: Row,
+        user: Row | None,
+        member: Row | None,
+        org: Row | None,
+        tx: AsyncClientSession | None,
+        *,
+        identity: Row | None = None,
+    ) -> tuple[Row, Row, Row]:
         if not user or not member or not org:
             raise AuthRejected("authentication was not accepted")
         from app.identity.org_policy import check_policy
 
-        await check_policy(self.store, self.providers, row, org, tx)
+        await check_policy(self.store, self.providers, row, org, tx, identity=identity)
         return user, member, org
 
     async def fence(self, row: Row, tx: AsyncClientSession) -> tuple[Row, Row, Row]:
-        user, member, org = await self.authority(row, tx)
+        now = utc_now()
+        inputs = await self.store.read_human_session(
+            {
+                "_id": row["_id"],
+                "kind": "human",
+                "revoked": False,
+                "user_id": row["user_id"],
+                "org_id": row["org_id"],
+                "membership_id": row["membership_id"],
+                "membership_revision": row["membership_revision"],
+                "auth_epoch": row["auth_epoch"],
+                "policy_version": row["policy_version"],
+                "expires_at": {"$gt": now},
+                "idle_expires_at": {"$gt": now},
+            },
+            tx,
+        )
+        if inputs is None:
+            raise AuthRejected("authentication was not accepted")
+        user, member, org = await self._policy_authority(
+            row, inputs.user, inputs.member, inputs.org, tx, identity=inputs.identity
+        )
         now = utc_now()
         if self.policy_engine:
             anchor = await self.store.find(
@@ -206,10 +230,12 @@ class BrowserSessions:
             )
             if anchor:
                 await self.policy_engine.fence(anchor, tx)
+            now = utc_now()
             if not await self.store.update(
                 "browser_sessions",
                 {
                     "_id": row["_id"],
+                    "kind": "human",
                     "revoked": False,
                     "expires_at": {"$gt": now},
                     "idle_expires_at": {"$gt": now},
@@ -218,7 +244,7 @@ class BrowserSessions:
                 tx,
             ):
                 raise AuthRejected("authentication was not accepted")
-        if not await self.store.find(
+        elif not await self.store.find(
             "browser_sessions",
             {
                 "_id": row["_id"],

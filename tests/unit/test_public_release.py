@@ -342,3 +342,27 @@ def test_dashboard_source_build_contract_and_licenses_are_in_public_release(publ
     assert set(release.audited_files(public_root)) == {
         PurePosixPath(name) for name in (*public, "README.md", "LICENSE", "pyproject.toml")
     }
+
+
+def test_site_source_download_checks_unlinked_sources_for_private_text(
+    public_root, tmp_path, monkeypatch
+):
+    from website import build as site
+
+    put(public_root, "website/index.html", b"<html><body>Public website</body></html>")
+    put(public_root, "website/assets/favicon.svg", b"<svg></svg>")
+    put(public_root, "docs/usage-guide.html", b"<html><body>Public guide</body></html>")
+    put(public_root, "deploy/website/compose.yml")
+    put(public_root, "deploy/website/nginx.conf")
+    put(public_root, "scripts/prepare_open_source_release.py", Path(release.__file__).read_bytes())
+    # This file is not linked by any HTML page. The bundled source must still
+    # obey the site's explicit private-text rule, without echoing the value.
+    put(public_root, "app/unlinked.py", b"fixture_private_name")
+    monkeypatch.setattr(site, "ROOT", public_root)
+    monkeypatch.setattr(site, "HERE", public_root / "website")
+    monkeypatch.setattr(site, "PUBLIC_DOCS", frozenset())
+    monkeypatch.setattr(site, "FORBIDDEN_TEXT", ("fixture_private_name",))
+
+    with pytest.raises(subprocess.CalledProcessError):
+        site.assemble(tmp_path / "staged")
+    assert not (tmp_path / "staged/downloads/agent-context-platform-source.tar.gz").exists()

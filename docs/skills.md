@@ -1,5 +1,12 @@
 # Skills: canonical sources and runtime import
 
+All runtime records and search candidates described here belong to one trusted
+organization. `global` means organization-global, with explicit action/resource
+policy; it never means a null-org or cross-installation corpus. Imported skills
+are tenant-owned copies of canonical Git. Private agent memory also retains
+verified client ownership and is not revealed by human management visibility.
+
+
 ## Canonical source and directory layout
 
 Git-tracked UTF-8 Markdown under `skills/` is the canonical source. MongoDB is a validated runtime

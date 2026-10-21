@@ -214,6 +214,11 @@ async def test_real_dashboard_browser(managed_agents_db):
     temporary.replace(descriptor)
     child = None
     if os.environ.get("V6_BROWSER_SERVE_ONLY") != "1":
+        selectors = (
+            []
+            if os.environ.get("V6_FULL_ACCEPTANCE") == "1"
+            else ["e2e/auth.spec.ts", "e2e/org-switch.spec.ts", "e2e/my-security.spec.ts"]
+        )
         child = await asyncio.create_subprocess_exec(
             "npm",
             "--prefix",
@@ -221,9 +226,7 @@ async def test_real_dashboard_browser(managed_agents_db):
             "run",
             "test:e2e",
             "--",
-            "e2e/auth.spec.ts",
-            "e2e/org-switch.spec.ts",
-            "e2e/my-security.spec.ts",
+            *selectors,
         )
     last_provider_code = ""
     try:
@@ -244,6 +247,78 @@ async def test_real_dashboard_browser(managed_agents_db):
                             path.unlink()
                         for name, contents in mail_snapshot.items():
                             (mail_root / name).write_bytes(contents)
+                    elif action == "performance-directory":
+                        # Explicit fictional people, exact identities and no
+                        # assignments. These records never authenticate or get
+                        # corpus rights; the real directory must page them.
+                        user = await h.db.users.find_one({"_id": "member"})
+                        identity = await h.db.user_identities.find_one(
+                            {"user_id": "member", "provider": "local"}
+                        )
+                        member = await h.db.organization_memberships.find_one(
+                            {"org_id": "org-a", "user_id": "member"}
+                        )
+                        for offset in range(0, 10000, 1000):
+                            users, identities, members = [], [], []
+                            for index in range(offset, offset + 1000):
+                                identifier = f"benchmark-person-{index:05d}"
+                                display = f"Fictional performance person {index:05d}"
+                                users.append({**user, "_id": identifier, "display_name": display})
+                                identities.append(
+                                    {
+                                        **identity,
+                                        "_id": "identity-" + identifier,
+                                        "user_id": identifier,
+                                        "subject": identifier + "@example.test",
+                                    }
+                                )
+                                members.append(
+                                    {
+                                        **member,
+                                        "_id": "membership-" + identifier,
+                                        "user_id": identifier,
+                                        "display_name": display,
+                                        "bootstrap_owner": False,
+                                        "bootstrap_intent": None,
+                                    }
+                                )
+                            await h.db.users.insert_many(users)
+                            await h.db.user_identities.insert_many(identities)
+                            await h.db.organization_memberships.insert_many(members)
+                        result = {
+                            "source_count": await h.db.organization_memberships.count_documents(
+                                {"org_id": "org-a"}
+                            ),
+                            "inserted": 10000,
+                            "org_id": "org-a",
+                            "assignment_count": await h.db.policy_assignments.count_documents(
+                                {"subject_id": {"$regex": "^benchmark-person-"}}
+                            ),
+                        }
+                    elif action == "performance-directory-explain":
+                        from app.management.directory import MEMBER_FIELDS, member_query
+
+                        snapshot = await h.engine.snapshot("org-a", "owner")
+                        explanation = await h.db.command(
+                            "explain",
+                            {
+                                "find": "organization_memberships",
+                                "filter": member_query(snapshot),
+                                "projection": {field: 1 for field in MEMBER_FIELDS},
+                                "sort": {"user_id": 1},
+                                "limit": 21,
+                            },
+                            verbosity="executionStats",
+                        )
+                        stats = explanation["executionStats"]
+                        result = {
+                            "returned_with_cursor_probe": stats["nReturned"],
+                            "documents_examined": stats["totalDocsExamined"],
+                            "keys_examined": stats["totalKeysExamined"],
+                            "documents_per_returned": stats["totalDocsExamined"]
+                            / max(1, stats["nReturned"]),
+                            "scope": "actual Directory member predicate/projection/sort/limit",
+                        }
                     elif action == "monitoring":
                         from tests.v6_monitoring_fixtures import prepare_monitoring
 
@@ -348,9 +423,24 @@ async def test_real_dashboard_browser(managed_agents_db):
                 request.unlink()
             await asyncio.sleep(0.02)
         if child:
-            assert await child.wait() == 0, (
+            import shutil
+
+            from v6_acceptance import reconcile_browser
+
+            status = await child.wait()
+            artifacts = Path("dashboard/test-results")
+            if os.environ.get("V6_REPORT_DIR") and artifacts.is_dir():
+                saved = Path(os.environ["V6_REPORT_DIR"]) / "browser-artifacts"
+                shutil.copytree(artifacts, saved)
+            assert status == 0, (
                 "real browser acceptance failed; inspect private Playwright artifacts"
             )
+            required = (
+                {p.name for p in Path("dashboard/e2e").glob("*.spec.ts")}
+                if not selectors
+                else {Path(p).name for p in selectors}
+            )
+            reconcile_browser(artifacts / "browser.xml", required)
     finally:
         if server and task:
             server.should_exit = True

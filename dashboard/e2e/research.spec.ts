@@ -61,6 +61,9 @@ test('ingest, inspect, independently review and promote current evidence through
 
 test('bounded upload, foreign citation and revoked job download fail safely', async ({page}) => {
   await localLogin(page); await goto(page, 'research/' + project);
+  await expect(page.getByRole('button', {name: 'Register source', exact: true})).toBeVisible();
+  await expect(page.locator('.skeleton')).toHaveCount(0);
+  await page.waitForLoadState('networkidle');
   expect((await api(page, base + '/sources', {research_project_id: project, source_id: 'browser-evidence', source_type: 'file', uri: 'file:///uploads/fictional.txt', title: 'Fictional file'})).status()).toBe(201);
   await page.reload(); await page.getByRole('button', {name: 'Ingest Fictional file'}).click(); await page.getByLabel('Ingestion method').selectOption('file');
   await page.getByLabel('Evidence file').setInputFiles({name: 'fictional.txt', mimeType: 'text/plain', buffer: Buffer.from('Fictional local file evidence')});

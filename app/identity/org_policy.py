@@ -13,6 +13,28 @@ from app.models.common import utc_now
 type Row = dict[str, Any]
 
 
+async def _identity(
+    store: IdentityStore,
+    row: Row,
+    provider: str,
+    tx: AsyncClientSession | None,
+    joined: Row | None,
+) -> Row | None:
+    query = {
+        "_id": row["authentication"]["identity_id"],
+        "user_id": row["user_id"],
+        "provider": provider,
+        "verified_at": {"$ne": None},
+    }
+    if joined is None:
+        return await store.find("user_identities", query, tx)
+    if not joined.get("verified_at") or any(
+        joined.get(key) != query[key] for key in ("_id", "user_id", "provider")
+    ):
+        raise AuthRejected("authentication was not accepted")
+    return joined
+
+
 async def approved_provider(
     store: IdentityStore, registry: Registry, org: Row, tx: AsyncClientSession | None = None
 ) -> Registration:
@@ -34,20 +56,13 @@ async def check_policy(
     row: Row,
     org: Row,
     tx: AsyncClientSession | None = None,
+    *,
+    identity: Row | None = None,
 ) -> None:
     evidence = row.get("authentication")
     method = evidence["method"] if evidence else "local"
     if method == "local":
-        if evidence and not await store.find(
-            "user_identities",
-            {
-                "_id": evidence["identity_id"],
-                "provider": "local",
-                "user_id": row["user_id"],
-                "verified_at": {"$ne": None},
-            },
-            tx,
-        ):
+        if evidence and not await _identity(store, row, "local", tx, identity):
             raise AuthRejected("authentication was not accepted")
         if org["auth_policy"] in {"local_only", "sso_preferred"}:
             return
@@ -83,16 +98,7 @@ async def check_policy(
         and evidence["valid_until"] > utc_now()
     ):
         raise AuthRejected("target organization authentication is required")
-    identity = await store.find(
-        "user_identities",
-        {
-            "_id": evidence["identity_id"],
-            "user_id": row["user_id"],
-            "provider": registration.issuer,
-            "verified_at": {"$ne": None},
-        },
-        tx,
-    )
+    identity = await _identity(store, row, registration.issuer, tx, identity)
     if not identity or (
         registration.require_mfa
         and not provider_mfa(

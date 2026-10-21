@@ -1,5 +1,9 @@
 # Authorized summaries and reports
 
+Release acceptance is still pending. The final-fence natural-expiry regression
+passes its focused real MongoDB gate; complete-source verification remains
+required. See [verification and known limits](verification.md).
+
 Phase 8 establishes the server read contracts; the [Phase 14 UI](dashboard-monitoring.md) consumes them. It requires an activated
 Phase 7 installation, verified human browser sessions and current organization
 policy. Existing bearer/MCP interfaces cannot authenticate these routes with a
@@ -82,7 +86,8 @@ precede guaranteed collection; those observations remain partial/unattributed.
 Subsequent checkpoints preserve the collection start and only advance the
 retention floor. Checkpointing acquires the shared policy anchor and commits
 its declaration with governance audit/outbox. It does not advance the policy
-revision or fabricate a background collector. Operators must refresh the
+revision for an ordinary watermark refresh. A new or narrowed retention floor
+does advance the policy revision. No checkpoint fabricates a background collector. Operators must refresh the
 checkpoint when they can attest to continued collection; after 15 minutes its
 state is stale. Declared gaps are preserved across checkpoints. Restoring an
 unavailable source records its outage interval; a window overlapping a gap
@@ -102,6 +107,35 @@ Phase 14 adds server-computed distinct verified clients, finite reported latency
 within one snapshot serialized with policy revocation. A page length is never a
 total. Timezone changes bucket boundaries, not stored event instants.
 
+Overview aggregate data has a bounded process cache: at most 128 results and
+4 MiB of encoded result payload per policy engine/source, with a 30-second
+maximum lifetime. Keys bind
+organization, subject, exact action/resource visibility, policy revision,
+retention and all query filters. A MongoDB change stream is opened before the
+first data snapshot and drained before reuse. Inserts (including late ones)
+invalidate their own organization's results; edits/deletions without a known
+prior owner conservatively invalidate the source. Observer generations are
+bounded to 512 organizations. Interrupted observation discards
+the cache and refuses reuse. Overlapping identical computations share bounded
+work. These are cached MongoDB aggregates, not persistent historical rollups or
+cached authority. `generated_at` retains the original observation time.
+
+Every response reauthorizes current membership, ancestry and visibility, fences
+the policy anchor, then checks natural grant expiry synchronously after the last
+await. Cold overview aggregation has a ten-second database ceiling; ordinary
+detail/report operations retain their three-second ceiling. Cold latency and
+warm-cache latency must be measured separately. The cache has no disk, backup,
+outbox, browser-storage or credential payload. Its change-stream cursor belongs
+to the database client and requires MongoDB change-stream read permission.
+
+Summary routes authenticate the browser and bind an identity-only principal
+with no corpus grants. Their services obtain fresh transactional policy
+snapshots for the actual metadata action and resources. The three directory
+list routes (members, teams, team members) similarly use their directory
+service's fresh action-specific snapshot and database predicate. Other domain
+routes retain their normal corpus policy boundary. Headers/body fields cannot
+select this server-owned route behavior or turn an empty policy into ALL.
+
 The served retention floor applies to detail, aggregate and downloads even when
 installation archives retain older events. Physical deletion/archive retention
 remains explicitly `installation_managed`; Phase 8 does not claim an automatic
@@ -115,7 +149,7 @@ catalog allows owner/admin/auditor export assignments; an executive aggregate
 assignment or a team lead role alone cannot export. Creation requires CSRF,
 Origin and recent MFA. Downloads require the same recipient, active browser
 session, recent MFA, unchanged policy/membership revision, current source
-visibility and an unexpired ten-minute descriptor. Revocation/reinstatement or
+visibility and an unexpired five-minute descriptor. Revocation/reinstatement or
 widening cannot resurrect an old report. Links grant no bearer authority.
 Current retention can further narrow a previously requested report.
 

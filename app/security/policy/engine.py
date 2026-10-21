@@ -1,5 +1,6 @@
 """Uncached policy resolution and a concrete shared MongoDB serialization fence."""
 
+import asyncio
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import replace
@@ -31,22 +32,26 @@ class PolicyEngine:
         self.managed_agents = managed_agents
         self.schema_version = 42 if managed_agents else 41 if human_management else 40
 
-    async def enabled(self) -> None:
-        if not await self.store.find(
-            "_management_policy_control",
-            {"_id": "installation", "schema_version": self.schema_version},
-        ):
-            raise PolicyDenied("management policy is unavailable")
-        if self.human_management and not await self.store.find(
-            "_human_management_control",
-            {"_id": "installation", "schema_version": self.schema_version},
-        ):
-            raise PolicyDenied("human management migration is incomplete")
+    def installation_controls(self) -> list[tuple[str, Row]]:
+        names = ["_management_policy_control"]
+        if self.human_management:
+            names.append("_human_management_control")
+        if self.managed_agents:
+            names.append("_managed_agents_control")
+        return [(name, {"schema_version": self.schema_version}) for name in names]
 
-        if self.managed_agents and not await self.store.find(
-            "_managed_agents_control", {"_id": "installation", "schema_version": 42}
-        ):
-            raise PolicyDenied("managed agents migration is incomplete")
+    async def enabled(self) -> None:
+        controls = [("_management_policy_control", "management policy is unavailable")]
+        if self.human_management:
+            controls.append(
+                ("_human_management_control", "human management migration is incomplete")
+            )
+        if self.managed_agents:
+            controls.append(("_managed_agents_control", "managed agents migration is incomplete"))
+        flags = await self.store.control_flags(self.installation_controls())
+        for name, message in controls:
+            if not flags[name]:
+                raise PolicyDenied(message)
 
     async def validate_resources(self, org_id: str, tuples: tuple[Grant, ...], tx: Any) -> None:
         boundaries = {
@@ -115,36 +120,150 @@ class PolicyEngine:
         if not result:
             raise PolicyConflict("policy changed; refresh effective access")
 
-    async def snapshot(self, org_id: str, subject_id: str, tx: Any = None) -> Row:
-        await self.enabled()
-        anchor = await self.anchor(org_id, tx)
-        organization = await self.store.find(
-            "organizations", {"org_id": org_id, "status": "active"}, tx
+    async def confirm_read(self, anchor: Row) -> None:
+        """Linearize read delivery against governance without holding a long lock.
+
+        An atomic majority write checks the current anchor, rather than a
+        possibly stale transaction snapshot. Governance still fences mutations
+        inside its transaction; either operation must observe the other's write.
+        """
+        collection = self.store._collection("policy_anchors").with_options(
+            write_concern=WriteConcern("majority", wtimeout=3000)
         )
+        try:
+            async with asyncio.timeout(3):
+                result = await collection.update_one(
+                    {
+                        "_id": anchor["_id"],
+                        "org_id": anchor["org_id"],
+                        "revision": anchor["revision"],
+                        "status": "active",
+                    },
+                    {"$inc": {"fence": 1}},
+                )
+        except TimeoutError:
+            raise PolicyConflict("policy confirmation timed out; refresh bounded filters") from None
+        if result.matched_count != 1:
+            raise PolicyConflict("policy changed; refresh effective access")
+
+    async def read_inputs(self, org_id: str, subject_id: str, tx: Any = None) -> Row:
+        """One fresh bounded read; every tenant lookup is prefiltered by org.
+
+        Global users are selected only by the exact subject IDs needed for this
+        org's ancestry evaluation. No rows or decisions survive this request.
+        A transaction performs this as one operation on its existing session;
+        no operations run concurrently on a shared MongoDB session.
+        """
+        pipeline: list[Row] = [
+            {"$match": {"_id": org_id, "org_id": org_id, "status": "active"}},
+            {"$limit": 1},
+        ]
+        if tx is None:
+            controls = []
+            for index, (name, query) in enumerate(self.installation_controls()):
+                alias = f"policy_control_{index}"
+                controls.append(alias)
+                pipeline.extend(
+                    [
+                        {
+                            "$lookup": {
+                                "from": name,
+                                "pipeline": [
+                                    {"$match": {**query, "_id": "installation"}},
+                                    {"$limit": 1},
+                                    {"$project": {"_id": 1}},
+                                ],
+                                "as": alias,
+                            }
+                        },
+                        {"$match": {f"{alias}.0._id": "installation"}},
+                    ]
+                )
+            pipeline.append({"$unset": controls})
+        for name, alias, query in (
+            ("organizations", "organization_rows", {"org_id": org_id, "status": "active"}),
+            ("policy_assignments", "assignment_rows", {"org_id": org_id}),
+            *(
+                (
+                    ("teams", "team_rows", {"org_id": org_id}),
+                    ("team_memberships", "team_link_rows", {"org_id": org_id}),
+                )
+                if self.human_management
+                else ()
+            ),
+        ):
+            pipeline.append(
+                {
+                    "$lookup": {
+                        "from": name,
+                        "as": alias,
+                        "pipeline": [{"$match": query}, {"$limit": MAX_ASSIGNMENTS + 1}],
+                    }
+                }
+            )
+        pipeline.append(
+            {
+                "$set": {
+                    "policy_subject_ids": {
+                        "$setUnion": [
+                            {"$literal": [subject_id]},
+                            "$assignment_rows.subject_id",
+                        ]
+                    }
+                }
+            }
+        )
+        for name, field, alias, query in (
+            ("organization_memberships", "user_id", "member_rows", {"org_id": org_id}),
+            ("users", "_id", "user_rows", {}),
+        ):
+            pipeline.append(
+                {
+                    "$lookup": {
+                        "from": name,
+                        "localField": "member_rows.user_id"
+                        if name == "users"
+                        else "policy_subject_ids",
+                        "foreignField": field,
+                        "as": alias,
+                        "pipeline": [
+                            *([{"$match": query}] if query else []),
+                            {"$limit": MAX_ASSIGNMENTS + 1},
+                        ],
+                    }
+                }
+            )
+        pipeline.append({"$unset": "policy_subject_ids"})
+        rows = await (
+            await self.store._collection("policy_anchors").aggregate(
+                pipeline, session=tx, maxTimeMS=3000, allowDiskUse=False
+            )
+        ).to_list(1)
+        if not rows:
+            raise PolicyDenied("organization policy is not activated")
+        return rows[0]
+
+    async def snapshot(self, org_id: str, subject_id: str, tx: Any = None) -> Row:
+        if tx is not None:
+            # A transaction may have an older snapshot. Its installation guard
+            # must still read current control markers outside that snapshot.
+            await self.enabled()
+        inputs = await self.read_inputs(org_id, subject_id, tx)
+        organizations = inputs.pop("organization_rows")
+        organization = organizations[0] if organizations else None
+        rows = inputs.pop("assignment_rows")
+        member_records = inputs.pop("member_rows")
+        user_records = inputs.pop("user_rows")
+        team_records = inputs.pop("team_rows", [])
+        link_records = inputs.pop("team_link_rows", [])
+        anchor = inputs
         if not organization:
             raise PolicyDenied("organization is unavailable")
-        rows = (
-            await self.store._collection("policy_assignments")
-            .find({"org_id": org_id}, session=tx)
-            .limit(MAX_ASSIGNMENTS + 1)
-            .to_list(MAX_ASSIGNMENTS + 1)
-        )
         if len(rows) > MAX_ASSIGNMENTS:
             raise PolicyDenied("organization policy exceeds its bounded evaluation capacity")
         assignments = {r["_id"]: r for r in rows}
-        ids = sorted({subject_id, *(r["subject_id"] for r in rows)})
-        members = {
-            r["user_id"]: r
-            for r in await self.store._collection("organization_memberships")
-            .find({"org_id": org_id, "user_id": {"$in": ids}}, session=tx)
-            .to_list(MAX_ASSIGNMENTS + 1)
-        }
-        users = {
-            r["_id"]: r
-            for r in await self.store._collection("users")
-            .find({"_id": {"$in": ids}}, session=tx)
-            .to_list(MAX_ASSIGNMENTS + 1)
-        }
+        members = {r["user_id"]: r for r in member_records}
+        users = {r["_id"]: r for r in user_records}
         member, user = members.get(subject_id), users.get(subject_id)
         if (
             not member
@@ -157,18 +276,6 @@ class PolicyEngine:
         teams: dict[str, Row] = {}
         links: dict[tuple[str, str], Row] = {}
         if self.human_management:
-            team_records = (
-                await self.store._collection("teams")
-                .find({"org_id": org_id}, session=tx)
-                .limit(MAX_ASSIGNMENTS + 1)
-                .to_list(MAX_ASSIGNMENTS + 1)
-            )
-            link_records = (
-                await self.store._collection("team_memberships")
-                .find({"org_id": org_id}, session=tx)
-                .limit(MAX_ASSIGNMENTS + 1)
-                .to_list(MAX_ASSIGNMENTS + 1)
-            )
             if max(len(team_records), len(link_records)) > MAX_ASSIGNMENTS:
                 raise PolicyDenied("organization directory exceeds bounded policy capacity")
             teams = {r["team_id"]: r for r in team_records}
@@ -355,7 +462,9 @@ class PolicyEngine:
 
     @asynccontextmanager
     async def domain_fence(self, policy: TenantPolicy, session: Any = None) -> AsyncIterator[Any]:
-        # No automatic replay: a stale human approval must be reviewed again.
+        # The fence never replays an operation. Human decisions remain explicit;
+        # the storage hook separately retries only confirmed-aborted ingestion
+        # persistence, with a newly entered fence on each attempt.
         if session is not None:
             snapshot = await self.revalidate(policy, session)
             await self.fence(snapshot["anchor"], session)

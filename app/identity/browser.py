@@ -1,5 +1,6 @@
 """Session-only transport, CSRF/Origin checks and cookie/bearer separation."""
 
+import asyncio
 import hmac
 import logging
 from dataclasses import dataclass, field
@@ -82,8 +83,12 @@ async def identity_boundary(request: Request) -> LocalIdentity:
         raise HTTPException(404, "local identity is disabled")
     if "authorization" in request.headers or request.url.scheme != "https":
         raise HTTPException(401, "authentication was not accepted")
-    await service.enabled()
-    await service.throttle("network", request.client.host if request.client else "unknown", 120)
+    # Independent installation checks; neither reads a human identity or corpus.
+    # Both must finish before authentication. The atomic quota is unchanged.
+    await asyncio.gather(
+        service.enabled(),
+        service.throttle("network", request.client.host if request.client else "unknown", 120),
+    )
     if request.method not in {"GET", "HEAD", "OPTIONS"}:
         origin = request.app.state.settings.v6_browser_origin
         if (
@@ -137,12 +142,17 @@ async def current_browser(request: Request, service: IdentityBoundary) -> Browse
         service.assurance(row),
         (row.get("authentication") or {}).get("method", "local"),
     )
-    control = (
-        await service.store.find("_tenant_control", {"_id": "installation"})
-        if service.policy_engine and service.policy_engine.human_management
-        else None
-    )
-    secret = (control or {}).get("cursor_secret")
+    state = request.scope.get("state", {})
+    if "acp_tenant_cursor_secret" in state:
+        secret = state["acp_tenant_cursor_secret"]
+    else:
+        # Direct service/verification callers without the maintenance middleware.
+        control = (
+            await service.store.find("_tenant_control", {"_id": "installation"})
+            if service.policy_engine and service.policy_engine.human_management
+            else None
+        )
+        secret = (control or {}).get("cursor_secret")
     establish_tenant(TenantContext(row["org_id"], secret if isinstance(secret, bytes) else None))
     if service.policy_engine:
         from app.security.tenant_policy import TenantPolicy, bind_policy
@@ -156,6 +166,25 @@ async def current_browser(request: Request, service: IdentityBoundary) -> Browse
             service.sessions.recent(row)
             await service.sessions.fence(row, tx)
 
+        if getattr(request.state, "v6_service_policy", False) is True:
+            # No corpus authority is needed or supplied by this boundary.
+            # Selected metadata services authorize from fresh policy snapshots;
+            # retain current-session refresh and mutation fences for retries.
+            bind_policy(
+                TenantPolicy(
+                    row["org_id"],
+                    row["user_id"],
+                    (),
+                    managed=True,
+                    subject_kind="human",
+                    subject_revision=row["membership_revision"],
+                    session_id=row["public_id"],
+                    engine=service.policy_engine,
+                    refresh=refresh,
+                    transaction_check=transaction_check,
+                )
+            )
+            return BrowserContext(service, row, token)
         anchor = await service.store.find(
             "policy_anchors", {"_id": row["org_id"], "status": "active"}
         )

@@ -162,6 +162,7 @@ async def hosted_stack(h, origin, tls, root, *, local_only=False):
         assert api["environment"][key] == "true"
     assert api["environment"]["MCP_REMOTE_ALLOW_LOOPBACK_HTTP"] == "false"
     assert api["environment"]["API_FORWARDED_ALLOW_IPS"] == proxy_ip
+    assert api["environment"]["MONGODB_MIN_POOL_SIZE"] == "50"
     assert console["build"]["target"] == "console"
     assert api["build"]["target"] == "production"
     # Retain shipped security/health/routing settings; replace ONLY test I/O and topology.
@@ -220,6 +221,39 @@ async def hosted_stack(h, origin, tls, root, *, local_only=False):
                 raise AssertionError(
                     "disposable production API/TLS gateway not ready; see private logs"
                 )
+        from app.services.tenant_isolation_service import source_fingerprint
+
+        observed = (
+            await docker(
+                *compose,
+                "exec",
+                "-T",
+                "context-api",
+                "python",
+                "-c",
+                (
+                    "from app.services.tenant_isolation_service import source_fingerprint; "
+                    "print(source_fingerprint())"
+                ),
+                env=env,
+            )
+        ).strip()
+        expected = source_fingerprint()
+        assert observed == expected, (
+            "production API image differs from the tested runtime source; rebuild it"
+        )
+        image_ids = {}
+        for service in ("context-api", "console"):
+            container_id = (await docker(*compose, "ps", "-q", service, env=env)).strip()
+            image_ids[service] = (
+                await docker("inspect", "--format", "{{.Image}}", container_id)
+            ).strip()
+        identity_report = Path(os.environ["V6_REPORT_DIR"]) / (
+            "image-identity-" + root.name + ".json"
+        )
+        identity_report.write_text(
+            json.dumps({"runtime_source_sha256": observed, "images": image_ids}, indent=2) + "\n"
+        )
         if not local_only:
             for registration in registrations:
                 org = await h.db.organizations.find_one({"org_id": registration["org_id"]})

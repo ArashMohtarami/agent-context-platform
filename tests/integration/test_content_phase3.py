@@ -7,12 +7,12 @@ from contextlib import asynccontextmanager
 import pytest
 from bson import ObjectId
 from pymongo.asynchronous.database import AsyncDatabase
+from v6_legacy_integration import initialize_database
 
 from app.content.errors import InvalidContentLifecycleTransitionError
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
 from app.db.client_types import MongoDocument
-from app.db.initializer import initialize_database
 from app.models.common import utc_now
 from app.models.content import (
     ContentOrigin,
@@ -22,6 +22,8 @@ from app.models.content import (
     ContentStatus,
     CreatorProfileDocument,
 )
+from app.models.project import ProjectDocument
+from app.models.project_context import ProjectContextDocument
 from app.repositories.content_repository import (
     MongoContentBriefRepository,
     MongoContentCampaignRepository,
@@ -31,6 +33,8 @@ from app.repositories.content_repository import (
     MongoContentVersionRepository,
     MongoCreatorProfileRepository,
 )
+from app.repositories.context_repository import MongoProjectContextRepository
+from app.repositories.project_repository import MongoProjectRepository
 from app.services.content_service import ContentService
 
 pytestmark = [
@@ -84,6 +88,26 @@ async def test_content_storage_versions_rollback_and_profile_isolation() -> None
     try:
         async with initialized_mongodb() as mongodb:
             database = mongodb.database
+            await MongoProjectRepository(database).create(
+                ProjectDocument(
+                    project_id=project_id,
+                    name="Fictional content source",
+                    description="Synthetic regression fixture",
+                    repository="https://example.invalid/fictional.git",
+                    environment="test",
+                )
+            )
+            await MongoProjectContextRepository(database, project_id).create(
+                ProjectContextDocument(
+                    project_id=project_id,
+                    type="implementation",
+                    title="Retry rule",
+                    content="Store and replay the first result.",
+                    importance=0.5,
+                    external_id="retry-rule",
+                    source="integration-test",
+                )
+            )
             profiles = MongoCreatorProfileRepository(database)
             await profiles.create(CreatorProfileDocument(profile_id=profile_id, name="Phase 3"))
             await profiles.create(CreatorProfileDocument(profile_id=other_profile_id, name="Other"))

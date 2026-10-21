@@ -20,11 +20,25 @@ embedding, search, or remote MCP behavior. The standard unit suite runs without
 vendor credentials or a paid model call.
 
 ```bash
-.venv/bin/python -m pytest
+.venv/bin/python -m pytest tests/unit -q
 .venv/bin/python -m ruff check .
 .venv/bin/python -m ruff format --check .
 .venv/bin/python -m mypy app
 ```
+
+For documentation/distribution changes, rebuild before checking the actual artifacts:
+
+```sh
+.venv/bin/python website/build.py
+.venv/bin/python -m pytest tests/documentation -q
+.venv/bin/python scripts/prepare_open_source_release.py --check
+```
+
+The documentation tests verify the generated guide/site, local links and extracted
+source rather than skipping missing build output. The full real acceptance runner
+and its isolated MongoDB/mongot/OIDC/browser requirements are described in
+[verification](docs/verification.md). Required skips or known blocking failures
+leave release approval open. Keep reports/private plans out of public inventories.
 
 Run meaningful focused tests while editing, then these checks before submitting.
 For a database or search change, also run the relevant integration tests in a

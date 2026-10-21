@@ -99,7 +99,7 @@ COPY examples ./examples
 COPY scripts/codex-mcp-server.sh scripts/create-mongot-user.js \
      scripts/create-application-user.js scripts/verify-mongot.sh \
      scripts/backup.sh scripts/restore.sh scripts/prepare_open_source_release.py ./scripts/
-COPY scripts/test-v6-deployment.sh scripts/test-v6-isolation.sh ./scripts/
+COPY scripts/test-v6-deployment.sh scripts/test-v6-isolation.sh scripts/test-v6-acceptance.sh ./scripts/
 COPY tests ./tests
 RUN chown -R app:app /app
 

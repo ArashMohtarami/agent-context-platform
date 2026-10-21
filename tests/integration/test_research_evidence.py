@@ -8,10 +8,10 @@ from typing import Any
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database, seed_projects
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.initializer import initialize_database
 from app.models.research import (
     CitationLocator,
     CitationRelation,
@@ -19,6 +19,7 @@ from app.models.research import (
     ResearchAuthorization,
     ResearchChunkDocument,
     ResearchClaimDocument,
+    ResearchDocumentDocument,
     ResearchProjectDocument,
     ResearchSourceDocument,
     ResearchSourceType,
@@ -29,6 +30,7 @@ from app.repositories.research_repository import (
     MongoResearchChunkRepository,
     MongoResearchCitationRepository,
     MongoResearchClaimRepository,
+    MongoResearchDocumentRepository,
     MongoResearchProjectRepository,
     MongoResearchSourceCatalogRepository,
     MongoResearchSourceRepository,
@@ -116,6 +118,7 @@ async def test_phase_seven_citations_persist_with_existing_indexes_and_packet_pr
     try:
         async with initialized_mongodb() as mongodb:
             database = mongodb.database
+            await seed_projects(database, [project_id])
             await MongoResearchProjectRepository(database).create(
                 ResearchProjectDocument(
                     research_project_id=research_id,
@@ -144,6 +147,20 @@ async def test_phase_seven_citations_persist_with_existing_indexes_and_packet_pr
                     snapshot_id=snapshot_id,
                     retrieved_at=WHEN,
                     content_hash="a" * 64,
+                    authorization=authorization,
+                )
+            )
+            await MongoResearchDocumentRepository(database, research_id).create(
+                ResearchDocumentDocument(
+                    research_project_id=research_id,
+                    source_id=source_id,
+                    snapshot_id=snapshot_id,
+                    document_id="retry-document",
+                    title="Retained retry guide",
+                    content_type="text/plain",
+                    content="Retryable writes require an idempotency key.",
+                    content_hash="a" * 64,
+                    source_class=SourceClass.USER_PROVIDED,
                     authorization=authorization,
                 )
             )
@@ -213,7 +230,7 @@ async def test_phase_seven_citations_persist_with_existing_indexes_and_packet_pr
             assert packet.supporting_evidence[0].citation.citation_id == "manual-support"
             assert packet.citation_locators[0].path == f"manual:phase7-retries-{suffix}"
             assert packet.tokens_used <= packet.token_budget
-            assert "research_citation_claim_id_uq" in indexes
+            assert "tenant_research_citation_claim_id_uq" in indexes
     finally:
         async with initialized_mongodb() as mongodb:
             for collection_name in (

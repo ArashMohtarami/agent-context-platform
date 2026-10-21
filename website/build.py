@@ -157,11 +157,43 @@ def assemble(output: Path) -> tuple[int, int]:
     landing_page = landing_page.replace(
         'href="../docs/usage-guide.html', 'href="docs/usage-guide.html'
     ).replace('href="../LICENSE"', 'href="LICENSE"')
+    landing_page = landing_page.replace(
+        "</footer>",
+        '<p class="section-shell"><a href="downloads/agent-context-platform-source.tar.gz">'
+        "Audited source, including console source and licenses</a> · "
+        '<a href="downloads/SHA256SUMS">SHA-256 checksum</a></p></footer>',
+    )
     write("index.html", landing_page)
     add("docs/usage-guide.html")
     add("LICENSE")
     add("deploy/website/compose.yml")
     add("deploy/website/nginx.conf")
+
+    # Bundle the same audited source used for standalone distribution. This
+    # includes frontend source/lockfiles/licenses without admitting builds or
+    # private checkout state into the independently hostable marketing site.
+    source_name = "downloads/agent-context-platform-source.tar.gz"
+    source_archive = output / source_name
+    source_archive.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(  # noqa: S603 - Fixed local audited exporter, no shell.
+        [
+            sys.executable,
+            str(ROOT / "scripts/prepare_open_source_release.py"),
+            "--repository-root",
+            str(ROOT),
+            "--output",
+            str(source_archive),
+            *(argument for value in FORBIDDEN_TEXT for argument in ("--forbid-text", value)),
+        ],
+        cwd=ROOT,
+        check=True,
+    )
+    files.add(source_name)
+    write(
+        "downloads/SHA256SUMS",
+        hashlib.sha256(source_archive.read_bytes()).hexdigest()
+        + "  agent-context-platform-source.tar.gz\n",
+    )
 
     def directory_index(relative: str) -> str:
         if relative not in {

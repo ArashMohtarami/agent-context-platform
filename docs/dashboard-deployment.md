@@ -1,5 +1,10 @@
 # Console deployment and distribution
 
+**Release readiness is not approved.** See [verification and known limits](verification.md)
+for the outstanding complete acceptance gate. The following
+describes implemented deployment behavior, not permission to deploy.
+
+
 The implemented console lives in `dashboard/` in this repository. It shares one
 HTTPS origin with session-only `/api/v6`, the existing bearer APIs and `/mcp`.
 The optional public [marketing/documentation site](website.md) is a separate
@@ -61,6 +66,14 @@ passes API/MCP errors without interception and disables proxy caches/buffering.
 The app rechecks HTTPS, cookie/bearer separation, CSRF/Origin and current policy.
 An external load balancer is not implicitly trusted: this template terminates
 TLS directly; changing that topology needs a new reviewed trust configuration.
+
+The console overlay sets `MONGODB_MIN_POOL_SIZE=50` and retains the bounded
+`MONGODB_MAX_POOL_SIZE=50`. The driver maintains ready connections for concurrent
+authenticated directory work; base API/CLI configuration keeps a minimum of zero.
+Budget these pools per API process and replica-set server, and tune both values
+together for the installation. A minimum above the maximum refuses startup.
+This caches connections, never authority or identity records. See the official
+[PyMongo pool configuration](https://www.mongodb.com/docs/languages/python/pymongo-driver/current/connect/connection-options/connection-pools/).
 
 Only `/console/` extensionless navigation uses the SPA fallback. Missing files,
 `/console/assets/*`, APIs, MCP and other paths retain their errors. HTML and API
@@ -167,7 +180,8 @@ and [proxy forwarding](https://nginx.org/en/docs/http/ngx_http_proxy_module.html
 [Whole-installation backup/recovery](backup.md) remains host-operator-only.
 Stop domain writers/jobs/MCP, block ingress, and record the old/new image digests,
 source revision, schema head and all actual worker versions before adoption or
-restore. Follow [tenant adoption](tenant-adoption.md) and
+restore. Follow the [staged migration/recovery procedure](migration-recovery.md),
+[tenant adoption](tenant-adoption.md) and
 [isolation cutover](tenant-isolation.md); explicit organization selection,
 preservation manifests, reference closure and current evidence are required.
 Do not bypass activation by changing flags or moving unknown data. Extra orgs
@@ -233,3 +247,77 @@ limits for every run; successful mock/component tests do not establish this gate
 Extract the source archive, re-audit it and run locked frontend install/license/
 static build there. Missing mirrors, images, wheels or browser infrastructure
 must be reported as incomplete evidence, not a passing build.
+
+## Complete acceptance and hardening
+
+Use `scripts/test-v6-acceptance.sh` for the complete Python unit/integration and
+real browser gate. Supply Node from the pinned dashboard toolchain on `PATH`,
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE`, and `V6_ACCEPTANCE_MODEL_CACHE` containing the
+reviewed `sentence-transformers/all-MiniLM-L6-v2` model. Set `V6_REPORT_DIR` to a
+fresh ignored private directory. The runner seals the public source inventory
+and refuses changed source or inherited development selectors. The runner creates authenticated disposable storage,
+copies MongoDB tools from its pinned image, builds the console/API images, and
+starts the production-mode reference provider. It disables installation dotenv
+loading in the integration process; never point these fixtures at an existing
+database or reuse live credentials. Run the frontend checks as well:
+
+```sh
+npm --prefix dashboard run lint
+npm --prefix dashboard run typecheck
+npm --prefix dashboard run test:unit
+npm --prefix dashboard run build
+bash scripts/test-v6-acceptance.sh
+```
+
+`tests/v6_acceptance_matrix.json` maps security scenarios to actual integration
+functions. The runner reconciles every integration source function with JUnit
+results, including old MCP/three-client suites. Each module uses fresh
+MongoDB/mongot storage; the complete large-corpus gate uses project-owned Docker
+volumes, removed at every module boundary and on exit. Smaller development
+selectors default to bounded tmpfs. A full vector corpus exceeds that tmpfs size;
+do not shrink the corpus to turn a storage failure into a passing gate.
+JUnit reports are retained and combined without hiding
+failed batches. Source fingerprints must agree across the complete run. The runner refuses empty reports,
+failures, errors, missing cases or skipped tests. Initial isolation rehearsal
+reports bind operator cutover to the current runtime and test fingerprints.
+Distribution fixtures also compare the running API image with the checkout
+runtime fingerprint and record the actual API/console image IDs. Browser JUnit
+checks reject skipped journeys, missing spec files and empty results; focused
+selectors and development workloads never produce a complete release manifest.
+The new credential issuance/offboarding race must leave no orphan credential or
+receipt. Plaintext delivery is checked across every persisted fixture collection.
+These checks supplement enforcement tests; an inventory match alone proves no
+runtime isolation.
+
+The older V1-V5 integration scenarios now run in a fresh, explicitly adopted
+organization per test. Their initializer and standard-index assertions use the
+current tenant schema; domain actions and legacy client behavior remain covered.
+Operator provisioning has a trusted fixture context, while real API requests
+authenticate their issued credential after discarding that ambient context.
+The skill-router persistence journey also uses a real stored key. This adapter
+is test setup, not an unscoped runtime compatibility mode. The separate V6
+two-organization and managed-sponsor suites establish the stronger boundaries.
+
+Performance artifacts declare hardware, actual corpus, cold/warm conditions,
+latency sample counts, concurrency and response statuses. The default event
+benchmark seeds one million synthetic events, once with a 90/10 tenant skew
+and once with an even distribution. Other measurements cover 100 stored bounded
+policy assignments, native Argon2 work, bounded reports and sponsor offboarding
+with 500 verified clients. Hybrid measurements use 100,000 matching chunk IDs per
+tenant and the real 384-dimensional local model; the declared synthetic text
+prototypes repeat, so this is throughput/isolation evidence, not a relevance
+evaluation. Embedding, lexical, vector and merge durations are recorded separately.
+The remainder of the Phase 0 reference corpus must be measured and reported
+separately. A conflict/refusal is not a fast successful request. Passing
+correctness tests does not certify performance on a dedicated reference host.
+Keep measurements, logs, screenshots, exports and manual-review notes private.
+Inspect built assets and artifacts for synthetic secret leakage, and record
+unmeasured workloads or exceeded targets explicitly.
+
+Automated browser checks require a separate manual review of keyboard order,
+visible focus and dialog return, true browser zoom, light/dark themes and
+360/768/1440px layouts, delayed organization switching, empty/error/conflict and
+coverage states, and chart table alternatives. Record the tested browser and
+limitations. Automated accessibility scans alone do not establish WCAG 2.2 AA
+conformance. Completion of this gate never publishes a release or restarts an
+installation automatically.

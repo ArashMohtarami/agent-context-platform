@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -63,9 +64,9 @@ def main(argv: list[str] | None = None) -> int:
                     )
                     print(f"  {row['description']}\n  {row['source_path']}")
                     if row["sections"]:
-                        print("  Sections: " + "; ".join(row["sections"]))
+                        print("  Sections: " + "; ".join(cast(tuple[str, ...], row["sections"])))
                     if arguments.content:
-                        print("\n" + row["body"] + "\n")
+                        print("\n" + str(row["body"]) + "\n")
                 print(f"{len(rows)} matching source skills (local lexical search)")
     except (SkillError, OSError, ValueError) as error:
         print(f"Catalog error: {error}", file=sys.stderr)

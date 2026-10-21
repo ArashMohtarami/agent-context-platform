@@ -10,10 +10,12 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Final
 
+from pymongo.errors import PyMongoError
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.status import (
+    HTTP_409_CONFLICT,
     HTTP_411_LENGTH_REQUIRED,
     HTTP_413_REQUEST_ENTITY_TOO_LARGE,
     HTTP_500_INTERNAL_SERVER_ERROR,
@@ -130,16 +132,26 @@ async def unavailable_dependency(request: Request, exception: Exception) -> JSON
     "MongoDB" rather than "a bug".
 
     The driver's message can name a host, a replica set, and a connection
-    string, so it goes to the log and never to the caller.
+    string, so only bounded classification fields reach logs or the caller.
     """
+    transient = isinstance(exception, PyMongoError) and exception.has_error_label(
+        "TransientTransactionError"
+    )
+    code = getattr(exception, "code", None)
     logger.warning(
-        "database_unavailable",
+        "database_transaction_conflict" if transient else "database_unavailable",
         extra={
             "http_method": request.method,
             "http_path": request.url.path,
             "error_type": type(exception).__name__,
+            "error_code": code if isinstance(code, int) else None,
+            "transient_transaction": transient,
         },
     )
+    if transient:
+        # The transaction aborted. No implicit replay of human review/issuance;
+        # the caller must obtain current state and deliberately retry.
+        return _refused(HTTP_409_CONFLICT, "concurrent state changed; reload before retrying")
     return _refused(HTTP_503_SERVICE_UNAVAILABLE, "the platform is temporarily unavailable")
 
 

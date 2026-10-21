@@ -1,9 +1,11 @@
 """Session-only human organization APIs. All mutations use shared governance fencing."""
 
+from collections.abc import Callable, Coroutine
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.routes.management_policy import engine
@@ -27,7 +29,24 @@ from app.management.teams import Teams
 from app.security.policy.engine import PolicyEngine
 from app.security.policy.models import Grant
 
-router = APIRouter(prefix="/api/v6", tags=["human organization management"])
+
+class DirectoryRoute(APIRoute):
+    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
+        original = super().get_route_handler()
+
+        async def directory(request: Request) -> Response:
+            # These three read services take their own current policy snapshot
+            # before constructing any predicate. No corpus principal is needed.
+            if request.method == "GET" and self.name in {"members", "teams", "team_members"}:
+                request.state.v6_service_policy = True
+            return await original(request)
+
+        return directory
+
+
+router = APIRouter(
+    prefix="/api/v6", tags=["human organization management"], route_class=DirectoryRoute
+)
 Limit = Annotated[int, Query(ge=1, le=100)]
 Cursor = Annotated[str | None, Query(max_length=2048)]
 Prefix = Annotated[str, Query(max_length=128)]

@@ -1,12 +1,12 @@
 # Dashboard management workflows (V6 Phase 10)
 
-The starting backend/frontend revision was
-`101c0182ca4989c84525758762ac68e4476e03c9` (Phase 9). This phase adds organization
-management screens in `dashboard/` over the existing Phase 5–7 engines. It adds
-no collection, migration, permission bypass or deployment activation. The
-migration head remains 42; the 75 existing classified collections retain their
-ownership. Installation recovery remains an explicitly approved operator CLI
-operation. Analytics and corpus/research interfaces belong to later phases.
+The management screens in `dashboard/` use the session-only adapters over the
+existing identity, policy and sponsored-machine engines. Schema head is 42;
+this UI does not bypass activation, create an owner or grant corpus access by
+role title. Installation recovery stays an independently approved operator CLI
+operation. See the maintained [organization guide](organization-management.md)
+and [verification status](verification.md). Knowledge/research/creator and
+monitoring interfaces are implemented in their separate console modules.
 
 ## Workflows
 

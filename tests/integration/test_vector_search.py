@@ -8,10 +8,10 @@ from datetime import UTC, datetime
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database
 
 from app.core.config import Settings, get_settings
 from app.db.client import MongoDBClient
-from app.db.initializer import initialize_database
 from app.db.vector_indexes import (
     SKILL_CHUNK_VECTOR_INDEX,
     describe_vector_index,

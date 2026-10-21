@@ -8,17 +8,18 @@ from datetime import UTC, datetime
 import pytest
 from bson import ObjectId
 from pymongo.asynchronous.database import AsyncDatabase
+from v6_legacy_integration import initialize_database
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
 from app.db.client_types import MongoDocument
-from app.db.initializer import initialize_database
 from app.models.content import (
     ContentOrigin,
     ContentPlatform,
     ContentSourceReference,
     CreatorProfileDocument,
 )
+from app.models.project import ProjectDocument
 from app.models.research import (
     CitationLocator,
     CitationRelation,
@@ -44,6 +45,7 @@ from app.repositories.content_repository import (
     MongoContentVersionRepository,
     MongoCreatorProfileRepository,
 )
+from app.repositories.project_repository import MongoProjectRepository
 from app.repositories.research_repository import (
     MongoResearchChunkRepository,
     MongoResearchCitationRepository,
@@ -144,6 +146,15 @@ async def test_research_backed_medium_brief_persists_canonical_evidence_and_revi
     try:
         async with initialized_mongodb() as mongodb:
             database = mongodb.database
+            await MongoProjectRepository(database).create(
+                ProjectDocument(
+                    project_id=project_id,
+                    name="Fictional research source",
+                    description="Synthetic regression fixture",
+                    repository="https://example.invalid/fictional.git",
+                    environment="test",
+                )
+            )
             await MongoResearchProjectRepository(database).create(
                 ResearchProjectDocument(
                     research_project_id=research_id,
@@ -232,7 +243,7 @@ async def test_research_backed_medium_brief_persists_canonical_evidence_and_revi
                 pillar_id=None,
                 platforms=[ContentPlatform.MEDIUM],
                 origin=ContentOrigin(
-                    type="research", project_id=project_id, source_ids=[source_id]
+                    type="research_project", project_id=project_id, source_ids=[research_id]
                 ),
                 tags=["payments"],
                 priority=0.8,

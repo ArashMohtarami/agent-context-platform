@@ -7,10 +7,10 @@ from datetime import UTC, datetime
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database, seed_projects
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.initializer import initialize_database
 from app.models.research import (
     ClaimState,
     ResearchAuthorization,
@@ -65,6 +65,7 @@ async def test_phase_six_artifacts_persist_and_filter_authorization() -> None:
     try:
         async with initialized_mongodb() as mongodb:
             database = mongodb.database
+            await seed_projects(database, [project_id, private_project_id])
             projects = MongoResearchProjectRepository(database)
             await projects.create(
                 ResearchProjectDocument(

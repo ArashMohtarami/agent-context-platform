@@ -471,8 +471,8 @@
     if (currentAgent === "codex" && (!checkout.startsWith("/") || /[\n\r]/.test(checkout))) errors.push("Codex stdio needs an absolute platform checkout path.");
     $("#config-error").hidden = !errors.length; $("#config-error").textContent = errors.join(" ");
     if (errors.length) return;
-    const create = "# Run in the PLATFORM checkout; acp_db is defined in chapter 02.\nacp_db agent create \\\n  --client-id " + shellQuote(client) + " --type " + currentAgent + " \\\n  --name " + shellQuote(client) + " --owner-id " + shellQuote(owner) + " \\\n" + scopes[access].map(scope => "  --scope " + scope + " \\\n").join("") + "  --project " + shellQuote(project) + "\n\n# Save the issuance JSON (token + public key_id); do not commit it.\numask 077\nacp_db --json agent token create " + shellQuote(client) + " \\\n  --expires-in-days 90 > " + shellQuote("./secrets/" + client + "-issued.json") + "\njq -er '.token' " + shellQuote("./secrets/" + client + "-issued.json") + " \\\n  > " + shellQuote("./secrets/" + client + "-token");
-    outputBlock("1 / Create this client's identity and dedicated token", create, "bash");
+    const create = "1. A permitted manager approves the bounded client policy and verified sponsor/team.\n2. The authenticated recipient generates their credential once in the console.\n3. Copy it explicitly into your approved private token file: " + client + "-token\n4. Lost delivery requires revoke/replacement; retries do not replay secrets.\n\nThe descriptive owner label and this generated configuration establish no authority.";
+    outputBlock("1 / Obtain a verified managed credential", create, "text");
     if (currentAgent === "codex") {
       const file = location === "user" ? "~/.codex/config.toml" : "<working-repository>/.codex/config.toml";
       outputBlock("2 / Merge into " + file, `[mcp_servers.agent-context]\ncommand = ${tomlString(checkout + "/scripts/codex-mcp-server.sh")}\nstartup_timeout_sec = 30\ntool_timeout_sec = 120\n\n[mcp_servers.agent-context.env]\nMCP_API_BASE_URL = ${tomlString(url.replace(/\/mcp$/, ""))}\nMCP_API_TOKEN_FILE = ${tomlString(checkout + "/secrets/" + client + "-token")}\nMCP_PROJECT_IDS = ${tomlString(project)}\nMCP_SCOPES = ${tomlString(scopes[access].join(","))}`, "toml");
@@ -512,45 +512,6 @@
   });
   $$("#config-panel input, #config-panel select").forEach(field => field.addEventListener("input", renderConfig));
   renderConfig();
-  // Chapter 16: one set of names drives shell variables, all client configs and prompts.
-  const renderStarter = () => {
-    const value = name => $("#starter-" + name).value.trim();
-    const platform = value("platform-dir").replace(/\/+$/, ""), work = value("work-dir").replace(/\/+$/, "");
-    const project = value("project"), owner = value("owner"), profile = value("profile"), content = value("content");
-    const output = $("#starter-output"); output.replaceChildren();
-    const errors = [];
-    if (![project, owner, profile, content].every(item => /^[a-z][a-z0-9-]{0,79}$/.test(item))) errors.push("IDs must start with a lowercase letter and use 1–80 lowercase letters, digits or hyphens.");
-    if (![platform, work].every(item => item.startsWith("/") && item.length > 1 && !/[\r\n\0]/.test(item))) errors.push("Use absolute paths to the platform and the working project.");
-    if (platform === work || work.startsWith(platform + "/")) errors.push("Keep the working project outside the platform checkout.");
-    if (!value("name") || value("name").length > 200 || !value("title") || value("title").length > 200) errors.push("Supply a project name and title of up to 200 characters.");
-    try { const url = new URL(value("repository")); if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) throw new Error(); }
-    catch { errors.push("Use a credential-free HTTPS repository URL; it is only a locator here."); }
-    $("#starter-error").hidden = errors.length === 0; $("#starter-error").textContent = errors.join(" ");
-    if (errors.length) return;
-    const block = (heading, code, language = "bash") => {
-      const container = document.createElement("div"), title = document.createElement("h4"), pre = document.createElement("pre"), text = document.createElement("code");
-      title.textContent = heading; text.className = "language-" + language; text.textContent = code;
-      pre.appendChild(text); container.append(title, pre); output.appendChild(container); addCopy(container);
-    };
-    const vars = {ACP_PLATFORM_DIR:platform,ACP_WORK_DIR:work,ACP_PROJECT_ID:project,ACP_PROJECT_NAME:value("name"),ACP_REPO_URL:value("repository"),ACP_OWNER_ID:owner,ACP_PROFILE_ID:profile,ACP_CONTENT_ID:content,ACP_CONTENT_PLATFORM:value("destination"),ACP_CONTENT_TITLE:value("title")};
-    block("1 / Personalized names — copy before the numbered steps", Object.entries(vars).map(([key,item]) => "export " + key + "=" + shellQuote(item)).join("\n") + '\nexport CONTEXTCTL_API_BASE_URL="http://127.0.0.1:8000"\nexport CONTEXTCTL_API_TOKEN_FILE="$ACP_PLATFORM_DIR/secrets/$ACP_PROJECT_ID-operator-key"');
-    block("4 / Your project starting point", 'walkthrough ' + (value("mode") === "new" ? 'scaffold\n# Only for the new example:\ncd "$ACP_WORK_DIR"\ngit init\npython3.12 -m venv .venv\n.venv/bin/python -m pip install -r requirements.txt\n.venv/bin/python -m pytest -q' : 'workspace\ncd "$ACP_WORK_DIR"\n# Run this repository\'s documented setup and tests.'));
-    const alias = "agent-context-" + project;
-    block("6 / Codex — merge into the working project's .codex/config.toml", `[mcp_servers.${alias}]\ncommand = ${tomlString(platform + "/scripts/codex-mcp-server.sh")}\nstartup_timeout_sec = 30\ntool_timeout_sec = 120\n\n[mcp_servers.${alias}.env]\nMCP_API_BASE_URL = "http://127.0.0.1:8000"\nMCP_API_TOKEN_FILE = ${tomlString(platform + "/secrets/codex-" + project + "-token")}\nMCP_PROJECT_IDS = ${tomlString(project)}`, "toml");
-    // Per-project variable names also allow several personal client entries to coexist.
-    const envSuffix = project.replaceAll("-", "_").toUpperCase();
-    const claudeEnv = "ACP_CLAUDE_" + envSuffix + "_TOKEN", geminiEnv = "ACP_GEMINI_" + envSuffix + "_TOKEN";
-    block("6 / Claude Code — merge mcpServers into .mcp.json", JSON.stringify({mcpServers:{[alias]:{type:"http",url:"http://127.0.0.1:8000/mcp",headers:{Authorization:"Bearer ${" + claudeEnv + "}"}}}},null,2), "json");
-    block("6 / Start Claude Code in this project", 'cd "$ACP_WORK_DIR"\nexport ' + claudeEnv + '="$(cat "$ACP_PLATFORM_DIR/secrets/claude-code-$ACP_PROJECT_ID-token")"\nclaude');
-    block("6 / Gemini CLI — merge mcpServers into .gemini/settings.json", JSON.stringify({mcpServers:{[alias]:{httpUrl:"http://127.0.0.1:8000/mcp",headers:{Authorization:"Bearer ${" + geminiEnv + "}"},timeout:120000,trust:false}}},null,2), "json");
-    block("6 / Start Gemini CLI in this project", 'cd "$ACP_WORK_DIR"\nexport ' + geminiEnv + '="$(cat "$ACP_PLATFORM_DIR/secrets/gemini-cli-$ACP_PROJECT_ID-token")"\ngemini');
-    const framework = value("mode") === "new" ? "fastapi" : value("framework");
-    const skillIds = framework === "django" ? ["django-production","django-async","django-orm-transactions","django-testing"] : framework === "fastapi" ? ["fastapi-production","fastapi-async-lifecycle","fastapi-testing"] : ["api-contracts","code-review","python-testing"];
-    block("7 / Project work prompt — paste into any connected agent", `Use MCP server ${alias}. Working directory: ${work}. Project ID: ${project}.\nCall get_platform_capabilities({}) and resolve_project({"project_id":${JSON.stringify(project)}}). Search project context, then search skills for this task and read ${skillIds.join(", ")} when relevant.\n${value("mode") === "new" ? "Inspect the Notes API. Run its six behavioral tests. Demonstrate 201 for the first create, 200 and the same note ID for a retry, and 409 for a changed payload using that key." : "Inspect this repository's instructions, dependency files, framework and test commands. Run its existing baseline checks. Explain its architecture and one verified implementation lesson; preserve existing conventions."}\nWrite .agent-context/fact.md with the behavior, exact evidence, and limits. Do not save guesses as facts. Show me that file for review. After review I will run save-fact. Do not approve or publish content.`, "text");
-    block("9 / Content prompt — use after the human saves the fact", `Use MCP server ${alias} and project ${project}. Read .agent-context/${content}-source.json, then get_context for its context_id in this project. Also read .agent-context/fact.md.\nRead content-ideation, technical-explanation, ${value("destination") === "linkedin" ? "linkedin-writing" : value("destination") === "medium" ? "medium-writing" : "github-writing"}, content-editing and content-review with get_skill.\nWriting profile: ${profile}; audience: backend engineers; language: English; title: ${value("title")}; destination: ${value("destination")}. Use the human's actual profile preferences if supplied. Write .agent-context/draft.md using only supported claims; label the local teaching example and its limits. Explain one concrete mechanism, with no invented production, performance or adoption claims.\nShow the draft for human review. I will save its idea, brief and draft through the helper. Do not approve, publish or request publisher credentials.`, "text");
-  };
-  $$("#project-starter input, #project-starter select").forEach(field => field.addEventListener("input", renderStarter));
-  renderStarter();
   const examples = {
     "payment-service": {task:"Implement refund reconciliation",title:"Refund reconciliation rule",content:"For this sample project, reconcile provider events by event ID and use append-only refund ledger entries.",tags:["refund","reconciliation"]},
     "storefront-web": {task:"Add a guest checkout screen",title:"Guest checkout accessibility",content:"For this sample project, preserve keyboard focus, announce validation errors, and test guest checkout without a signed-in session.",tags:["checkout","accessibility"]},
@@ -566,7 +527,7 @@
     const other = agent === "Codex" ? "Claude Code" : "Codex";
     const stages = [
       ["01 / Choose the exact project", `${agent} resolves ${project} before touching its knowledge. Configured repository bindings help; ambiguity requires an explicit choice.`, "resolve_project", {project_id:project}],
-      ["02 / Retrieve just what the task needs", `Global skills, shared project context, and authorized memory are searched together under a bounded budget. Other projects stay outside the request.`, "search_knowledge", {query:example.task,project_id:project,token_budget:4000,limit:5}],
+      ["02 / Retrieve just what the task needs", `Organization-imported skills, permitted project context, and authorized memory are searched together under a bounded budget. Other projects stay outside the request.`, "search_knowledge", {query:example.task,project_id:project,token_budget:4000,limit:5}],
       ["03 / Implement and verify in the workspace", `${agent} uses retrieved facts while inspecting and editing the real repository. It runs checks suited to the change. The knowledge platform does not edit or execute project code.`, null, "Workspace action\n• Inspect the current implementation\n• Implement the requested change\n• Run meaningful checks\n• Review the lasting decision"],
       ["04 / Save a reviewed project fact", "An explicit write keeps the decision across sessions. A stable external_id makes creation repeatable; authenticated credentials determine the actor.", "save_context", {project_id:project,type:"implementation",title:example.title,content:example.content,importance:0.85,source:"example",tags:example.tags,external_id:project + "-workflow-demo"}],
       ["05 / Another agent picks up the context", `${other}, with its own credential and this project grant, can retrieve the shared fact in a fresh session. The record does not depend on the original agent's conversation.`, "search_knowledge", {project_id:project,query:example.title,limit:5}]

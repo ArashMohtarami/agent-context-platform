@@ -1,9 +1,11 @@
 """Session-only authorized event summaries, audit and bounded report downloads."""
 
 import json
+from collections.abc import Callable, Coroutine
 from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Path, Query, Response
+from fastapi import APIRouter, HTTPException, Path, Query, Request, Response
+from fastapi.routing import APIRoute
 
 from app.api.routes.human_management import management
 from app.identity.browser import CurrentBrowser
@@ -19,7 +21,23 @@ from app.summaries.models import (
 from app.summaries.reports import Reports
 from app.summaries.service import Summaries
 
-router = APIRouter(prefix="/api/v6/organizations/{org_id}", tags=["authorized summaries"])
+
+class SummaryRoute(APIRoute):
+    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
+        original = super().get_route_handler()
+
+        async def metadata(request: Request) -> Response:
+            # Server-owned route metadata, never a header/body org selector.
+            # These services perform their own fresh action/resource snapshots.
+            request.state.v6_service_policy = True
+            return await original(request)
+
+        return metadata
+
+
+router = APIRouter(
+    prefix="/api/v6/organizations/{org_id}", tags=["authorized summaries"], route_class=SummaryRoute
+)
 Filters = Annotated[SummaryQuery, Query()]
 
 

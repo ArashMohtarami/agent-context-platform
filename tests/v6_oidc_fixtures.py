@@ -28,7 +28,7 @@ from app.identity.sso import SSOIdentity
 from app.main import create_app
 from app.models.common import utc_now
 
-ORIGIN = "https://identity.example"
+ORIGIN = os.environ.get("V6_BROWSER_TEST_ORIGIN", "https://identity.example")
 PASSWORD = "synthetic-local-password-for-phase-four"
 
 

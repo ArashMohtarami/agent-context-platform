@@ -1,14 +1,16 @@
 """Authorized, MongoDB-computed read models; no process metric is a history source."""
 
-from typing import Any, cast
+from collections.abc import Callable
+from typing import Any
 
 from app.identity.repository import Row
 from app.models.common import InvalidCursorError, utc_now
 from app.security.policy.engine import PolicyEngine
-from app.security.policy.evaluation import PolicyConflict, PolicyDenied
+from app.security.policy.evaluation import PolicyConflict, PolicyDenied, effective
 from app.security.tenant import require_tenant
 from app.security.tenant_cursor import binding, decode_directory_cursor, encode_directory_cursor
 from app.summaries import measures
+from app.summaries.cache import Generation, for_source
 from app.summaries.coverage import CHECKPOINT_ACTION, coverage
 from app.summaries.models import AuditQuery, SummaryQuery
 from app.summaries.projection import projection
@@ -16,6 +18,7 @@ from app.summaries.reads import retry_read
 from app.summaries.visibility import SOURCES, visibility
 
 MAX_TIME_MS = 3000
+COLD_OVERVIEW_TIME_MS = 10000
 
 
 class Summaries:
@@ -60,6 +63,7 @@ class Summaries:
         limit: int = 50,
         cursor: str | None = None,
         overview: bool = False,
+        cache_generation: Generation | None = None,
     ) -> Row:
         now = utc_now()
         query.current(now)
@@ -95,55 +99,38 @@ class Summaries:
             "total": [{"$count": "count"}],
             "outcomes": [{"$group": {"_id": "$outcome", "count": {"$sum": 1}}}],
         }
-        if overview:
-            facets.update(measures.facets(query.source))
-            facets["buckets"] = [
-                {
-                    "$group": {
-                        "_id": {
-                            "$dateTrunc": {
-                                "date": "$occurred_at",
-                                "unit": query.bucket,
-                                "timezone": query.timezone,
-                            }
-                        },
-                        "count": {"$sum": 1},
-                    }
-                },
-                {
-                    "$set": {
-                        "end": {
-                            "$dateAdd": {
-                                "startDate": "$_id",
-                                "unit": query.bucket,
-                                "amount": 1,
-                                "timezone": query.timezone,
-                            }
-                        }
-                    }
-                },
-                {"$sort": {"_id": 1}},
-            ]
-        else:
+        if not overview:
             facets["items"] = [*after, {"$sort": {"event_id": 1}}, {"$limit": limit + 1}]
-        rows = await (
-            await self.db[SOURCES[query.source]].aggregate(
-                [
-                    {"$match": predicate},
-                    {
-                        "$project": {
-                            **projection(query.source),
-                            **(measures.fields(query.source) if overview else {}),
-                        }
-                    },
-                    {"$facet": facets},
-                ],
-                session=tx,
-                maxTimeMS=MAX_TIME_MS,
-                allowDiskUse=False,
+
+        async def execute() -> tuple[list[Row], Any]:
+            rows = await (
+                await self.db[SOURCES[query.source]].aggregate(
+                    [
+                        {"$match": predicate},
+                        *(
+                            measures.overview_pipeline(query)
+                            if overview
+                            else [{"$project": projection(query.source)}, {"$facet": facets}]
+                        ),
+                    ],
+                    session=tx,
+                    maxTimeMS=COLD_OVERVIEW_TIME_MS if overview else MAX_TIME_MS,
+                    allowDiskUse=False,
+                )
+            ).to_list(1)
+            return rows, now
+
+        # prepare() observed source changes before this transaction began.
+        # Reuse is bound to exact tenant, subject, policy, filters and retention;
+        # every caller independently confirms current authority afterward.
+        rows, observed_at = (
+            await for_source(self.engine, query.source).read(
+                scope.encode(), cache_generation, execute, org=org
             )
-        ).to_list(1)
-        result = cast(Row, rows[0])
+            if overview and cache_generation is not None
+            else await execute()
+        )
+        result = rows[0]
         count = result["total"][0]["count"] if result["total"] else 0
         common = {
             "observed_count": count,
@@ -163,7 +150,7 @@ class Summaries:
             **common,
             "org_id": org,
             "query": query.model_dump(),
-            "generated_at": now,
+            "generated_at": observed_at,
             "observation_state": "recorded_events" if count else "no_recorded_events",
             "outcomes": {r["_id"]: r["count"] for r in result["outcomes"]},
             "buckets": [
@@ -172,6 +159,48 @@ class Summaries:
             "measures": measures.metrics(result, query.source, count),
             "sparse_series": True,
         }
+
+    async def confirm_current(
+        self,
+        original: Row,
+        query: SummaryQuery,
+        *,
+        authorize: Callable[[Row, SummaryQuery], Row] | None = None,
+    ) -> None:
+        # Recheck time-based expiry, global user status and the exact visibility
+        # envelope. A subsequent atomic anchor CAS closes the snapshot/revoke
+        # race without making every concurrent aggregate hold a write lock.
+        org, actor = original["anchor"]["org_id"], original["member"]["user_id"]
+        async with self.engine.transaction() as tx:
+            await self.ready(tx)
+            current = await self.engine.snapshot(org, actor, tx)
+            if authorize is not None:
+                authorize(current, query)
+            if current["anchor"]["revision"] != original["anchor"]["revision"] or visibility(
+                current, query
+            ) != visibility(original, query):
+                raise PolicyConflict("policy changed; refresh bounded filters")
+        await self.engine.confirm_read(current["anchor"])
+        # Natural expiry does not mutate the anchor. Reevaluate the fenced
+        # snapshot after the final await, including report-only authority.
+        # No I/O may follow this final authorization decision.
+        confirmed_at = utc_now()
+        query.current(confirmed_at)
+        tuples, _ = effective(
+            org,
+            actor,
+            current["assignments"],
+            current["members"],
+            current["users"],
+            confirmed_at,
+            current.get("teams"),
+            current.get("team_links"),
+        )
+        final = {**current, "tuples": tuples}
+        if authorize is not None:
+            authorize(final, query)
+        if visibility(final, query) != visibility(original, query):
+            raise PolicyConflict("policy changed; refresh bounded filters")
 
     @retry_read
     async def read(
@@ -185,14 +214,25 @@ class Summaries:
         cursor: str | None = None,
     ) -> Row:
         self.context(org, actor)
+        generation = (
+            await for_source(self.engine, query.source).prepare(self.db[SOURCES[query.source]], org)
+            if overview
+            else None
+        )
         async with self.engine.transaction() as tx:
             await self.ready(tx)
             snapshot = await self.engine.snapshot(org, actor, tx)
-            # A real shared write fence serializes reads with revoke/narrow.
-            await self.engine.fence(snapshot["anchor"], tx)
-            return await self.aggregate(
-                snapshot, query, tx, overview=overview, limit=limit, cursor=cursor
+            result = await self.aggregate(
+                snapshot,
+                query,
+                tx,
+                overview=overview,
+                limit=limit,
+                cursor=cursor,
+                cache_generation=generation,
             )
+        await self.confirm_current(snapshot, query)
+        return result
 
     @retry_read
     async def audit_diff(self, org: str, actor: str, query: AuditQuery) -> Row:
@@ -204,7 +244,6 @@ class Summaries:
         async with self.engine.transaction() as tx:
             await self.ready(tx)
             snapshot = await self.engine.snapshot(org, actor, tx)
-            await self.engine.fence(snapshot["anchor"], tx)
             predicate = visibility(snapshot, filters)
             declared = await self.checkpoint(org, "governance", tx)
             parts = [predicate, {"_id": query.event_id}]
@@ -231,10 +270,12 @@ class Summaries:
                 if isinstance(change, dict) and event["attribution"] == "verified_event_time"
                 else []
             )
-            return {
+            result = {
                 "event": event,
                 "fields": fields,
                 "state": "recorded_fields" if fields else "unavailable",
                 "redaction": REDACTION,
                 "coverage": coverage(filters, declared, utc_now()).model_dump(),
             }
+        await self.confirm_current(snapshot, filters)
+        return result

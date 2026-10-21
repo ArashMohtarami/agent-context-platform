@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { effectiveSchema } from '../api/contracts';
 import { namespace } from '../api/client';
 import { errorText, SessionUnavailable, useAuth } from '../auth/context';
-import { Button, Empty, ErrorState, Icon, Modal, Notice, Panel, Select, Skeleton, Status, Table } from '../components/ui';
+import { Button, Empty, ErrorState, Icon, Modal, Notice, Panel, Select, Skeleton, Status, Table, WorkspaceUnavailable } from '../components/ui';
 import type { Organization } from '../api/contracts';
 import mark from '../assets/mark.svg';
-import { Overview } from '../overview/Overview';
+const Overview = lazy(() => import('../overview/Overview').then(module => ({default: module.Overview}), () => ({default: WorkspaceUnavailable})));
 
 export function ThemeButton() {
   const [dark, setDark] = useState(() => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -64,11 +64,11 @@ function Shell() {
     if (auth.dirty) setTarget(selected); else void change(selected);
   };
   return <div className="shell private-surface">
-    <header className="topbar"><div className="topbar-start"><Button variant="quiet" className="mobile-menu" aria-label="Open navigation" onClick={() => setDrawer(true)}><Icon name="menu"/></Button><Link className="brand" to={base + '/workspace'}><img src={mark} alt=""/><span>Agent Context<span className="brand-caption">Organization console</span></span></Link><span className="header-divider"/><span className="breadcrumb">{pageName}</span></div>
+    <header className="topbar"><div className="topbar-start"><Button variant="quiet" className="mobile-menu" aria-label="Open navigation" onClick={() => setDrawer(true)}><Icon name="menu"/></Button><Link className="brand" aria-label="Agent Context Organization console · My workspace" to={base + '/workspace'}><img src={mark} alt=""/><span>Agent Context{' '}<span className="brand-caption">Organization console</span></span></Link><span className="header-divider"/><span className="breadcrumb">{pageName}</span></div>
       <div className="topbar-actions"><Select label="Active organization" aria-label="Active organization" value={me.policy_context.org_id} disabled={busy} onChange={event => selectOrganization(event.target.value)}>{organizations.map(item => <option value={item.org_id} key={item.org_id}>{item.name}</option>)}</Select><ThemeButton/><Button variant="quiet" onClick={() => {void auth.logout();}} aria-label="Sign out"><Icon name="exit"/><span className="theme-label">Sign out</span></Button></div>
     </header>
     <aside className="sidebar">{navigation}</aside>
-    <div className="main-area"><div className="context-strip" role="region" aria-label="Current organization context"><span><span className="context-dot"/>{org?.name ?? me.policy_context.org_id}</span><span className="context-user">{me.display_name}<span className="role-label">{me.membership.role.replaceAll('_', ' ')}</span></span></div><main id="main-content" className="page-content" tabIndex={-1}>{auth.state.message && <Notice tone="danger">{auth.state.message}</Notice>}{error && <Notice tone="danger">{error}</Notice>}<Outlet/></main><footer className="shell-footer">Agent Context Platform<span>Organization workspace · Access verified by the server</span></footer></div>
+    <div className="main-area"><div className="context-strip" role="region" aria-label="Current organization context"><span><span className="context-dot"/>{org?.name ?? me.policy_context.org_id}</span><span className="context-user">{me.display_name}<span className="role-label">{me.membership.role.replaceAll('_', ' ')}</span></span></div><main id="main-content" className="page-content" tabIndex={-1}>{auth.state.message && <Notice tone="danger">{auth.state.message}</Notice>}{error && <Notice tone="danger">{error}</Notice>}<Suspense fallback={<Skeleton label="Loading workspace"/>}><Outlet/></Suspense></main><footer className="shell-footer">Agent Context Platform<span>Organization workspace · Access verified by the server</span></footer></div>
     <Modal title="Organization navigation" description="Navigate your current organization workspace." open={drawer} onOpenChange={setDrawer} drawer>{navigation}</Modal>
     <Modal title="Discard unsaved changes?" description={`Finish or save your current form in ${org?.name ?? 'this organization'}, or discard its sensitive inputs before switching to ${target?.name ?? 'another organization'}. Drafts and selections will be cleared.`} open={target !== null} onOpenChange={open => {if (!open) setTarget(null);}}><div className="actions"><Button variant="secondary" onClick={() => setTarget(null)}>Keep editing</Button><Button variant="danger" onClick={() => {const selected = target; setTarget(null); if (selected) void change(selected);}}>Discard and switch</Button></div></Modal>
   </div>;
@@ -84,7 +84,7 @@ export function Workspace() {
     <div className="overview-grid"><Panel title="Organization context"><dl className="detail-list"><div><dt>Workspace</dt><dd>{org?.name ?? data.me.policy_context.org_id}</dd></div><div><dt>Your role</dt><dd className="capitalize">{data.me.membership.role.replaceAll('_', ' ')}</dd></div><div><dt>Sign-in policy</dt><dd>{org?.auth_policy === 'sso_required' ? 'Approved SSO required' : org?.auth_policy === 'sso_preferred' ? 'SSO preferred' : 'Local sign-in'}</dd></div></dl></Panel>
     <Panel title="My access"><p>Read your effective action and resource boundaries. A role or team name does not grant corpus access by itself.</p><Link className="button secondary" to={base + '/my-access'}>Review my access<Icon name="arrow"/></Link></Panel>
     <Panel title="My security"><p>{data.security.mfa_enrolled ? 'Your local authenticator is enrolled.' : data.me.auth_method === 'oidc' ? 'Your provider verifies your sign-in.' : 'Set up an authenticator to protect sensitive account changes.'}</p><Link className="button secondary" to={base + '/security'}>Manage sign-in security<Icon name="arrow"/></Link></Panel></div>
-    <Overview embedded/>
+    <Suspense fallback={<Skeleton label="Loading permitted monitoring"/>}><Overview embedded/></Suspense>
     <Panel title="Built around explicit access" description="Your console uses the current organization’s verified policy."><div className="principle-grid"><div><Icon name="users"/><h3>Your organization</h3><p>Switching workspaces checks membership and sign-in policy, then clears the previous context.</p></div><div><Icon name="key"/><h3>Your resource boundaries</h3><p>Read, write and management permissions stay coupled to their authorized resources.</p></div><div><Icon name="shield"/><h3>Your security</h3><p>Manage human browser sessions and verified login identities from your own account.</p></div></div></Panel>
   </>;
 }

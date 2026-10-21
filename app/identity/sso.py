@@ -38,8 +38,8 @@ class SSOIdentity:
         self.client = OIDCClient()
         local.sessions.providers = registry
 
-    async def enabled(self) -> None:
-        if not await self.store.find(
+    def installation_control(self) -> tuple[str, Row]:
+        return (
             "_sso_identity_control",
             {
                 "_id": "installation",
@@ -47,7 +47,11 @@ class SSOIdentity:
                 if self.local.policy_engine
                 else 39,
             },
-        ):
+        )
+
+    async def enabled(self) -> None:
+        name, query = self.installation_control()
+        if not await self.store.find(name, query):
             raise AuthRejected("SSO is unavailable")
 
     async def organization(self, org_id: str, tx: Any = None) -> Row:

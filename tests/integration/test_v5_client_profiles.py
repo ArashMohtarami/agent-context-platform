@@ -6,16 +6,18 @@ from contextlib import asynccontextmanager
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
 from app.db.client_profile_schema import CLIENT_PROFILE_COLLECTION
-from app.db.indexes import INDEX_DEFINITIONS
-from app.db.initializer import initialize_database
+from app.db.tenant_schema import TENANT_INDEX_DEFINITIONS as INDEX_DEFINITIONS
 from app.models.client_profile import GEMINI_DEFAULT_SCOPES
+from app.models.project import ProjectDocument
 from app.repositories.agent_repository import MongoAgentClientRepository
 from app.repositories.api_key_repository import MongoApiKeyRepository
 from app.repositories.client_profile_repository import MongoClientProfileRepository
+from app.repositories.project_repository import MongoProjectRepository
 from app.services.agent_client_service import AgentClientService
 from app.services.api_key_service import ApiKeyService
 from app.services.auth_service import AuthService
@@ -50,6 +52,16 @@ async def test_v5_profile_assignment_keeps_gemini_on_existing_v4_authentication_
     try:
         async with initialized_mongodb() as mongodb:
             database = mongodb.database
+            projects = MongoProjectRepository(database)
+            await projects.create(
+                ProjectDocument(
+                    project_id="payments",
+                    name="Fictional payments",
+                    description="Synthetic regression fixture",
+                    repository="https://example.invalid/fictional.git",
+                    environment="test",
+                )
+            )
             profiles = MongoClientProfileRepository(database)
             clients = MongoAgentClientRepository(database)
             keys = MongoApiKeyRepository(database)

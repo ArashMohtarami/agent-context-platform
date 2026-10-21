@@ -1,23 +1,19 @@
 # Tenant foundation and legacy adoption (V6 Phase 1)
 
-This opt-in maintenance release adds tenant storage contracts. It does **not**
-provide multi-tenant domain authorization, a dashboard, human login, SSO, owner
-claims or public organization registration. All organizations are sealed.
-Adopting a database disables its API, MCP and metrics domain traffic until a
-later Phase 2 implementation passes enforcement tests. There is no activation
-command in this release. Additional organizations may be provisioned for
-operator rehearsal; they cannot receive domain traffic.
+This guide describes the guarded schema-36 adoption stage of the implemented V6
+runtime. It seals all organizations until the subsequent explicit
+[isolation cutover](tenant-isolation.md). The current full schema head is 42;
+follow [staged migration/recovery](migration-recovery.md) rather than enabling
+all later flags at once. The console, identity and policy contracts are described
+in [dashboard](dashboard.md) and [organization management](organization-management.md).
+There is no anonymous owner claim, public org registration or tenant restore.
 
-The inspected V1–V5 source revision was
-`0cfe33c1b54cee04ed16dee1f45f7e4cc9f65a46`, with migration head 35. The next
-migration is 36, explicitly selected with `V6_TENANT_FOUNDATION=true` or the
-organization maintenance command. Default V1–V5 initialization stays at 35 and
-refuses an installation whose ledger already contains 36. A pre-V6 binary does
-not contain this guard: stop it and every ingestion/import job before adoption.
-The stopped-writer and worker-version flags are operator attestations, not
-process discovery. Existing DB credentials remain an installation trust boundary. Quarantine is
-operator-only at the application interface; this phase does not narrow the
-existing installation DB role or claim physical database isolation.
+Adoption was allocated at the actual pre-V6 migration head 35, so its version is
+36. Enable foundation only for this stage. Older configurations refuse an
+installation containing 36, but a pre-V6 binary cannot know that guard: stop all
+old writers and fence their database credentials. Worker flags are attestations,
+not process discovery. Quarantine remains operator-only at application interfaces,
+not physically isolated from trusted installation database operators.
 
 ## Storage and identity contracts
 
@@ -73,7 +69,7 @@ External conversation session labels are not agent-session IDs. Arbitrary payloa
 metadata is inert. Ambiguous, dangling and foreign-owner structural links fail
 closure. Legacy empty key projects/profiles and client project lists are recorded
 as explicit `all_in_org` modes in the preservation manifest; grant conversion
-and policy enforcement are reserved for Phase 2.
+and enforcement follow the isolation and managed-policy cutovers.
 
 ## Operator rehearsal
 
@@ -150,5 +146,5 @@ The fixture covers every collection with real pre-V6 validators, preserved actor
 and revisions, linked content/research evidence, keys and jobs. Acceptance checks
 strict validators and tenant uniqueness on MongoDB, adopted-object updates,
 transaction rollback, interrupted/repeated adoption, unresolved quarantine,
-backup/writer refusal and the API/MCP traffic seal. No Phase 2 runtime isolation,
-search-policy authorization, dashboard or human-auth test result is claimed.
+backup/writer refusal and the API/MCP traffic seal. This stage-specific selector alone does not establish runtime isolation,
+search-policy, dashboard or human-auth acceptance; those require their real gates.

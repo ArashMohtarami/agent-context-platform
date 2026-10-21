@@ -186,6 +186,9 @@ services:
       MONGODB_PASSWORD_FILE: /run/secrets/mongodb-app-password
       MONGODB_REPLICA_SET: ${MONGODB_REPLICA_SET:-rs0}
       MONGODB_APP_NAME: ${MONGODB_APP_NAME:-agent-context-platform}
+      MONGODB_TIMEOUT_MS: ${MONGODB_TIMEOUT_MS:-15000}
+      MONGODB_MAX_POOL_SIZE: ${MONGODB_MAX_POOL_SIZE:-50}
+      MONGODB_MIN_POOL_SIZE: ${MONGODB_MIN_POOL_SIZE:-0}
       # On unless a deployment says otherwise: an unset variable must never be
       # what opens the platform. Issue keys with `contextctl keys create`.
       API_AUTH_ENABLED: ${API_AUTH_ENABLED:-true}

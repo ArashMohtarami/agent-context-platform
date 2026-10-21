@@ -1,10 +1,12 @@
 # Human organization management
 
-Phase 6 adds session-only member, team, invitation and access-request APIs on
-Phase 5 governance transactions. It adds no dashboard, public signup, machine
-sponsor relationships or credential issuance. All examples below use fictional
-people, organizations and resources. Mail goes only to the configured private
-local test sink; this repository does not send invitations over the network.
+Session-only member, team, invitation and access-request APIs use governance
+transactions and current verified organization context. The implemented
+[organization console](organization-management.md) consumes them; verified
+machine lifecycle builds on [managed agents](managed-agents.md). Public signup,
+anonymous owner claims and private global user-directory search are not exposed.
+This reference retains the explicit schema-41 stage of the
+[staged cutover](migration-recovery.md); current full head is 42.
 
 ## Activation and storage
 
@@ -211,7 +213,7 @@ merely because a person belongs to both teams. Other-subject effective-access
 explanations omit ancestor IDs outside the selected source. No endpoint returns
 a private global identity document.
 
-## Offboarding and deferred machine relationships
+## Offboarding and verified machine relationships
 
 Organization suspension/offboarding advances only that membership's revision
 and revokes its browser sessions in the same transaction as audit. It does not
@@ -229,12 +231,13 @@ source resources; reinstatement or a fresh login cannot revive the old job
 session. SSO job checks receive the same mounted provider registry as browser
 sessions. A standalone checker without that registry refuses SSO authority.
 
-Managed credentials with unknown sponsorship remain refused through the shared
-REST/MCP/job resolver. No sponsorship is inferred from `owner_id`. The separately
-reviewed, expiring adopted-key adapter remains the explicit Phase 5 compatibility
-exception and conveys no human sponsor or machine reviewer identity. Phase 7
-must create verified sponsor relationships and establish their complete REST,
-stdio/HTTP MCP and job revocation acceptance. Phase 6 makes no such lifecycle claim.
+Managed credentials with unknown sponsorship are refused through the shared
+REST/MCP/job resolver. No sponsorship is inferred from `owner_id`. At managed-machine
+activation every legacy key must be explicitly claimed to a verified sponsor or
+service account, or revoked. Current verified sponsorship and custody are checked
+in ordinary REST, active stdio/HTTP MCP sessions and pending job access; see
+[managed agents](managed-agents.md) for those relationships and evidence gates.
+The human-management selector alone does not prove a complete machine lifecycle.
 
 ## Validation
 

@@ -1,9 +1,8 @@
 """Real disposable replica-set evidence. No mocks satisfy this selector."""
 
-import asyncio
 import os
-import shutil
 from hashlib import sha256
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 import httpx
@@ -13,13 +12,12 @@ from bson import BSON, ObjectId
 from pymongo import AsyncMongoClient
 from pymongo.errors import DuplicateKeyError, OperationFailure
 from v6_fixtures import legacy_fixture
+from v6_isolation_fixtures import archive as authenticated_archive
 
-from app.backup.manifest import build, write
 from app.db.initializer import initialize_database
 from app.db.tenant_inventory import references
 from app.db.tenant_schema import TENANT_COLLECTIONS
 from app.main import create_app
-from app.models.common import utc_now
 from app.models.organization import OrganizationDocument
 from app.repositories.organization_repository import MongoOrganizationRepository
 from app.repositories.project_repository import MongoProjectRepository
@@ -39,7 +37,7 @@ async def disposable():
     uri = os.environ.get("V6_TEST_MONGODB_URI")
     if not uri:
         pytest.skip("explicit disposable V6_TEST_MONGODB_URI required; no integration evidence")
-    assert uri.startswith("mongodb://127.0.0.1:") and "directConnection=true" in uri
+    assert urlsplit(uri).hostname == "127.0.0.1" and "directConnection=true" in uri
     client = AsyncMongoClient(uri, tz_aware=True, serverSelectionTimeoutMS=5000)
     hello = await client.admin.command("hello")
     assert hello.get("setName") and hello.get("isWritablePrimary")
@@ -64,38 +62,8 @@ async def disposable():
 
 
 async def backup(database, tmp_path):
-    container = os.environ["V6_TEST_MONGODB_CONTAINER"]
-    assert container.startswith("acp-v6-phase1-test-") and database.name.startswith("acp_v6_")
-    docker = shutil.which("docker")
-    assert docker is not None
-    process = await asyncio.create_subprocess_exec(
-        docker,
-        "exec",
-        container,
-        "mongodump",
-        "--quiet",
-        "--archive",
-        "--db",
-        database.name,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    output, error = await process.communicate()
-    assert process.returncode == 0, error.decode()
-    archive = tmp_path / "pre-v6.archive"
-    archive.write_bytes(output)
-    counts = await MongoTenantAdoptionRepository(database).counts()
-    manifest = tmp_path / "pre-v6.manifest.json"
-    write(
-        manifest,
-        build(
-            archive=archive,
-            created_at=utc_now(),
-            database=database.name,
-            gzip=False,
-            collections=counts,
-        ),
-    )
+    assert database.name.startswith("acp_v6_")
+    archive, manifest = await authenticated_archive(database, tmp_path)
     return dict(
         org_id="org-a",
         adoption_id="adoption-one",
@@ -224,7 +192,9 @@ async def test_adopted_service_updates_keep_legacy_identity(disposable, tmp_path
     assert (await service.apply(**options)).compatible
 
 
-async def test_two_org_same_natural_keys_strict_constraints_and_new_scheme(disposable, tmp_path):
+async def test_two_org_same_natural_keys_strict_constraints_and_new_scheme(
+    disposable, tmp_path, settings
+):
     from app.db.tenant_inventory import MODEL_BY_COLLECTION
 
     database, originals = disposable
@@ -271,12 +241,16 @@ async def test_two_org_same_natural_keys_strict_constraints_and_new_scheme(dispo
         # closure must still validate registered version 2 rows in a sealed org B.
         assert (await service.apply(**options)).compatible
     app = create_app()
+    app.state.settings = settings
     app.state.tenant_control_database = database
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as client:
-        for path in ("/api/projects", "/api/v1/projects", "/mcp", "/metrics"):
+        for path in ("/api/projects", "/api/v1/projects", "/mcp"):
             assert (await client.get(path)).status_code == 503
+        # Raw installation metrics have a separate operator gate even while
+        # tenant domain traffic is sealed. No tenant key grants this endpoint.
+        assert (await client.get("/metrics")).status_code == 403
         assert (await client.get("/dashboard")).status_code == 404
 
 

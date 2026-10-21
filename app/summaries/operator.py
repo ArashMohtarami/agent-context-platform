@@ -33,7 +33,12 @@ async def checkpoint(engine: PolicyEngine, org: str, command: Checkpoint) -> Row
         ):
             raise PolicyDenied("a stream cannot backdate collection or resurrect retained history")
         anchor = await engine.anchor(org, tx)
-        await engine.fence(anchor, tx)
+        # A new/narrower served-history boundary changes authorization, even
+        # though an ordinary collector watermark does not change grant policy.
+        retention_changed = (
+            previous is None or command.retained_from != previous["change"]["retained_from"]
+        )
+        await engine.fence(anchor, tx, mutation=retention_changed)
         through = utc_now()
         gaps = [*previous["change"].get("gaps", [])] if previous else []
         gaps.extend(g.model_dump() for g in command.gaps)

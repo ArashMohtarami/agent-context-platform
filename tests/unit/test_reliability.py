@@ -17,7 +17,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from pymongo.errors import ExecutionTimeout, PyMongoError, ServerSelectionTimeoutError
+from pymongo.errors import (
+    ExecutionTimeout,
+    OperationFailure,
+    PyMongoError,
+    ServerSelectionTimeoutError,
+)
 
 from app.api.middleware import SecurityHeadersMiddleware, unavailable_dependency, unhandled_error
 from app.core.config import Settings
@@ -411,3 +416,32 @@ def test_the_agent_facing_client_ignores_an_inherited_proxy() -> None:
 def admitted_tenant_for_domain_regression(tenant_runtime):
     """Existing domain behavior uses an explicit test organization."""
     yield
+
+
+@pytest.mark.asyncio
+async def test_aborted_transaction_is_an_explicit_conflict_without_secret_logging(caplog):
+    application = FastAPI()
+    application.add_exception_handler(PyMongoError, unavailable_dependency)
+    application.add_middleware(SecurityHeadersMiddleware)
+    calls = 0
+
+    @application.post("/review")
+    async def review():
+        nonlocal calls
+        calls += 1
+        raise OperationFailure(
+            "synthetic-secret-must-never-be-logged",
+            code=112,
+            details={"errorLabels": ["TransientTransactionError"]},
+        )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        response = await client.post("/review")
+    assert response.status_code == 409 and calls == 1
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert "reload" in response.text
+    assert "synthetic-secret-must-never-be-logged" not in response.text + caplog.text
+    record = next(r for r in caplog.records if r.message == "database_transaction_conflict")
+    assert record.error_code == 112 and record.transient_transaction is True

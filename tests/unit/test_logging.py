@@ -3,7 +3,7 @@
 import json
 import logging
 from collections.abc import Iterator
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -102,6 +102,47 @@ def test_configure_logging_uses_json_stdout_and_disables_duplicate_access_log() 
     get_logger.assert_called_once_with("uvicorn.access")
     assert get_logger.return_value.disabled is True
     capture_warnings.assert_called_once_with(True)
+
+
+async def test_failed_startup_reports_safe_type_and_code_without_exception_contents() -> None:
+    from pymongo.errors import OperationFailure
+
+    from app.core.config import Settings
+    from app.main import create_app
+
+    private_detail = "fictional-password-must-not-appear-in-the-startup-event"
+    failure = OperationFailure("context " * 2000 + private_detail, code=85)
+    mongodb = Mock(connect=AsyncMock(side_effect=failure))
+    with (
+        patch("app.main.configure_logging"),
+        patch("app.main.MongoDBClient", return_value=mongodb),
+        patch("app.main.logger") as startup_logger,
+    ):
+        application = create_app(
+            Settings(
+                _env_file=None,
+                mongodb_uri="mongodb://startup-unit.invalid:27017",
+                mongodb_database="startup_unit",
+                mongodb_username="fixture",
+                mongodb_password="unused-fictional-unit-password",
+                embedding_enabled=False,
+            )
+        )
+        with pytest.raises(OperationFailure) as raised:
+            async with application.router.lifespan_context(application):
+                pytest.fail("failed startup must never yield a ready application")
+    assert raised.value is failure
+    startup_logger.error.assert_called_once_with(
+        "application_startup_failed",
+        extra={"component": "startup", "error_type": "OperationFailure", "error_code": 85},
+    )
+    event = startup_logger.error.call_args
+    record = logging.LogRecord(
+        "agent_context.startup", logging.ERROR, __file__, 1, event.args[0], (), None
+    )
+    for key, value in event.kwargs["extra"].items():
+        setattr(record, key, value)
+    assert private_detail not in JsonFormatter().format(record)
 
 
 @pytest.mark.asyncio

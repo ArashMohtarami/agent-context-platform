@@ -15,6 +15,7 @@ from app.summaries.coverage import REPORT_ACTION, coverage
 from app.summaries.models import (
     MAX_REPORT_BYTES,
     MAX_REPORT_ROWS,
+    REPORT_TTL_SECONDS,
     EventDTO,
     ReportDTO,
     SummaryQuery,
@@ -51,7 +52,7 @@ class Reports:
         self.service.context(org, actor)
         query.current(utc_now())
         report_id = "report_" + uuid4().hex
-        expires = utc_now() + timedelta(minutes=10)
+        expires = utc_now() + timedelta(seconds=REPORT_TTL_SECONDS)
 
         async def operation(snapshot: Row, tx: Any) -> Row:
             self.authorize(snapshot, query)
@@ -84,7 +85,6 @@ class Reports:
         async with self.engine.transaction() as tx:
             snapshot = await self.engine.snapshot(org, actor, tx)
             await self.service.ready(tx)
-            await self.engine.fence(snapshot["anchor"], tx)
             receipt = await self.service.db["governance_events"].find_one(
                 {
                     "org_id": org,
@@ -149,4 +149,9 @@ class Reports:
                 "observed_count": len(rows),
                 "coverage": coverage(query, declared, utc_now()).model_dump(mode="json"),
             }
-            return result, metadata
+        if utc_now() >= command["expires_at"]:
+            raise PolicyDenied("report is unavailable")
+        await self.service.confirm_current(snapshot, query, authorize=self.authorize)
+        if utc_now() >= command["expires_at"]:
+            raise PolicyDenied("report is unavailable")
+        return result, metadata

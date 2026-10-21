@@ -1,10 +1,11 @@
 # Managed roles, grants and delegation (V6 Phase 5)
 
-This optional foundation follows verified tenant isolation, local identity and
-SSO/org switching. `V6_MANAGEMENT_POLICY=false` remains the default. It adds no
-management dashboard or team/data UI. Browser cookies still cannot authenticate
-V1–V5 or MCP. Managed machine sponsorship, credential issuance and the separately
-approved service-account reviewer runtime remain sealed until Phase 7.
+The opt-in policy engine uses verified human identity and explicit organization
+context. `V6_MANAGEMENT_POLICY=false` remains the default; enabling it does not
+perform the operator bootstrap. [Human management](organization-management.md),
+[managed machines](managed-agents.md) and the [console](dashboard.md) consume this
+engine. This reference describes the schema-40 cutover within the current
+[staged migration](migration-recovery.md), whose full head is 42.
 
 ## Authority model
 
@@ -40,7 +41,8 @@ roles, remaining depth and expiry. The parent must itself hold current issuance
 authority for that target. Owner/admin can appoint executive/lead; those roles
 can appoint member roles only. Owner-to-admin appointment consumes one level;
 a lineage has at most four records. No nested-team or script policy exists.
-Named team workflows wait for Phase 6; no team title expands target selectors.
+Named team workflows use explicit team edges and current delegated envelopes;
+no team title expands target selectors.
 
 Self-grants, self-ceiling changes and appointment of owner/admin by leads are
 refused. Regrant creates a new assignment ID. Narrowing/revocation advances the
@@ -95,7 +97,8 @@ human identity or service sponsorship. This deliberate review restriction is
 separate from preserved ordinary data access. Existing REST/MCP/admin paths retain
 its resource checks and refresh it on authentication, job execution and result
 access. Operator key revocation and client-envelope writes share the anchor and
-strict governance audit. New key issuance is refused until Phase 7.
+strict governance audit. Managed issuance requires the verified sponsorship
+engine and recipient-only delivery; legacy `keys create` remains refused.
 Whole-database backup/restore and raw shared metrics stay installation-only.
 
 An owner who needs additional corpus use cannot grant it to themselves. Until
@@ -131,7 +134,7 @@ A server-attested authorship ledger records human sponsors with authored writes
 in the same fenced transaction. Every contributing author is excluded from
 review. An adopted record without this proof remains unreviewable by managed
 humans; editing it cannot manufacture sponsorship. Unknown machine authorship
-and all managed machine reviewers fail closed. Phase 7's exception must bind a
+fails closed. Managed machine review requires a
 separately approved service account, verified active sponsor/generation, exact
 review operations/resources, expiry and sponsor-based self-review exclusions.
 `owner_id`, equal emails, IdP roles or `content:write` alone do not establish it.
@@ -149,7 +152,8 @@ Assignment/authority mutation, immutable governance event and durable outbox are
 one transaction. Audit contains assignment before/after metadata, not corpus
 bodies, factor secrets or credentials. Audit/outbox failure aborts the mutation.
 The existing ordinary domain audit remains best-effort. Outbox records are
-persisted only; Phase 5 does not send messages or pretend to deliver reports.
+persisted without credential plaintext; they do not themselves send messages
+or replay one-time secrets.
 
 This follows MongoDB's documented [transaction conflict/stale-read behavior](https://www.mongodb.com/docs/manual/core/transactions-production-consideration/)
 and [PyMongo transaction semantics](https://www.mongodb.com/docs/languages/python/pymongo-driver/current/crud/transactions/).
@@ -175,9 +179,11 @@ expiry and inactive ancestry without exposing private login identities.
 | POST | `/api/v6/organizations/{org_id}/ownership-transfer` | current owner; distinct verified target |
 | POST | `/api/v6/organizations/{org_id}/ownership-transfer/{id}/accept` | named target; unexpired unchanged offer |
 
-Membership suspension/reinstatement policy primitives are transactional, but
-membership/team management HTTP workflows and UI remain Phase 6. No directory,
-credential issuance UI, OIDC changes or data dashboard is introduced here.
+Membership suspension/reinstatement uses these transactional primitives.
+[Human-management APIs](human-organization-management.md),
+[managed credentials](managed-agents.md) and [console workflows](dashboard.md)
+have additional operation-specific gates; this policy selector alone does not
+prove those complete journeys.
 
 ## Storage, bounds and verification
 
@@ -196,7 +202,8 @@ capacity work, not silent truncation or deleting audit history. Selectors cap at
 365 days and operator recovery/adoption adapters at 30 days. The shared anchor
 serializes organization-sensitive writes. These are implementation bounds, not
 throughput, latency or visual benchmark results. Existing Phase 0 performance
-budgets remain targets; this phase claims correctness only and supplies no UI.
+budgets remain targets; [verification](verification.md) records unresolved
+measurement and acceptance limits.
 
 ```sh
 python -m pytest -q tests/unit/test_security_models.py tests/unit/test_api_authorization.py tests/unit/test_content_publication.py tests/unit/test_knowledge_candidate_service.py tests/unit/test_agent_client_service.py

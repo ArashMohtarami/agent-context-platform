@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database
 
 from app.core.config import Settings, get_settings
 from app.db.client import MongoDBClient
@@ -17,7 +18,6 @@ from app.db.context_indexes import (
     ensure_context_text_index,
     ensure_context_vector_index,
 )
-from app.db.initializer import initialize_database
 from app.db.memory_indexes import (
     describe_memory_text_index,
     describe_memory_vector_index,
@@ -187,7 +187,7 @@ async def wait_for_indexed_knowledge(
     vector search that misses a document contributes nothing for it rather than
     the 0.5 an orthogonal one earns. Two identical queries either side of that
     moment return the same documents with different scores. So this waits until
-    both the fixture skill and the payment context are found by vector search.
+    the fixture skill, payment context and both memories have reached both indexes.
     Unrelated global skills may legitimately use an older embedding model in a
     persistent integration database and must not make this fixture wait forever.
     """
@@ -202,7 +202,9 @@ async def wait_for_indexed_knowledge(
         items = result.context.items
         found = {item.source for item in items}
         fixture_skill = next((item for item in items if item.key == expected_skill), None)
-        skill_is_ready = fixture_skill is not None and "vector" in fixture_skill.explanation.methods
+        skill_is_ready = fixture_skill is not None and {"lexical", "vector"} <= set(
+            fixture_skill.explanation.methods
+        )
         fixture_context = next(
             (
                 item
@@ -211,11 +213,15 @@ async def wait_for_indexed_knowledge(
             ),
             None,
         )
-        context_is_ready = (
-            fixture_context is not None and "vector" in fixture_context.explanation.methods
+        context_is_ready = fixture_context is not None and {"lexical", "vector"} <= set(
+            fixture_context.explanation.methods
         )
         sources_ready = found == {"project_context", "active_skill", "memory"}
-        if sources_ready and skill_is_ready and context_is_ready:
+        memories = [item for item in items if item.source == "memory"]
+        memories_are_ready = len(memories) == 2 and all(
+            {"lexical", "vector"} <= set(item.explanation.methods) for item in memories
+        )
+        if sources_ready and skill_is_ready and context_is_ready and memories_are_ready:
             return
         if asyncio.get_running_loop().time() >= deadline:
             lagging = []
@@ -223,6 +229,8 @@ async def wait_for_indexed_knowledge(
                 lagging.append(expected_skill)
             if not context_is_ready:
                 lagging.append("project_context:Payment idempotency strategy")
+            if not memories_are_ready:
+                lagging.append("memory:both fixture memories through lexical and vector")
             raise AssertionError(
                 f"indexing did not catch up: reached {sorted(found)}, "
                 f"still not in the vector index: {sorted(lagging)}"

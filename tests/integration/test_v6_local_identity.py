@@ -15,7 +15,7 @@ from pymongo.errors import DuplicateKeyError, OperationFailure
 from app.db.initializer import initialize_database
 from app.db.migrations.v038_local_identity import LocalIdentityMigration
 from app.identity.browser import SESSION_COOKIE
-from app.identity.crypto import SeedVault, csrf, digest
+from app.identity.crypto import AuthRejected, SeedVault, csrf, digest
 from app.identity.mail import LocalMailSink
 from app.identity.repository import COLLECTION_OWNERSHIP, IdentityStore
 from app.identity.service import LocalIdentity, member_dto
@@ -192,6 +192,30 @@ async def test_real_enrollment_owner_intent_and_hashed_private_storage(identity,
     )
 
 
+@pytest.mark.parametrize("touch", [False, True])
+async def test_real_expiry_during_joined_authority_read_never_extends_session(
+    identity, monkeypatch, touch
+):
+    h = identity
+    await h.signup(mfa=False)
+    token = h.client.cookies.get(SESSION_COOKIE)
+    before = await h.row()
+    read = h.service.store.read_human_session
+
+    async def crosses_idle_expiry(query):
+        result = await read(query)  # The real persisted aggregation, with its actual predicates.
+        assert result is not None
+        h.clock.advance(minutes=31)
+        return result
+
+    monkeypatch.setattr(h.service.store, "read_human_session", crosses_idle_expiry)
+    with pytest.raises(AuthRejected):
+        await h.service.sessions.authenticate(token, touch=touch)
+    after = await h.db.browser_sessions.find_one({"_id": before["_id"]})
+    assert after["last_seen"] == before["last_seen"]
+    assert after["idle_expires_at"] == before["idle_expires_at"]
+
+
 async def test_real_challenge_purpose_expiry_browser_binding_and_audit_rollback(
     identity, monkeypatch
 ):
@@ -255,7 +279,7 @@ async def test_real_totp_replay_login_challenge_race_and_single_use_recovery(ide
         )
     )
     assert sum(result.status_code == 200 for result in results) == 1
-    assert all(result.status_code in {200, 401, 503} for result in results)
+    assert all(result.status_code in {200, 401, 409, 503} for result in results)
     await h.login(recovery=codes[0])
     assert (await h.row())["amr"] == ["password", "recovery"]
     await h.public()
@@ -531,5 +555,20 @@ async def test_real_account_throttle_and_password_enumeration_resistance(identit
             await second.throttle("fixture-bucket", "same-account", 2)
         private_bucket = await h.db.auth_throttles.find_one({"count": 3})
         assert private_bucket and "same-account" not in repr(private_bucket)
+        import asyncio
+
+        from app.identity.crypto import digest
+
+        key = digest("throttle", "fictional-concurrent-initial-bucket")
+        expires = utc_now() + timedelta(hours=1)
+        results = await asyncio.gather(
+            *(instance.store.throttle_bucket(key, expires) for instance in [h.service, second] * 8)
+        )
+        assert sorted(row["count"] for row in results) == list(range(1, 17))
+        persisted = await h.db.auth_throttles.find_one({"_id": key})
+        assert persisted["count"] == 16
+        assert persisted["expires_at"] == expires.replace(
+            microsecond=(expires.microsecond // 1000) * 1000
+        )
     finally:
         second.passwords.close()

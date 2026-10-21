@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 import pytest
 from bson import ObjectId
+from v6_legacy_integration import initialize_database
 
 from app.core.config import Settings, get_settings
 from app.db.client import MongoDBClient
@@ -16,7 +17,6 @@ from app.db.context_indexes import (
     ensure_context_text_index,
     ensure_context_vector_index,
 )
-from app.db.initializer import initialize_database
 from app.embeddings.types import EmbeddingVector
 from app.projects.errors import ContextNotFoundError, ProjectAlreadyExistsError
 from app.repositories.context_repository import MongoProjectContextRepository

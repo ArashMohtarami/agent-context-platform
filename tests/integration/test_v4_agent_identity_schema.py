@@ -8,15 +8,15 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from bson import ObjectId
 from pymongo.errors import WriteError
+from v6_legacy_integration import initialize_database, seed_projects
 
 from app.core.config import get_settings
 from app.db.client import MongoDBClient
-from app.db.indexes import INDEX_DEFINITIONS
-from app.db.initializer import initialize_database
 from app.db.migrations.v001_initial_schema import V1_COLLECTIONS
 from app.db.migrations.v006_creator_content_schema import V2_CONTENT_COLLECTIONS
 from app.db.migrations.v013_research_schema import V3_RESEARCH_COLLECTIONS
 from app.db.migrations.v022_agent_identity_schema import V4_AGENT_COLLECTIONS
+from app.db.tenant_schema import TENANT_INDEX_DEFINITIONS as INDEX_DEFINITIONS
 from app.models.agent import (
     AgentActivityDocument,
     AgentClientDocument,
@@ -64,6 +64,7 @@ async def test_v4_identity_schema_is_idempotent_and_preserves_v1_v2_v3_collectio
     try:
         async with initialized_mongodb() as mongodb:
             database = mongodb.database
+            await seed_projects(database, [project_id, f"other-{suffix}"])
             await initialize_database(database)
 
             names = set(await database.list_collection_names())
@@ -89,6 +90,7 @@ async def test_v4_identity_schema_is_idempotent_and_preserves_v1_v2_v3_collectio
                 owner_id="owner",
                 scopes=["skills:read", "context:read"],
                 project_ids=[project_id],
+                project_mode="include",
                 metadata={"test": "v4-schema"},
                 last_seen_at=now,
             )
@@ -166,6 +168,7 @@ async def test_v4_identity_repositories_paginate_and_reject_conflicting_project_
     try:
         async with initialized_mongodb() as mongodb:
             database = mongodb.database
+            await seed_projects(database, [project_id, f"other-{suffix}"])
             clients = MongoAgentClientRepository(database)
             sessions = MongoAgentSessionRepository(database)
             bindings = MongoProjectBindingRepository(database)
@@ -179,6 +182,7 @@ async def test_v4_identity_repositories_paginate_and_reject_conflicting_project_
                         client_type="codex",
                         name=f"V4 repository client {index}",
                         owner_id="owner",
+                        project_mode="none",
                         created_at=created_at,
                         updated_at=created_at,
                     )

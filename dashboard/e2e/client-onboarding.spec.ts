@@ -38,7 +38,7 @@ test('template copy, lead approval, recipient one-time key, rotation and offboar
     await worker.getByRole('button', {name: 'Confirm one-time generation'}).click(); const response = await delivered;
     expect(response.status()).toBe(200); expect(response.headers()['cache-control']).toBe('no-store');
     const receipt = await response.json(); const secret = receipt.token as string;
-    await expect(worker.getByLabel('One-time machine key', {exact: true})).toHaveText(secret); await worker.screenshot({path: info.outputPath('synthetic-recipient-once.png'), fullPage: true});
+    await expect(worker.getByLabel('One-time machine key', {exact: true})).toHaveText(secret); await worker.screenshot({path: info.outputPath('synthetic-recipient-once.png'), fullPage: true, mask: [worker.getByLabel('One-time machine key', {exact: true})]});
     expect(await worker.evaluate(async () => navigator.clipboard.readText())).toBe('synthetic-clipboard-before-explicit-copy');
     await worker.getByRole('button', {name: 'Copy machine key'}).click(); expect(await worker.evaluate(async () => navigator.clipboard.readText())).toBe(secret);
     await noStoredCredentials(worker);

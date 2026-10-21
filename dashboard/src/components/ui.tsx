@@ -41,6 +41,10 @@ export function Status({children, tone = 'neutral'}: {children: ReactNode; tone?
 export function Skeleton({label = 'Loading your workspace'}: {label?: string}) {
   return <div className="skeleton" role="status" aria-live="polite"><span className="sr-only">{label}</span><div/><div/><div/></div>;
 }
+
+export function WorkspaceUnavailable() {
+  return <div className="error-state"><Notice tone="danger">This workspace could not load. Reload to retry with your current session.</Notice><Button variant="secondary" onClick={() => window.location.reload()}>Reload workspace</Button></div>;
+}
 export function Empty({title, children}: {title: string; children: ReactNode}) {
   return <div className="empty"><Icon name="info"/><h3>{title}</h3><p>{children}</p></div>;
 }

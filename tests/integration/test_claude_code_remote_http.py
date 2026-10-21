@@ -12,6 +12,7 @@ from bson import ObjectId
 from fastapi import FastAPI
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
+from v6_legacy_integration import unified_search_ready
 
 from app.core.config import get_settings
 from app.main import create_app
@@ -45,10 +46,9 @@ async def running_application(
     scopes: list[str] | None = None,
 ) -> AsyncIterator[tuple[FastAPI, str, str, str, str]]:
     """Run the real API/MCP HTTP edge and clean up only this test's records."""
-    # This verifies the Streamable HTTP protocol rather than semantic ranking.
-    # Avoid a model download/cold start so CI can exercise the remote endpoint
-    # in the same offline environment as the gateway integration suite.
-    application = create_app(get_settings().model_copy(update={"embedding_enabled": False}))
+    # Unified knowledge search includes local query embedding. The disposable
+    # runner provides the real model from its private offline cache.
+    application = create_app(get_settings())
     port = _port()
     server = uvicorn.Server(
         uvicorn.Config(
@@ -75,6 +75,18 @@ async def running_application(
     project_id = f"claude-http-{suffix}"
     key_id: str | None = None
     try:
+        await MongoProjectRepository(application.state.mongodb.database).create(
+            ProjectDocument(
+                project_id=project_id,
+                name="Claude HTTP integration",
+                description="A project created only for remote MCP integration coverage.",
+                repository="https://example.invalid/claude-http.git",
+                environment="test",
+            )
+        )
+        await unified_search_ready(
+            application.state.mongodb.database, get_settings().embedding_dimensions
+        )
         clients: AgentClientService = application.state.agent_client_service
         created = await clients.create_client(
             client_id=client_id,
@@ -86,15 +98,6 @@ async def running_application(
         )
         issued = await clients.create_credential(created.client_id)
         key_id = issued.record.key_id
-        await MongoProjectRepository(application.state.mongodb.database).create(
-            ProjectDocument(
-                project_id=project_id,
-                name="Claude HTTP integration",
-                description="A project created only for remote MCP integration coverage.",
-                repository="https://example.invalid/claude-http.git",
-                environment="test",
-            )
-        )
         yield application, f"http://127.0.0.1:{port}/mcp", issued.token, project_id, client_id
     finally:
         database = application.state.mongodb.database
@@ -121,7 +124,10 @@ async def test_claude_code_client_uses_remote_http_for_discovery_search_and_writ
                 capabilities = await session.call_tool("get_platform_capabilities", {})
                 searched = await session.call_tool(
                     "search_knowledge",
-                    {"query": "Claude Code remote HTTP verification", "project_id": project_id},
+                    {
+                        "query": "Claude Code remote HTTP verification",
+                        "project_id": project_id,
+                    },
                 )
                 saved = await session.call_tool(
                     "save_context",
@@ -174,7 +180,10 @@ async def test_gemini_cli_uses_the_same_streamable_http_client_and_mcp_tools() -
                 capabilities = await session.call_tool("get_platform_capabilities", {})
                 searched = await session.call_tool(
                     "search_knowledge",
-                    {"query": "Gemini remote HTTP verification", "project_id": project_id},
+                    {
+                        "query": "Gemini remote HTTP verification",
+                        "project_id": project_id,
+                    },
                 )
                 saved = await session.call_tool(
                     "save_context",

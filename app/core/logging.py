@@ -46,6 +46,8 @@ _STRUCTURED_FIELDS = (
     "db_command",
     "mcp_tool",
     "error_type",
+    "error_code",
+    "transient_transaction",
     "embedding_model",
     "embedding_dimensions",
     "embedding_device",

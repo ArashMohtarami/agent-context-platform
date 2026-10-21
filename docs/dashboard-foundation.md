@@ -1,10 +1,11 @@
 # V6 dashboard frontend foundation
 
-Phase 9 adds a React console at `/console/` and two bounded, session-only read
-contracts: `GET /api/v6/me/console` and `GET /api/v6/me/security`. It does not add
-organization administration, data dashboards, credentials management or operator
-screens. The real authorized organization/activity APIs remain available for
-later frontend phases. The console starts disabled (`V6_CONSOLE_ENABLED=false`).
+The React console at `/console/` uses bounded session-only shell/security
+contracts: `GET /api/v6/me/console` and `GET /api/v6/me/security`. Implemented
+[management](dashboard-management.md), [knowledge](dashboard-knowledge.md),
+[research](dashboard-research.md), [creator](dashboard-creator.md) and
+[monitoring](dashboard-monitoring.md) workflows build on this foundation.
+The console starts disabled (`V6_CONSOLE_ENABLED=false`).
 Enable it only after the earlier tenant, identity, policy and managed-machine
 cutovers have passed and the managed schema-42 control is activated. Enabling the
 flag does not perform or bypass those cutovers. Schema head stays 42.
@@ -102,10 +103,10 @@ The initial JavaScript budget is **300 KiB gzip across all emitted chunks**;
 are LCP ≤2.5 s, CLS ≤0.1 and INP ≤200 ms at 4× CPU slowdown, 10 Mbps/100 ms RTT.
 These are acceptance budgets, not benchmark results. Provider latency is outside
 that client-navigation budget. Test at 360/768/1440 CSS pixels, both themes,
-keyboard-only focus, reduced motion and forced colors. The 200% equivalent specimen uses a real browser with a 720 CSS-pixel
-viewport and device-pixel ratio 2 (1440 physical pixels). This checks reflow at
-the corresponding browser-zoom geometry; browser-toolbar gestures and OS scaling
-are not exercised. Screen-reader interoperability is not claimed. Automated axe checks
+keyboard-only focus and reduced motion. A real Chrome 200% zoom review supplements
+viewport/DPR reflow specimens; it does not establish screen-reader, forced-colors,
+OS-scaling or cross-browser interoperability. Current complete-release evidence
+and limits are recorded in [verification](verification.md). Automated axe checks
 supplement screenshot and focus review; they do not replace manual accessibility
 review. Controls target 44 px, visible 2 px focus, WCAG AA 4.5:1 ordinary text and
 3:1 non-text contrast. Status always includes text.

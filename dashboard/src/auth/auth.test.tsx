@@ -39,7 +39,7 @@ describe('session-only authentication', () => {
     mount('/sign-in');
     await user.type(await screen.findByLabelText('Organization ID'), 'org-a');
     await user.click(screen.getByRole('button', {name: 'Continue with SSO'}));
-    expect(await screen.findByText('The service could not be reached. Try again when the connection is available.')).toBeVisible();
+    expect(await screen.findByText('The requested service is temporarily unavailable. Choose another supported method or try again later.')).toBeVisible();
     await user.type(screen.getByLabelText('Organization ID'), 'org-a');
     expect(screen.getByRole('button', {name: 'Continue with SSO'})).toBeEnabled();
   });

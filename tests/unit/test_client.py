@@ -31,6 +31,7 @@ def test_client_initialization_uses_application_credentials(settings: Settings) 
         connectTimeoutMS=5_000,
         timeoutMS=15_000,
         maxPoolSize=50,
+        minPoolSize=0,
         uuidRepresentation="standard",
         tz_aware=True,
         tzinfo=UTC,

@@ -1,5 +1,9 @@
 # Monitoring and audit UI (V6 Phase 14)
 
+Complete-source release acceptance remains pending. The final-fence natural
+expiry regression now passes its focused real MongoDB gate. See
+[verification and known limits](verification.md).
+
 My workspace, Team overview and Leadership overview use the Phase 8 authorized
 read model. Navigation reflects explicit metadata grants; server policy remains
 authoritative. An owner role grants no automatic monitoring/corpus bypass.
@@ -55,18 +59,32 @@ withheld. Missing or unsafe fields say “not recorded / withheld”; legacy or
 unsupported snapshots are unavailable. Current policy never substitutes for a
 historical snapshot. Existing event lists and CSV still exclude raw changes.
 
-Concurrent summary, timeline, diff and CSV reads can contend on the shared policy
-anchor. Up to three attempts reread session and policy after a transient MongoDB
-transaction conflict, retaining the revoke/narrow fence. An exhausted/bounded
-query returns an error state, never invented observations. Existing three-second
-MongoDB operation deadlines and no-disk-spill bounds remain; these limits are not
-measured production throughput promises. There are no new dependencies,
+Summary, timeline, diff and CSV reads aggregate within a bounded snapshot, then
+recheck the current visibility and perform an atomic majority write against the
+unchanged policy anchor before delivery. Aggregation holds no long-lived anchor
+write lock. Revoke/narrow wins if it commits before that final confirmation;
+governance mutations retain their transactional shared-anchor fence. A new or
+narrower served-retention boundary also changes the anchor revision. This uses
+MongoDB's documented [conditional single-document atomicity](https://www.mongodb.com/docs/manual/core/write-operations-atomicity/)
+and [transaction conflict behavior](https://www.mongodb.com/docs/manual/core/transactions-production-consideration/).
+Up to three attempts refresh session/policy after a transient database conflict.
+An exhausted/bounded query returns an error, never invented observations.
+Detail/report operations have three-second database deadlines; a cold overview
+has a ten-second ceiling and can reuse a bounded source-invalidated aggregate
+cache. Its displayed generation time remains the original observation time.
+Every reuse still rechecks current policy. No-disk-spill bounds remain; these limits
+are not measured production throughput promises. There are no new dependencies,
 collections, migration versions or background collectors.
 
 Reports require a separate `reports:export` organization grant and recent MFA.
 Preparation records bounded filters; download rechecks recipient, current
-membership/policy revision, retention and ten-minute expiry. Reports are at most
-5,000 rows and 2 MiB, with server-side spreadsheet-formula neutralization. The
+membership/policy revision, retention and five-minute expiry. After rendering,
+delivery independently rechecks `reports:export` as well as activity visibility;
+longer-lived activity rights cannot replace an expired export grant. Expiry is
+checked synchronously after the final database await. Reports are at most
+5,000 rows and 2 MiB, with server-side spreadsheet-formula neutralization.
+Narrowing served retention invalidates earlier report receipts; request a new
+report under the current boundary. The
 browser fetches using its opaque session/context, validates the same-org report
 path, bounds bytes, guards late responses by context generation and releases the
 temporary Blob URL. It stores no CSV, report descriptor, token or persistent data

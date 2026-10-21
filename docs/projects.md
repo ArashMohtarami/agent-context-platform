@@ -2,7 +2,7 @@
 
 A **project** is one software system or repository. **Project context** is the durable technical
 knowledge that belongs to it: architecture decisions, business rules, API conventions, known
-issues. Skills are global knowledge that applies anywhere; context is what is true about one
+issues. Runtime skills are imported per organization and require explicit skill rights; context is what is true about one
 system in particular, which is why it outranks skills during retrieval.
 
 ## Project isolation

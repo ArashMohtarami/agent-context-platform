@@ -19,7 +19,14 @@ explicit public documentation inventory in `docs/guide/public-sources.json`.
 It writes the introduction, assets, guide, MIT license and reviewed linked
 examples/source files to `dist/site/`. It checks local file links and HTML
 anchors and writes a hash inventory at `dist/site/site-manifest.json`.
-The output directory is ignored by Git and can be rebuilt.
+The site also bundles `downloads/agent-context-platform-source.tar.gz` and
+`downloads/SHA256SUMS`, produced by the same audited deterministic source exporter.
+This archive includes frontend source, package/lockfile, Node pin and dependency
+notices/licenses, not generated bundles, node_modules, browser traces, Git history,
+secret files or private plans. The site manifest covers its archive/checksum bytes.
+The download is a review artifact, not an approved release or automatic publication;
+see [verification](verification.md). The output directory is ignored by Git and
+can be rebuilt.
 Exported files use mode `0644` and directories use `0755`, independent of your
 shell's umask, so the unprivileged Nginx process can read the static content.
 
