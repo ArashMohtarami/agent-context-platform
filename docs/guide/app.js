@@ -144,8 +144,7 @@
   window.addEventListener("resize", () => { if (innerWidth <= 760 && focusView) { focusView = false; setFocus(); } });
   const openAncestors = element => {
     let current = element;
-    while (current) { if (current instanceof HTMLDetailsElement) current.open = true; current = current.parentElement; }
-    element.hidden = false;
+    while (current) { current.hidden = false; if (current instanceof HTMLDetailsElement) current.open = true; current = current.parentElement; }
   };
   const revealHash = () => {
     let identity;
