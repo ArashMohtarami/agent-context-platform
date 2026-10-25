@@ -40,6 +40,10 @@ and its isolated MongoDB/mongot/OIDC/browser requirements are described in
 [verification](docs/verification.md). Required skips or known blocking failures
 leave release approval open. Keep reports/private plans out of public inventories.
 
+For explicit runner, disposable lifecycle and activation-evidence selections, use
+the [focused test runner](docs/focused-tests.md). Inspect its `--plan` before
+`--run`; required skips and mismatched selections fail the check.
+
 Run meaningful focused tests while editing, then these checks before submitting.
 For a database or search change, also run the relevant integration tests in a
 disposable environment. Compose uses explicitly named volumes and networks, so a

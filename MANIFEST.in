@@ -23,9 +23,14 @@ prune dashboard/.private
 include Dockerfile docker-compose.yml .dockerignore .gitignore .env.example
 recursive-include deploy *.yml *.conf *.template *.sh *.md *.txt *LICENSE* THIRD-PARTY-NOTICES
 recursive-include scripts *.py *.sh *.js
+# Maintained focused-test manifests and their real disposable fixture dependencies.
+recursive-include tests *.py
+include tests/focused/v7-phases.json
+recursive-include tests/infrastructure *.yml *.js
 prune dashboard/blob-report
 prune dashboard/.npm
 global-exclude *.tsbuildinfo *.key *.pem
 include requirements.lock requirements-dev.lock
 recursive-include docker *.py *.template
 include docs/backup.md docs/deployment.md docs/dashboard-*.md docs/guide/public-sources.json
+include docs/focused-tests.md

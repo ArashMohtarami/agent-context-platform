@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, openSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, openSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import path from 'node:path';
@@ -8,6 +8,17 @@ import { setTimeout as delay } from 'node:timers/promises';
 export default async function setup() {
   const descriptor = process.env.V6_BROWSER_DESCRIPTOR;
   if (!descriptor) throw new Error('Fixture descriptor path missing');
+  if (process.env.ACP_FOCUSED_RUN_ID) {
+    const state = process.env.ACP_FOCUSED_STATE;
+    if (!state || !existsSync(descriptor) || process.env.V6_BROWSER_SERVE_ONLY !== '1'
+        || realpathSync(descriptor) !== path.join(realpathSync(state), 'browser.json')) {
+      throw new Error('Focused fixture must be prepared by its owning runner');
+    }
+    const fixture = JSON.parse(readFileSync(descriptor, 'utf8'));
+    if (fixture.fixture !== 'acp-phase9-disposable' || fixture.focused_run_id !== process.env.ACP_FOCUSED_RUN_ID
+        || !fixture.origin.startsWith('https://127.0.0.1:')) throw new Error('Focused fixture ownership mismatch');
+    return; // Never spawn a legacy wrapper or nested browser suite in focused mode.
+  }
   if (existsSync(descriptor)) {
     if (JSON.parse(readFileSync(descriptor, 'utf8')).fixture !== 'acp-phase9-disposable') throw new Error('Refusing unknown browser environment');
     return;

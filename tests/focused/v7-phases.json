@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "jobs": {
+    "runner-unit": {
+      "reason": "Strict plan/result/process/ownership regressions and genuine evidence-verifier contract",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_focused_runner.py",
+        "tests/unit/test_v6_tenant_authorization.py::test_cutover_evidence_rejects_missing_modules_stale_source_and_skips",
+        "tests/unit/test_v6_tenant_authorization.py::test_evidence_runtime_fingerprint_survives_production_image_layout"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 46,
+      "requires": []
+    },
+    "stack-lifecycle": {
+      "reason": "Actual owned replica/search readiness and cleanup after a failing body",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_focused_stack_lifecycle.py::test_owned_stack_queries_search_and_cleans_after_error"
+      ],
+      "fixture": "self",
+      "timeout": 600,
+      "expected_count": 1,
+      "requires": []
+    },
+    "browser-serving": {
+      "reason": "One selected browser check; own serving harness with no nested npm suite",
+      "kind": "browser",
+      "selectors": [
+        {
+          "file": "e2e/focused-fixture.spec.ts",
+          "title": "focused fixture serves only the selected browser check"
+        }
+      ],
+      "fixture": "browser",
+      "timeout": 120,
+      "expected_count": 1,
+      "requires": []
+    },
+    "activation-unit": {
+      "reason": "All three required isolation unit modules",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_v6_tenant_authorization.py",
+        "tests/unit/test_v6_tenant_repositories.py",
+        "tests/unit/test_v6_search_isolation.py"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 21,
+      "requires": []
+    },
+    "activation-real": {
+      "reason": "All eleven non-cutover cases of the three required real isolation modules",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_v6_tenant_isolation.py::test_every_collection_crud_counts_distinct_and_foreign_ids",
+        "tests/integration/test_v6_tenant_isolation.py::test_real_mongot_all_production_indexes_have_tenant_candidate_filters",
+        "tests/integration/test_v6_tenant_isolation.py::test_live_resource_denials_joins_references_and_org_global_memory",
+        "tests/integration/test_v6_tenant_isolation.py::test_idempotency_uses_org_and_rechecks_effective_authority",
+        "tests/integration/test_v6_mcp_isolation.py::test_rest_v1_v4_v5_and_spoofed_headers",
+        "tests/integration/test_v6_mcp_isolation.py::test_http_mcp_sessions_cannot_switch_org",
+        "tests/integration/test_v6_mcp_isolation.py::test_actual_stdio_mcp_uses_one_org_and_rechecks_revocation",
+        "tests/integration/test_v6_mcp_isolation.py::test_rest_content_export_history_and_research_are_tenant_bound",
+        "tests/integration/test_v6_job_isolation.py::test_matching_job_ids_never_share_payloads_or_replay_across_orgs",
+        "tests/integration/test_v6_job_isolation.py::test_revocation_during_provider_work_prevents_result_persistence",
+        "tests/integration/test_v6_job_isolation.py::test_cached_mcp_ingestion_result_rechecks_source_authority"
+      ],
+      "fixture": "mongo",
+      "timeout": 900,
+      "expected_count": 11,
+      "requires": []
+    },
+    "activation-cutover": {
+      "reason": "Genuine earlier unit/real reports consumed by explicit cutover, additional org stays sealed",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_v6_tenant_isolation.py::test_operator_cutover_rehearsal_keeps_additional_org_sealed"
+      ],
+      "fixture": "mongo",
+      "timeout": 300,
+      "expected_count": 1,
+      "requires": [
+        "activation-unit",
+        "activation-real"
+      ]
+    }
+  },
+  "profiles": {
+    "p01": [
+      "runner-unit",
+      "stack-lifecycle",
+      "browser-serving"
+    ],
+    "p01-unit": [
+      "runner-unit"
+    ],
+    "p01-stack": [
+      "stack-lifecycle"
+    ],
+    "p01-browser": [
+      "browser-serving"
+    ],
+    "activation": [
+      "activation-unit",
+      "activation-real",
+      "activation-cutover"
+    ]
+  }
+}
