@@ -26,6 +26,9 @@ selection or collection changes require a new plan. Each plan can run once.
 | `p01-browser` | One browser check plus one separately reconciled Python serving harness | MongoDB + mongot + HTTPS Keycloak/API | Browser 120 seconds; serving startup 240 seconds and shutdown 30 seconds |
 | `p01` | The preceding three jobs, sequentially | At most one disposable stack | The same per-job limits |
 | `activation` | Three required unit modules, eleven non-cutover real cases, then the cutover case | Separate disposable MongoDB + mongot stacks for real and cutover jobs | 180 / 900 / 300 seconds |
+| `p02-runner` | Evidence-path, hosted ownership, narrow selection and plan regressions | None | 60 seconds |
+| `p02-hosting` | Original local-only TLS/startup case and nearby MFA/session/bearer regression | MongoDB + mongot + Keycloak + cached production API/console images | 900 seconds; original API readiness 90 seconds |
+| `p02-browser-directory` | Only the original browser performance journey and its serving harness | The same production-image fixture | Browser 120 seconds with original 90-second test limit |
 
 The `activation` profile is selected separately. It supplies the cutover case with
 the genuine earlier JUnit reports. It preserves the existing verifier's six-module,
@@ -48,8 +51,12 @@ commands 60 seconds and replica probes 10 seconds.
 
 Browser profiles also require the Node version in
 [dashboard/.node-version](../dashboard/.node-version), installed dashboard
-dependencies, a built `dashboard/dist/index.html` for the existing serving harness,
-and an installed Chromium executable. The default executable is
+dependencies and an installed Chromium executable. The `p01` browser fixture
+also needs a built `dashboard/dist/index.html`; hosted profiles serve image assets.
+Hosted profiles use the cached
+`acp-v6-api:phase15` and `acp-v6-console:phase15` images built from the maintained
+Dockerfile; startup uses `--pull never`, and the fixture verifies the API runtime
+fingerprint and records actual image IDs. The default browser executable is
 `/opt/google/chrome/chrome`. Choose explicit alternatives when necessary:
 
 ```sh
@@ -59,10 +66,16 @@ ACP_FOCUSED_CHROMIUM=/path/to/chromium \
 ```
 
 Use the same choices for `--run`. Build frontend prerequisites with the maintained
-[dashboard instructions](../dashboard/README.md). The selected browser case
+[dashboard instructions](../dashboard/README.md). The `p01` browser case
 checks TLS API access, unauthenticated denial, fixture control and browser startup;
 it does not establish SPA behavior, production hosting or external client compatibility.
-Only the fresh fixture CA is trusted by the test process; no system CA is installed.
+Node verifies the fresh fixture CA. Chromium's temporary profile receives only
+the generated loopback certificate's public-key pin, while `ignoreHTTPSErrors`
+stays false. Chromium's [verifier contract](https://chromium.googlesource.com/chromium/src/+/HEAD/services/network/ignore_errors_cert_verifier.h)
+describes this scoped allowlist; unrelated keys use ordinary verification. No
+system CA is installed. The Phase 2 performance profile uses the original
+production-image surface, preserves the first concurrent wave and all original
+assertions, and keeps failed attempts with their actual sample counts.
 
 Inherited `V6_*`, `PYTEST_*`, Compose and routing overrides are refused, including
 `DOCKER_HOST` and `DOCKER_CONTEXT`. Use a clean shell or explicitly unset a known
@@ -82,7 +95,8 @@ logs, verify their recorded ownership and remove only those specific resources.
 ## Results and extending a profile
 
 Plans, genuine JUnit, child logs, temporary fixture data and reconciled JSON stay
-under the ignored `.private/v7-competitive-planning/phase-1/runs/` directory.
+under the ignored `.private/v7-competitive-planning/phase-1/runs/` directory;
+`p02-*` profiles use the separate `phase-2/runs/` directory.
 Keep this data private. Summaries record selected, collected, passed, failed,
 skipped and expected-failure counts. Missing reports/counts are incomplete, never
 successful zero-test runs. Any required skip, xfail, error, failure, timeout or

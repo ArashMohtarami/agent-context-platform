@@ -51,10 +51,15 @@ def assert_owned(kind: str, value: dict, *, name: str, run_id: str, project: str
 
 
 class OwnedStack:
-    def __init__(self, run_id: str, env: dict[str, str], report: Path, *, oidc=False):
+    def __init__(
+        self, run_id: str, env: dict[str, str], report: Path, *, oidc=False, hosting=False
+    ):
         if not re.fullmatch(r"[a-f0-9]{32}-[a-z0-9-]{1,40}", run_id):
             raise FocusedError("invalid fixture identity")
         self.run_id, self.env, self.report, self.oidc = run_id, dict(env), report, oidc
+        self.hosting = hosting
+        if hosting and not oidc:
+            raise FocusedError("hosted fixture requires its real TLS provider fixture")
         self.state = Path(tempfile.gettempdir()) / ("acp-v6-phase2." + run_id)
         self.project = "acp-focused-" + run_id
         self.manifest = self.state / "compose.json"
@@ -62,6 +67,19 @@ class OwnedStack:
         if oidc:
             self.containers.append("acp-v6-oidc-keycloak-" + run_id)
         self.network = "acp-v6-phase2-isolated-" + run_id
+        self.hosting_project = "acp-v6-hosting-" + run_id
+        self.hosting_containers = (
+            ["acp-v6-hosting-" + name + "-" + run_id for name in ("context-api", "console")]
+            if hosting
+            else []
+        )
+        self.containers += self.hosting_containers
+        self.hosting_networks = (
+            ["acp-v6-hosting-" + name + "-" + run_id for name in ("ingress", "public")]
+            if hosting
+            else []
+        )
+        self.networks = [self.network, *self.hosting_networks]
         self.created = False
         self.owner = secrets.token_hex(32)
         self.env.update(DOCKER_CONFIG=str(self.state / "docker"))
@@ -95,15 +113,22 @@ class OwnedStack:
                 for service in yaml.safe_load(path.read_text())["services"].values()
             }
         )
+        if self.hosting:
+            images += ["acp-v6-api:phase15", "acp-v6-console:phase15"]
         return {
             "state": str(self.state),
             "project": self.project,
-            "resources": {"containers": self.containers, "network": self.network, "volumes": []},
+            "resources": {
+                "containers": self.containers,
+                "network": self.network,
+                "networks": self.networks,
+                "volumes": [],
+            },
             "compose_sources": [str(path.relative_to(ROOT)) for path in sources],
             "prepare": "exclusive 0700 state, fresh credentials, reviewed Compose inputs, no pulls",
             "commands": [
                 *[[*self.docker, "container", "inspect", name] for name in self.containers],
-                [*self.docker, "network", "inspect", self.network],
+                *[[*self.docker, "network", "inspect", name] for name in self.networks],
                 *[[*self.docker, "image", "inspect", image] for image in images],
                 *(
                     [[str(ROOT / ".venv/bin/python"), "tests/infrastructure/v6_oidc_prepare.py"]]
@@ -150,7 +175,7 @@ class OwnedStack:
             ],
             "cleanup_commands": [
                 *[[*self.docker, "container", "inspect", name] for name in self.containers],
-                [*self.docker, "network", "inspect", self.network],
+                *[[*self.docker, "network", "inspect", name] for name in self.networks],
                 *[[*self.docker, "logs", name] for name in self.containers],
                 [*self.docker, "rm", "-f", "<each ownership-verified container Id>"],
                 [*self.docker, "network", "rm", "<ownership-verified network Id>"],
@@ -159,10 +184,61 @@ class OwnedStack:
             "up_timeout_seconds": 60,
             "replica_poll_command_timeout_seconds": 10,
             "runtime_bindings": ["fresh password URI (never printed)", "ephemeral loopback ports"],
+            "hosting": {
+                "enabled": self.hosting,
+                "source": "tests/v6_deployment_fixtures.py::hosted_stack",
+                "project": self.hosting_project,
+                "images": ["acp-v6-api:phase15", "acp-v6-console:phase15"] if self.hosting else [],
+                "commands": [
+                    [
+                        *self.docker,
+                        "compose",
+                        "--env-file",
+                        "/dev/null",
+                        "-f",
+                        "docker-compose.yml",
+                        "-f",
+                        "deploy/console/compose.yml",
+                        "config",
+                        "--format",
+                        "json",
+                    ],
+                    [
+                        *self.docker,
+                        "compose",
+                        "-f",
+                        "<owned fixture root>/compose.json",
+                        "up",
+                        "-d",
+                        "--pull",
+                        "never",
+                    ],
+                    [
+                        *self.docker,
+                        "compose",
+                        "-f",
+                        "<owned fixture root>/compose.json",
+                        "exec",
+                        "-T",
+                        "context-api",
+                        "python",
+                        "-c",
+                        "from app.services.tenant_isolation_service import source_fingerprint; "
+                        "print(source_fingerprint())",
+                    ],
+                ]
+                if self.hosting
+                else [],
+                "readiness_seconds": 90,
+                "cleanup": "exact labels/names/project verified by shared owned cleanup, "
+                "including parent fallback",
+            },
             "limits": {
                 "mongodb_memory": "2g",
                 "mongot_memory": "2g",
                 "keycloak_memory": "1g" if self.oidc else None,
+                "api_memory": "2g" if self.hosting else None,
+                "console_memory": "128m" if self.hosting else None,
             },
         }
 
@@ -211,6 +287,13 @@ class OwnedStack:
                 V6_OIDC_PORT=str(free_port()),
                 V6_BROWSER_TEST_ORIGIN=f"https://127.0.0.1:{free_port()}",
             )
+        if self.hosting:
+            self.env.update(
+                ACP_FOCUSED_RUN_ID=self.run_id,
+                ACP_FOCUSED_STATE=str(self.state),
+                ACP_FOCUSED_OWNER=self.owner,
+                V6_DEPLOYMENT_TESTS="1",
+            )
         text = (ROOT / "tests/infrastructure/v6-isolation.compose.yml").read_text()
         text = re.sub(r"\$\{([A-Z_]+)(?::[-?][^}]*)?\}", lambda m: self.env[m[1]], text)
         config = yaml.safe_load(text)
@@ -230,9 +313,13 @@ class OwnedStack:
         for name in self.containers:
             if self.inspect("container", name):
                 raise FocusedError("existing container refused")
-        if self.inspect("network", self.network):
-            raise FocusedError("existing network refused")
-        for image in sorted({s["image"] for s in config["services"].values()}):
+        for name in self.networks:
+            if self.inspect("network", name):
+                raise FocusedError("existing network refused")
+        images = sorted({s["image"] for s in config["services"].values()})
+        if self.hosting:
+            images += ["acp-v6-api:phase15", "acp-v6-console:phase15"]
+        for image in images:
             self.command([*self.docker, "image", "inspect", image])
         if self.oidc:
             self.command(
@@ -378,9 +465,7 @@ class OwnedStack:
             finally:
                 client.drop_database(db.name)
 
-    def cleanup(self):
-        if not self.created:
-            return
+    def check_state(self):
         if (
             self.state.is_symlink()
             or self.state.resolve() != self.state
@@ -389,25 +474,50 @@ class OwnedStack:
             or (self.state / "owner").read_text() != self.owner
         ):
             raise FocusedError("foreign fixture state; cleanup refused")
+
+    def remove_resources(self, containers, networks):
         owned = []
-        for name in self.containers:
+        for name in containers:
             value = self.inspect("container", name)
             if value:
                 assert_owned(
-                    "container", value, name=name, run_id=self.run_id, project=self.project
+                    "container",
+                    value,
+                    name=name,
+                    run_id=self.run_id,
+                    project=self.hosting_project
+                    if name in self.hosting_containers
+                    else self.project,
                 )
                 owned.append((name, value["Id"]))
-        network = self.inspect("network", self.network)
-        if network:
-            assert_owned(
-                "network", network, name=self.network, run_id=self.run_id, project=self.project
-            )
+        owned_networks = []
+        for name in networks:
+            network = self.inspect("network", name)
+            if network:
+                assert_owned(
+                    "network",
+                    network,
+                    name=name,
+                    run_id=self.run_id,
+                    project=self.hosting_project if name in self.hosting_networks else self.project,
+                )
+                owned_networks.append(network["Id"])
         # Validate every resource before making the first destructive call.
         for name, identifier in owned:
             self.command([*self.docker, "logs", name], required=False)
             self.command([*self.docker, "rm", "-f", identifier])
-        if network:
-            self.command([*self.docker, "network", "rm", network["Id"]])
+        for identifier in owned_networks:
+            self.command([*self.docker, "network", "rm", identifier])
+
+    def cleanup_hosting(self):
+        self.check_state()
+        self.remove_resources(self.hosting_containers, self.hosting_networks)
+
+    def cleanup(self):
+        if not self.created:
+            return
+        self.check_state()
+        self.remove_resources(self.containers, self.networks)
         shutil.rmtree(self.state)
         self.created = False
 

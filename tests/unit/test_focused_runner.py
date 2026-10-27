@@ -226,6 +226,43 @@ def test_cleanup_validates_all_resources_before_removing_any(tmp_path, monkeypat
     assert calls == [] and stack.state.exists()
 
 
+@pytest.mark.parametrize("foreign_kind", ["container", "network"])
+def test_hosted_cleanup_refuses_foreign_auxiliary_resources(tmp_path, monkeypatch, foreign_kind):
+    stack = OwnedStack("f" * 32 + "-unit", {"PATH": os.defpath}, tmp_path, oidc=True, hosting=True)
+    stack.state = tmp_path / "state"
+    stack.state.mkdir()
+    (stack.state / "owner").write_text(stack.owner)
+    stack.created = True
+    calls = []
+
+    def inspect(kind, name):
+        auxiliary = name in stack.hosting_containers or name in stack.hosting_networks
+        project = stack.hosting_project if auxiliary else stack.project
+        labels = {LABEL: stack.run_id, "com.docker.compose.project": project}
+        if auxiliary and kind == foreign_kind:
+            labels[LABEL] = "foreign"
+        return {"Name": name, "Id": name, "Labels": labels, "Config": {"Labels": labels}}
+
+    monkeypatch.setattr(stack, "inspect", inspect)
+    monkeypatch.setattr(stack, "command", lambda argv, **kwargs: calls.append(argv))
+    with pytest.raises(FocusedError, match="foreign"):
+        stack.cleanup()
+    assert calls == [] and stack.state.exists()
+
+
+def test_hosted_profile_keeps_original_browser_and_local_hosting_nodes(tmp_path):
+    browser = runner.load_profile("p02-browser-directory")[0]
+    assert browser["fixture"] == "browser-hosted"
+    prepared = runner.prepare_job(browser, ["selected"], "a" * 32, {}, tmp_path, "node")
+    assert prepared["browser_environment"]["V6_DASHBOARD_HOSTING"] == "1"
+    assert prepared["browser_environment"]["V6_BROWSER_SERVE_ONLY"] == "1"
+    assert prepared["harness_argv"][-1] == runner.BROWSER_HARNESS
+    assert not any("test-v6-" in arg for arg in prepared["argv"])
+    hosting = runner.load_profile("p02-hosting")[0]
+    assert len(hosting["selectors"]) == 2
+    assert all(node.endswith("[local-only]") for node in hosting["selectors"])
+
+
 def test_foreign_state_and_symlinks_are_not_removed(tmp_path):
     stack = OwnedStack("b" * 32 + "-unit", {"PATH": os.defpath}, tmp_path)
     real = tmp_path / "foreign"
@@ -254,6 +291,17 @@ def test_browser_plan_never_uses_a_broad_wrapper():
     assert "--grep" in argv and argv[argv.index("--grep") + 1].startswith("^")
     assert job["selectors"][0]["file"] in argv
     assert not any("test-v6-" in a for a in argv)
+
+
+def test_phase_two_outputs_do_not_reuse_phase_one_evidence(tmp_path, monkeypatch):
+    baseline = tmp_path / "phase-1" / "runs"
+    monkeypatch.setattr(runner, "EVIDENCE", baseline)
+    assert runner.evidence_folder("p01-unit") == baseline / "p01-unit"
+    assert runner.evidence_folder("activation") == baseline / "activation"
+    assert runner.evidence_folder("p02-browser-directory") == (
+        tmp_path / "phase-2" / "runs" / "p02-browser-directory"
+    )
+    assert not tmp_path.joinpath("phase-2").exists()
 
 
 def test_focused_manifest_survives_source_export_without_private_runs(tmp_path):

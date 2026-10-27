@@ -1,8 +1,9 @@
 # Verification and known limits
 
 The implementation and its acceptance evidence are separate. **Release readiness
-is not approved.** The last full attempt to finish all modules had blocking failures;
-this documentation and clean export do not override them. Do not deploy a
+is not approved.** Full release reconciliation remains open. An earlier complete
+attempt had blocking failures; later focused evidence resolves individual issues
+without approving the current public source as a release. Do not deploy a
 management console on the strength of component tests or documentation builds.
 
 ## Required evidence
@@ -13,7 +14,7 @@ management console on the strength of component tests or documentation builds.
 | Identity and authority | Real local/MFA/session flows and supported Keycloak; provider substitution, account linking, coupled grants, independent review, concurrent revoke/issue and owner protection | Full final-source acceptance remains open |
 | Distribution and recovery | Real same-origin TLS images, local and OIDC setup, materialized all-collection backup and isolated recovery including encryption keys | Focused rehearsals do not substitute for the final release gate |
 | Browser and accessibility | All committed journeys plus keyboard/focus/true 200% zoom, light/dark, 360/768/1440px, conflict/empty/error/coverage states | Manual review exists with limitations; the final complete browser run remains required |
-| Performance | Declared hardware/corpus/sample counts and successful response latency, including skew and concurrent authorization changes | Follow-up focused budgets pass; a new complete-source run must reconcile the earlier full-run failures |
+| Performance | Declared hardware/corpus/sample counts and successful response latency, including skew and concurrent authorization changes | Focused measurements include passing and failing results; final complete-source reconciliation remains required |
 | Documentation/artifacts | Focused tests, rebuilt guide/site, reproducible archives, extracted source/license/secret audit | Must be recorded against the final reviewed source |
 
 ## Observed blockers and measurement limits
@@ -24,13 +25,21 @@ synchronously after the last database await. Four focused real MongoDB cases
 pass, covering export/activity expiry during rendering and the final CAS.
 Complete final-source regression reconciliation remains required.
 
-The last full attempt to finish all modules ran 3,333 unit tests and eleven isolation rehearsal
+An earlier complete attempt ran 3,333 unit tests and eleven isolation rehearsal
 tests successfully, with no skips. All 68 integration modules completed, with
 three failed tests and two errors. The browser suite passed 49 of 50 journeys;
 its failed journey is the directory latency measurement. A local-only hosting
 case failed during API startup, and an organization-switch case had a disposable
 database teardown replication timeout after its assertions passed. Both errors
-remain unresolved until clean real-infrastructure verification succeeds.
+were retained as failed outcomes, including the teardown error after assertions.
+
+Later genuine reports pass the exact affected hosting and org-switch nodes,
+including clean teardown. Their runtime and test fingerprints match the committed
+baseline before the focused runner was added; the relevant org-switch sources
+are unchanged. A fresh focused check also passes the original local-only
+TLS-routing/startup case and its nearby local MFA/session/bearer regression after
+the focused hosted-fixture cleanup changes. Its API image verifies the current
+runtime fingerprint. These are scoped resolutions, not a new full release run.
 
 A subsequent run passed 3,347 unit tests and all eleven real isolation rehearsal
 tests, then exposed a recovery-fixture readiness gap: restored records passed
@@ -89,6 +98,23 @@ Earlier failures and timing variability remain in the review
 record; focused and instrumented diagnostic runs do not constitute complete
 release approval.
 
+The focused browser runner now supports the existing production-image fixture
+with unique owned containers/networks and verified cleanup. A fresh directory
+attempt against its in-pytest API fixture returned twenty HTTP 200 responses but
+failed at 859 ms p95 against the unchanged 500 ms limit. That is a different
+measurement surface from the original production-image journey and is retained
+as a failure. An earlier attempt failed certificate trust before collecting any
+latency samples. The focused browser now pins only its freshly generated fixture
+certificate key in its temporary Chromium profile; Node verifies the fixture CA.
+No system CA is installed. The original journey and its assertions are unchanged.
+On the original production API/console image surface, the final focused attempt
+passed: twenty first-wave HTTP 200 responses, 317 ms p95, 10,000 added fictional
+members without added assignments, and 21 examined documents for the cursor probe.
+It used the shared four-core/eight-logical-CPU, approximately 16 GiB host. The
+in-pytest and production-image measurements are reported separately; they are not
+pooled or selected as interchangeable repeats. This single passing wave does not
+establish continuous-load capacity or close full release reconciliation.
+
 Automated frontend checks and an agent-operated real-browser manual review
 supplement each other. The review covers keyboard/focus, dialog return, true
 browser zoom, themes, responsive layouts and representative data states. It is
@@ -104,6 +130,13 @@ version, a real Chromium executable, the reviewed local embedding model cache,
 Docker and supported image/tool availability. It refuses inherited development
 selectors, skipped/missing tests and source changes during the run. Reports and
 screenshots belong in ignored operator storage, never the public guide registry.
+
+For an individual named blocker, inspect and run the explicit `p02-hosting` or
+`p02-browser-directory` profile described in the
+[focused runner guide](focused-tests.md). Each selects only its named cases and
+required services. Keep failed attempts, teardown outcomes and all successful
+response samples; a later pass does not erase an earlier failure or approve the
+full release gate below.
 
 ```sh
 python -m pytest tests/unit -q

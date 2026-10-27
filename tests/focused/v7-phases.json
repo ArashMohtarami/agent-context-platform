@@ -11,7 +11,7 @@
       ],
       "fixture": "none",
       "timeout": 180,
-      "expected_count": 46,
+      "expected_count": 50,
       "requires": []
     },
     "stack-lifecycle": {
@@ -86,6 +86,50 @@
         "activation-unit",
         "activation-real"
       ]
+    },
+    "p02-runner": {
+      "reason": "Phase 2 evidence isolation and unchanged narrow browser/collection/plan boundaries",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_focused_runner.py::test_phase_two_outputs_do_not_reuse_phase_one_evidence",
+        "tests/unit/test_focused_runner.py::test_browser_plan_never_uses_a_broad_wrapper",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_focused_runner.py::test_pytest_plugin_refuses_changed_collection_before_fixtures",
+        "tests/unit/test_focused_runner.py::test_hosted_cleanup_refuses_foreign_auxiliary_resources",
+        "tests/unit/test_focused_runner.py::test_hosted_profile_keeps_original_browser_and_local_hosting_nodes",
+        "tests/unit/test_focused_runner.py::test_cleanup_validates_all_resources_before_removing_any",
+        "tests/unit/test_focused_runner.py::test_foreign_resource_cleanup_is_refused"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 10,
+      "requires": []
+    },
+    "p02-browser-directory": {
+      "reason": "H7 original production-image performance journey and serving harness; first-wave successful response budget unchanged",
+      "kind": "browser",
+      "selectors": [
+        {
+          "file": "e2e/performance.spec.ts",
+          "title": "records cold browser timings at the declared CPU and network profile"
+        }
+      ],
+      "fixture": "browser-hosted",
+      "timeout": 120,
+      "expected_count": 1,
+      "requires": []
+    },
+    "p02-hosting": {
+      "reason": "H1 original local-only startup node and nearest MFA regression after focused hosted-fixture ownership changes",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_v6_dashboard_hosting.py::test_tls_console_only_fallback_errors_headers_and_proxy_spoof[local-only]",
+        "tests/integration/test_v6_dashboard_hosting.py::test_real_local_mfa_cookie_csrf_bearer_mcp_and_backup_boundary[local-only]"
+      ],
+      "fixture": "hosting",
+      "timeout": 900,
+      "expected_count": 2,
+      "requires": []
     }
   },
   "profiles": {
@@ -107,6 +151,15 @@
       "activation-unit",
       "activation-real",
       "activation-cutover"
+    ],
+    "p02-runner": [
+      "p02-runner"
+    ],
+    "p02-browser-directory": [
+      "p02-browser-directory"
+    ],
+    "p02-hosting": [
+      "p02-hosting"
     ]
   }
 }

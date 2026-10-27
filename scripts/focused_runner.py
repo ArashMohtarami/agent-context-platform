@@ -20,6 +20,12 @@ PYTHON = str(ROOT / ".venv/bin/python")
 BROWSER_HARNESS = "tests/integration/test_v6_dashboard_browser.py::test_real_dashboard_browser"
 
 
+def evidence_folder(phase):
+    if phase == "p02" or phase.startswith("p02-"):
+        return EVIDENCE.parents[1] / "phase-2" / "runs" / phase
+    return EVIDENCE / phase
+
+
 def clean_environment(values):
     forbidden = [
         k
@@ -96,7 +102,8 @@ def load_profile(phase, manifest=MANIFEST):
         if (
             not job["reason"]
             or job["kind"] not in {"pytest", "browser"}
-            or job["fixture"] not in {"none", "self", "mongo", "browser"}
+            or job["fixture"]
+            not in {"none", "self", "mongo", "browser", "hosting", "browser-hosted"}
         ):
             raise FocusedError("unsupported or unexplained job")
         if type(job["timeout"]) is not int or not 1 <= job["timeout"] <= 1800:
@@ -111,10 +118,10 @@ def load_profile(phase, manifest=MANIFEST):
                 validate_selector(selector)
             if any(s.split("::")[0] == BROWSER_HARNESS.split("::")[0] for s in selectors):
                 raise FocusedError("browser serving harness must use the bounded browser graph")
-            if job["fixture"] == "browser":
+            if job["fixture"] in {"browser", "browser-hosted"}:
                 raise FocusedError("browser fixture requires browser job")
         else:
-            if job["fixture"] != "browser" or len(selectors) != 1:
+            if job["fixture"] not in {"browser", "browser-hosted"} or len(selectors) != 1:
                 raise FocusedError("one explicit browser title required")
             target = selectors[0]
             if not isinstance(target, dict) or set(target) != {"file", "title"}:
@@ -161,6 +168,8 @@ def identity():
             "scripts/mongodb-entrypoint.sh",
             "scripts/mongot-entrypoint.sh",
             "docker/mongot/mongot.yml.template",
+            "Dockerfile",
+            "deploy/console/compose.yml",
         )
     ]
     digest = hashlib.sha256()
@@ -370,8 +379,14 @@ def prepare_job(job, nodes, run_id, env, folder, node):
         if job["kind"] == "pytest"
         else browser_argv(job, node),
     }
-    if job["fixture"] in {"mongo", "browser"}:
-        stack = OwnedStack(run_id + "-" + job["id"], env, target, oidc=job["fixture"] == "browser")
+    if job["fixture"] in {"mongo", "browser", "hosting", "browser-hosted"}:
+        stack = OwnedStack(
+            run_id + "-" + job["id"],
+            env,
+            target,
+            oidc=job["fixture"] != "mongo",
+            hosting=job["fixture"] in {"hosting", "browser-hosted"},
+        )
         prepared["fixture_graph"] = stack.graph()
     if job["fixture"] == "mongo":
         prepared["fixture_children"] = [
@@ -420,8 +435,10 @@ def prepare_job(job, nodes, run_id, env, folder, node):
         )
         prepared["browser_environment"] = {
             "V6_BROWSER_SERVE_ONLY": "1",
-            "V6_DASHBOARD_HOSTING": "0",
+            "V6_DASHBOARD_HOSTING": "1" if job["fixture"] == "browser-hosted" else "0",
             "ACP_FOCUSED_RUN_ID": run_id + "-" + job["id"],
+            "tls": "Node verifies fresh fixture CA; Chromium pins only the generated "
+            "loopback certificate SPKI in its temporary profile; ignoreHTTPSErrors=false",
         }
     return prepared
 
@@ -429,7 +446,7 @@ def prepare_job(job, nodes, run_id, env, folder, node):
 def make_plan(phase, values):
     jobs = load_profile(phase)
     env = clean_environment(values)
-    folder = EVIDENCE / phase
+    folder = evidence_folder(phase)
     folder.mkdir(parents=True, exist_ok=True, mode=0o700)
     node, chrome = tools_for(jobs, values, env, folder)
     before = identity()
@@ -468,7 +485,7 @@ def run_browser(job, stack, env, plan, target):
     env.update(
         V6_BROWSER_DESCRIPTOR=str(descriptor),
         V6_BROWSER_SERVE_ONLY="1",
-        V6_DASHBOARD_HOSTING="0",
+        V6_DASHBOARD_HOSTING=job["browser_environment"]["V6_DASHBOARD_HOSTING"],
         ACP_FOCUSED_RUN_ID=stack.run_id,
         ACP_FOCUSED_STATE=str(stack.state),
         ACP_FOCUSED_BROWSER_REPORT=str(target / "browser.json"),
@@ -540,7 +557,7 @@ def run_browser(job, stack, env, plan, target):
 def execute(phase, values):
     jobs = load_profile(phase)
     env = clean_environment(values)
-    folder = EVIDENCE / phase
+    folder = evidence_folder(phase)
     path = folder / "plan.json"
     if not path.is_file():
         raise FocusedError("inspect --plan before --run")
@@ -598,12 +615,13 @@ def execute(phase, values):
                     result["status"] = "failed"
                 return result
 
-            if job["fixture"] in {"mongo", "browser"}:
+            if job["fixture"] in {"mongo", "browser", "hosting", "browser-hosted"}:
                 with OwnedStack(
                     plan["run_id"] + "-" + job["id"],
                     current,
                     target,
-                    oidc=job["fixture"] == "browser",
+                    oidc=job["fixture"] != "mongo",
+                    hosting=job["fixture"] in {"hosting", "browser-hosted"},
                 ) as stack:
                     outcome = perform(stack)
             elif job["fixture"] == "self":
