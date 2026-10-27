@@ -130,6 +130,90 @@
       "timeout": 900,
       "expected_count": 2,
       "requires": []
+    },
+    "p03-unit": {
+      "reason": "Evaluation lifecycle refusals, isolated inputs, one-time delivery and unchanged production deployment regressions",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_evaluation_lifecycle.py",
+        "tests/unit/test_v6_dashboard_deployment.py",
+        "tests/unit/test_compose.py",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_focused_runner.py::test_pytest_plugin_refuses_changed_collection_before_fixtures"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 62,
+      "requires": []
+    },
+    "p03-bootstrap": {
+      "reason": "Distributed empty-store staged operator contracts, real HTTPS enrollment/MFA/independent approval and recipient-only issuance; interrupted resume, stop and owned reset",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_evaluation_bootstrap.py::test_distributed_empty_store_resume_enroll_issue_stop_reset"
+      ],
+      "fixture": "evaluation",
+      "timeout": 1800,
+      "expected_count": 1,
+      "requires": [
+        "activation-unit",
+        "activation-real"
+      ]
+    },
+    "p03-lifecycle": {
+      "reason": "Affected checkpoint locks, read-only diagnosis, preflight collision and lost-delivery lifecycle contracts",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_evaluation_lifecycle.py"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 26,
+      "requires": []
+    },
+    "p03-preflight": {
+      "reason": "Confirmed Docker diagnostic fix, pure port planner stub after sandbox socket refusal, genuine receipt and graph regressions",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_evaluation_lifecycle.py::test_fresh_preflight_accepts_real_missing_resource_diagnostics_without_mutation",
+        "tests/unit/test_evaluation_lifecycle.py::test_preflight_refuses_existing_resource_before_creating_state",
+        "tests/unit/test_evaluation_lifecycle.py::test_stale_activation_stops_before_any_report_or_service_use",
+        "tests/unit/test_evaluation_lifecycle.py::test_p03_profile_has_ordered_activation_and_owned_timeout_cleanup",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 6,
+      "requires": []
+    },
+    "p03-fixes": {
+      "reason": "Preflight scratch configuration, full mount identity and private diagnostic retention after the real Compose preflight failure",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_evaluation_lifecycle.py::test_fresh_preflight_accepts_real_missing_resource_diagnostics_without_mutation",
+        "tests/unit/test_evaluation_lifecycle.py::test_preflight_refuses_existing_resource_before_creating_state",
+        "tests/unit/test_evaluation_lifecycle.py::test_stale_activation_stops_before_any_report_or_service_use",
+        "tests/unit/test_evaluation_lifecycle.py::test_p03_profile_has_ordered_activation_and_owned_timeout_cleanup",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_evaluation_lifecycle.py::test_owned_diagnostics_exclude_handoff_backups_and_secrets"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 7,
+      "requires": []
+    },
+    "p03-config": {
+      "reason": "Directly affected service inputs, disjoint network planning, image-volume coverage and inherited environment discard",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_evaluation_lifecycle.py::test_generated_graph_has_only_owned_private_database_and_loopback_tls",
+        "tests/unit/test_evaluation_lifecycle.py::test_inherited_deployment_configuration_is_discarded",
+        "tests/unit/test_evaluation_lifecycle.py::test_fresh_preflight_accepts_real_missing_resource_diagnostics_without_mutation"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 4,
+      "requires": []
     }
   },
   "profiles": {
@@ -160,6 +244,27 @@
     ],
     "p02-hosting": [
       "p02-hosting"
+    ],
+    "p03-unit": [
+      "p03-unit"
+    ],
+    "p03-bootstrap": [
+      "activation-unit",
+      "activation-real",
+      "activation-cutover",
+      "p03-bootstrap"
+    ],
+    "p03-lifecycle": [
+      "p03-lifecycle"
+    ],
+    "p03-preflight": [
+      "p03-preflight"
+    ],
+    "p03-fixes": [
+      "p03-fixes"
+    ],
+    "p03-config": [
+      "p03-config"
     ]
   }
 }

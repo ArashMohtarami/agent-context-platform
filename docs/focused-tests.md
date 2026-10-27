@@ -112,3 +112,45 @@ every case. Do not add broad wrappers as children or weaken release gates.
 The maintained manifest and fixtures are MIT project source. Private plans,
 reports, generated credentials and local toolchains are excluded from public
 source archives, package builds and the guide inventory.
+
+## Disposable commissioning (Phase 3)
+
+`p03-lifecycle` selects the evaluation lifecycle's 26 pure planning/refusal cases;
+`p03-config` selects four concrete service-input/preflight cases. `p03-unit` is an
+explicit 62-case inventory combining lifecycle, production deployment/Compose
+and the two named runner regressions; it is not automatically run by other jobs.
+Select the changed boundary, inspect its plan, then run that same plan.
+
+`p03-bootstrap` selects the genuine activation dependency in its original order
+(21 unit, eleven real non-cutover, one cutover), then exactly one distributed
+empty-store lifecycle case. It executes `scripts/evaluate.sh`, real private
+MongoDB/mongot, current API/console images, strict scoped CA trust, actual
+invitation/password/verification/MFA endpoints, independent owner approval and
+recipient-only issuance. It exercises a real SIGTERM/resume, repeated start,
+stop and scoped reset. No privileged fixture rows stand in for commissioning.
+
+```sh
+env -u DOCKER_HOST .venv/bin/python scripts/test-focused.py --phase p03-bootstrap --plan
+env -u DOCKER_HOST .venv/bin/python scripts/test-focused.py --phase p03-bootstrap --run
+```
+
+Use the same cached `acp-v6-api:phase15` and `acp-v6-console:phase15` build inputs
+already described above, built from the reviewed source with the pinned
+Dockerfile. The API runtime fingerprint and service image IDs are checked. No
+pull/build/model download occurs in this profile. Its distributed case retains
+the 1,800-second limit; the dependency's original 180/900/300-second limits stay
+separate. Only one real stack runs at a time. Required skips/failures are incomplete.
+
+The completed activation dependency gets a receipt only after all three genuine
+jobs reconcile, so the commissioning job can consume it while its parent profile
+is still running. Production XML verification is unchanged. Cached receipts must
+match current source, selectors, reports and actual service image IDs. A passing
+evaluation does not approve a production release.
+
+Phase 3 reports live privately under
+`.private/v7-competitive-planning/phase-3/runs/`. Failed evaluator cleanup retains
+only scoped logs and redacted manifest/config diagnostics; invitation messages,
+backups and secret files are not evidence exports. Runtime evaluation state is
+separately owned under `.private/evaluations/` and excluded from source/builds.
+See [the implemented evaluation path](evaluation.md) for operator review, trust,
+human effort, one-time delivery, stop/resume and cleanup requirements.

@@ -34,3 +34,4 @@ include requirements.lock requirements-dev.lock
 recursive-include docker *.py *.template
 include docs/backup.md docs/deployment.md docs/dashboard-*.md docs/guide/public-sources.json
 include docs/focused-tests.md
+include deploy/evaluation/inputs.json docs/evaluation.md

@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "api_image": "acp-evaluation-api:local",
+  "console_image": "acp-evaluation-console:local",
+  "mongo_image": "mongo:8.3.9-noble@sha256:1cd50aca58bb5f84ca6bb32b69a75ad67b23867fc8454bd1ff288822e4599219",
+  "search_image": "mongodb/mongodb-community-search:1.70.4@sha256:63ebc805c6b55d027e345b5224d8713009f21911aedafb50b6c28c1cd9583e4f",
+  "mode": "model-free commissioning; semantic retrieval not measured",
+  "startup_seconds": 240
+}

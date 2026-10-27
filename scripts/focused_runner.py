@@ -21,6 +21,8 @@ BROWSER_HARNESS = "tests/integration/test_v6_dashboard_browser.py::test_real_das
 
 
 def evidence_folder(phase):
+    if phase == "p03" or phase.startswith("p03-"):
+        return EVIDENCE.parents[1] / "phase-3" / "runs" / phase
     if phase == "p02" or phase.startswith("p02-"):
         return EVIDENCE.parents[1] / "phase-2" / "runs" / phase
     return EVIDENCE / phase
@@ -103,7 +105,7 @@ def load_profile(phase, manifest=MANIFEST):
             not job["reason"]
             or job["kind"] not in {"pytest", "browser"}
             or job["fixture"]
-            not in {"none", "self", "mongo", "browser", "hosting", "browser-hosted"}
+            not in {"none", "self", "mongo", "browser", "hosting", "browser-hosted", "evaluation"}
         ):
             raise FocusedError("unsupported or unexplained job")
         if type(job["timeout"]) is not int or not 1 <= job["timeout"] <= 1800:
@@ -148,12 +150,15 @@ def identity():
         *ROOT.joinpath("tests").rglob("*.py"),
         *ROOT.joinpath("tests/infrastructure").glob("v6-*"),
         *ROOT.joinpath("scripts").glob("focused*.py"),
+        *ROOT.joinpath("scripts").glob("evaluation_*.py"),
+        *ROOT.joinpath("deploy/evaluation").glob("*"),
         *ROOT.joinpath("dashboard/e2e").glob("*.ts"),
     ]
     paths += [
         ROOT / p
         for p in (
             "scripts/test-focused.py",
+            "scripts/evaluate.sh",
             "tests/focused/v7-phases.json",
             "pyproject.toml",
             "requirements.lock",
@@ -167,6 +172,12 @@ def identity():
             "dashboard/playwright.focused.config.ts",
             "scripts/mongodb-entrypoint.sh",
             "scripts/mongot-entrypoint.sh",
+            "scripts/init-mongodb.sh",
+            "scripts/init-replica-set.js",
+            "scripts/create-application-user.js",
+            "scripts/create-mongot-user.js",
+            "scripts/mongodb-healthcheck.sh",
+            "scripts/mongot-healthcheck.sh",
             "docker/mongot/mongot.yml.template",
             "Dockerfile",
             "deploy/console/compose.yml",
@@ -428,6 +439,41 @@ def prepare_job(job, nodes, run_id, env, folder, node):
             "owner": "selected lifecycle test",
             "graph": OwnedStack(run_id + "-lifecycle", env, target).graph(),
         }
+    if job["fixture"] == "evaluation":
+        from scripts.evaluation_lifecycle import Evaluation
+
+        evaluation = Evaluation(run_id)
+        prepared["fixture_graph"] = {
+            "owner": "distributed evaluate.sh command selected by bootstrap test",
+            "instance": run_id,
+            "state": str(evaluation.state),
+            "resources": evaluation.names,
+            "commands": [
+                [
+                    "scripts/evaluate.sh",
+                    "start",
+                    "--instance",
+                    run_id,
+                    "--approve-root",
+                    "fictional-acceptance-review",
+                    "--activation-run",
+                    str(folder / run_id),
+                    "--api-image",
+                    "acp-v6-api:phase15",
+                    "--console-image",
+                    "acp-v6-console:phase15",
+                ],
+                ["scripts/evaluate.sh", "stop", "--instance", run_id],
+                ["scripts/evaluate.sh", "start", "--instance", run_id],
+                ["scripts/evaluate.sh", "doctor", "--instance", run_id],
+                ["scripts/evaluate.sh", "reset", "--instance", run_id],
+            ],
+            "recipient_operations": "real HTTPS invitation/verification/password/MFA; "
+            "independent owner approval then worker one-time issuance; no fixture row writes",
+            "children": "bounded exact Docker argv, no pull/build/npm/pytest children; "
+            "maintained staged operator APIs, probe <=120s, setup <=240s",
+            "cleanup": "parent fallback loads exact manifest and verifies every owned label/path",
+        }
     if job["kind"] == "browser":
         prepared["harness_nodes"] = [BROWSER_HARNESS]
         prepared["harness_argv"] = pytest_argv(
@@ -591,6 +637,11 @@ def execute(phase, values):
                 ACP_FOCUSED_LIFECYCLE_ID=plan["run_id"] + "-lifecycle",
                 ACP_FOCUSED_LIFECYCLE_REPORT=str(target),
             )
+            if job["fixture"] == "evaluation":
+                current.update(
+                    ACP_EVALUATION_ACCEPTANCE_INSTANCE=plan["run_id"],
+                    ACP_EVALUATION_ACTIVATION_RUN=str(run_folder),
+                )
             if job["requires"]:
                 if set(job["requires"]) != {"activation-unit", "activation-real"}:
                     raise FocusedError("unknown evidence dependency")
@@ -632,12 +683,41 @@ def execute(phase, values):
                 finally:
                     owner.created = owner.state.exists() or owner.state.is_symlink()
                     owner.cleanup()
+            elif job["fixture"] == "evaluation":
+                from scripts.evaluation_lifecycle import Evaluation
+
+                evaluation = Evaluation(plan["run_id"])
+                try:
+                    outcome = perform(None)
+                finally:
+                    if evaluation.manifest.exists():
+                        evaluation.archive_diagnostics(target / "evaluation-diagnostics")
+                        evaluation.reset()
             else:
                 outcome = perform(None)
             outcome.update(job=job["id"], duration_seconds=round(time.monotonic() - started, 3))
             outcomes.append(outcome)
             active_job = None
             write(run_folder / "summary.json", {"status": "running", "jobs": outcomes})
+            if job["id"] == "activation-cutover" and outcome["status"] == "passed":
+                # A downstream commissioning job may consume this completed
+                # dependency while the outer profile is still running. This is
+                # a receipt for actual reconciled reports, never release XML.
+                dependency = [
+                    r
+                    for r in outcomes
+                    if r["job"] in {"activation-unit", "activation-real", "activation-cutover"}
+                ]
+                if len(dependency) != 3 or any(r["status"] != "passed" for r in dependency):
+                    raise FocusedError("activation dependency did not reconcile")
+                write(
+                    run_folder / "activation-summary.json",
+                    {
+                        "status": "passed",
+                        "source_sha256": plan["source_sha256"],
+                        "jobs": dependency,
+                    },
+                )
             print(json.dumps(outcome), flush=True)
             if outcome["status"] != "passed":
                 raise FocusedError("selected check did not pass")

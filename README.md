@@ -38,6 +38,11 @@ and machine bearer credentials do not authenticate session-only `/api/v6`.
 
 ## Quick start
 
+For a separate fictional organization, follow the
+[disposable evaluation guide](docs/evaluation.md). It covers reviewed root intent,
+private HTTPS trust, verified enrollment/MFA and recipient-owned credentials.
+The current commissioning mode is model-free; it makes no retrieval-quality claim.
+
 Start with the [HTTPS console deployment guide](docs/dashboard-deployment.md) and
 [maintenance migration/recovery procedure](docs/migration-recovery.md). A fresh
 checkout does not anonymously create an owner, adopt data or activate tenants.

@@ -319,8 +319,13 @@ class OwnedStack:
         images = sorted({s["image"] for s in config["services"].values()})
         if self.hosting:
             images += ["acp-v6-api:phase15", "acp-v6-console:phase15"]
+        image_ids = {}
         for image in images:
-            self.command([*self.docker, "image", "inspect", image])
+            _, body = self.command([*self.docker, "image", "inspect", image])
+            image_ids[image] = json.loads(body)[0]["Id"]
+        identity_path = self.report / "image-identities.json"
+        identity_path.write_text(json.dumps(image_ids, indent=2) + "\n")
+        identity_path.chmod(0o600)
         if self.oidc:
             self.command(
                 [str(ROOT / ".venv/bin/python"), "tests/infrastructure/v6_oidc_prepare.py"]
