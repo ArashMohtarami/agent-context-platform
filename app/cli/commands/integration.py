@@ -1,9 +1,14 @@
 """Non-mutating setup guidance for supported client integrations."""
 
 import argparse
+import json
+from pathlib import Path
+
+from pydantic import ValidationError
 
 from app.cli.commands import SubParsers
 from app.cli.config import CliSettings
+from app.cli.errors import UsageError
 from app.cli.output import Result
 from app.integrations import DEFAULT_INTEGRATION_REGISTRY
 from app.integrations.claude_code import (
@@ -13,6 +18,8 @@ from app.integrations.claude_code import (
     project_configuration_json,
     user_scope_command,
 )
+from app.integrations.connection import ProbeSelection, preview
+from app.integrations.doctor import diagnose
 from app.integrations.gemini_cli import (
     MCP_URL_ENV as GEMINI_MCP_URL_ENV,
 )
@@ -87,6 +94,38 @@ async def validate_integration(args: argparse.Namespace, _: CliSettings) -> Resu
     )
 
 
+async def connection(args: argparse.Namespace, _: CliSettings) -> Result:
+    """Preview by default, or explicitly run the fixed, bounded live diagnostic."""
+    try:
+        selection = ProbeSelection(
+            integration_id=args.integration_id,
+            origin=args.origin,
+            project_id=args.project_id,
+            require_read_only=args.require_read_only,
+            write_probe=args.write_probe,
+            disposable_project_id=args.disposable_project_id,
+        )
+    except (ValueError, ValidationError):
+        raise UsageError(
+            "CONNECTION_SELECTION_INVALID",
+            hint=(
+                "Select a known client, exact HTTP(S) origin and project; "
+                "write probes need the matching disposable project."
+            ),
+        ) from None
+    if not args.connect:
+        data = preview(selection)
+        return Result(data=data, lines=[json.dumps(data, indent=2)])
+    report = await diagnose(selection, token_file=args.token_file, ca_file=args.ca_file)
+    return Result(
+        data=report,
+        lines=[
+            f"{check['stage']}: {check['status']} [{check['code']}] — {check['next_step']}"
+            for check in report["checks"]
+        ],
+    )
+
+
 async def claude_code_setup(_: argparse.Namespace, __: CliSettings) -> Result:
     """Print safe Claude Code setup material without changing any client state."""
     return Result(
@@ -123,6 +162,7 @@ async def gemini_cli_setup(args: argparse.Namespace, __: CliSettings) -> Result:
         "scope": scope,
         "settings_path": location,
         "read_only": read_only,
+        "server_read_only_verified": False,
         "settings": settings,
         # Retain the Phase 1 fields for programmatic callers while exposing the
         # selected scope explicitly above.
@@ -167,6 +207,35 @@ def add_arguments(groups: SubParsers) -> None:
     )
     validating.add_argument("integration_id", help="for example: gemini-cli")
     validating.set_defaults(handler=validate_integration, needs_platform=True)
+    doctor = integrations.add_parser(
+        "doctor", help="preview connection or explicitly diagnose live access"
+    )
+    doctor.add_argument("integration_id", help="codex, claude-code, gemini-cli or custom")
+    doctor.add_argument("--origin", required=True, help="exact installation origin, without /mcp")
+    doctor.add_argument("--project-id", required=True, help="explicit existing project")
+    doctor.add_argument(
+        "--connect", action="store_true", help="opt in to bounded live checks, no model call"
+    )
+    doctor.add_argument(
+        "--token-file",
+        type=Path,
+        help="recipient-owned 0600 bearer file (read only with --connect)",
+    )
+    doctor.add_argument(
+        "--ca-file", type=Path, help="explicit reviewed private CA; otherwise normal public trust"
+    )
+    doctor.add_argument(
+        "--require-read-only",
+        action="store_true",
+        help="verify the actual server credential grants no mutations",
+    )
+    doctor.add_argument(
+        "--write-probe", action="store_true", help="opt in to one persistent harmless context probe"
+    )
+    doctor.add_argument(
+        "--disposable-project-id", help="explicit disposable target, must equal --project-id"
+    )
+    doctor.set_defaults(handler=connection, needs_platform=True)
     claude_code = integrations.add_parser("claude-code", help="Claude Code remote MCP guidance")
     commands = claude_code.add_subparsers(dest="integration_command", required=True)
     setup = commands.add_parser("setup", help="print non-mutating setup guidance")
@@ -183,7 +252,7 @@ def add_arguments(groups: SubParsers) -> None:
     setup.add_argument(
         "--read-only",
         action="store_true",
-        help="limit Gemini discovery to the gateway's registered read-only tools",
+        help="local discovery filter only; separately obtain server-approved read-only credentials",
     )
     setup.add_argument(
         "--show-json",

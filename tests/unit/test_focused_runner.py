@@ -425,3 +425,16 @@ def test_interrupted_execution_records_incomplete_selection(tmp_path, monkeypatc
     assert result["jobs"][0]["selected"] == 1
     assert result["jobs"][0]["collected"] is None
     assert result["jobs"][0]["passed"] is None
+
+
+def test_phase_four_evaluation_plan_only_names_selected_startup(tmp_path):
+    job = next(j for j in runner.load_profile("p04-real") if j["id"] == "p04-real")
+    node = job["selectors"][0]
+    planned = runner.prepare_job(job, [node], "a" * 32, {}, tmp_path, "node")
+    commands = planned["fixture_graph"]["commands"]
+    assert [c[1] for c in commands] == ["start", "start", "reset"]
+    assert "acp-evaluation-api:p04" in commands[0]
+    assert commands[0][commands[0].index("--approve-root") + 1] == "fictional-acceptance-review"
+    assert planned["fixture_graph"]["diagnostic_children"]["no_other_journeys"]
+    assert runner.evidence_folder("p04-real").parent.name == "runs"
+    assert runner.evidence_folder("p04-real").parent.parent.name == "phase-4"

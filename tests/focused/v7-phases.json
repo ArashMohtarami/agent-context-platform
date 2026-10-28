@@ -11,7 +11,7 @@
       ],
       "fixture": "none",
       "timeout": 180,
-      "expected_count": 50,
+      "expected_count": 51,
       "requires": []
     },
     "stack-lifecycle": {
@@ -214,6 +214,84 @@
       "timeout": 180,
       "expected_count": 4,
       "requires": []
+    },
+    "p04-unit": {
+      "reason": "Explicit integration recipe/input/redaction contracts, scoped stdio TLS, unchanged client configuration shapes and CLI behavior",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_integration_doctor.py",
+        "tests/unit/test_cli_integration.py",
+        "tests/unit/test_codex_integration.py",
+        "tests/unit/test_claude_code_configuration.py",
+        "tests/unit/test_gemini_cli_configuration.py"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 80,
+      "requires": []
+    },
+    "p04-real": {
+      "reason": "Actual Phase 3 commissioning then HTTP/stdio doctor, effective read-only grants, retrieval/write refusal/revocation and session-only preview",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_integration_doctor.py::test_evaluation_connection_steps_and_revocation"
+      ],
+      "fixture": "evaluation",
+      "timeout": 1800,
+      "expected_count": 1,
+      "requires": []
+    },
+    "p04-browser": {
+      "reason": "One selected connection-preview journey on real HTTPS session APIs, with keyboard/theme/mobile inspection",
+      "kind": "browser",
+      "selectors": [
+        {
+          "file": "e2e/evaluation-onboarding.spec.ts",
+          "title": "connection preview preserves policy and guides recipient diagnostics"
+        }
+      ],
+      "fixture": "browser",
+      "timeout": 180,
+      "expected_count": 1,
+      "requires": []
+    },
+    "p04-doctor": {
+      "reason": "Explicit integration recipe/input/redaction contracts, scoped stdio TLS, unchanged client configuration shapes and CLI behavior",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_integration_doctor.py",
+        "tests/unit/test_cli_integration.py"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 46,
+      "requires": []
+    },
+    "p04-runner": {
+      "reason": "Selected evaluation planning retains exact commissioning argv and isolated phase evidence; no services",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_focused_runner.py::test_phase_four_evaluation_plan_only_names_selected_startup",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_focused_runner.py::test_pytest_plugin_refuses_changed_collection_before_fixtures"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 3,
+      "requires": []
+    },
+    "p04-parser": {
+      "reason": "Exact failed argument-abbreviation family plus legitimate preview and failed-preflight parsing after fail-closed doctor parser fix",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_integration_doctor.py::test_doctor_argument_errors_never_echo_private_input",
+        "tests/unit/test_integration_doctor.py::test_preview_ignores_deployment_settings_and_does_not_read_token",
+        "tests/unit/test_integration_doctor.py::test_failed_preflight_has_nonzero_exit_and_no_raw_error"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 7,
+      "requires": []
     }
   },
   "profiles": {
@@ -265,6 +343,36 @@
     ],
     "p03-config": [
       "p03-config"
+    ],
+    "p04-unit": [
+      "p04-unit"
+    ],
+    "p04-real": [
+      "activation-unit",
+      "activation-real",
+      "activation-cutover",
+      "p04-real"
+    ],
+    "p04-browser": [
+      "p04-browser"
+    ],
+    "p04": [
+      "p04-unit",
+      "p04-runner",
+      "activation-unit",
+      "activation-real",
+      "activation-cutover",
+      "p04-real",
+      "p04-browser"
+    ],
+    "p04-doctor": [
+      "p04-doctor"
+    ],
+    "p04-runner": [
+      "p04-runner"
+    ],
+    "p04-parser": [
+      "p04-parser"
     ]
   }
 }

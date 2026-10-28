@@ -21,6 +21,8 @@ BROWSER_HARNESS = "tests/integration/test_v6_dashboard_browser.py::test_real_das
 
 
 def evidence_folder(phase):
+    if phase == "p04" or phase.startswith("p04-"):
+        return EVIDENCE.parents[1] / "phase-4" / "runs" / phase
     if phase == "p03" or phase.startswith("p03-"):
         return EVIDENCE.parents[1] / "phase-3" / "runs" / phase
     if phase == "p02" or phase.startswith("p02-"):
@@ -459,7 +461,7 @@ def prepare_job(job, nodes, run_id, env, folder, node):
                     "--activation-run",
                     str(folder / run_id),
                     "--api-image",
-                    "acp-v6-api:phase15",
+                    "acp-evaluation-api:p04" if job["id"] == "p04-real" else "acp-v6-api:phase15",
                     "--console-image",
                     "acp-v6-console:phase15",
                 ],
@@ -473,6 +475,36 @@ def prepare_job(job, nodes, run_id, env, folder, node):
             "children": "bounded exact Docker argv, no pull/build/npm/pytest children; "
             "maintained staged operator APIs, probe <=120s, setup <=240s",
             "cleanup": "parent fallback loads exact manifest and verifies every owned label/path",
+        }
+    if job["fixture"] == "evaluation" and job["id"] == "p04-real":
+        graph = prepared["fixture_graph"]
+        graph["commands"] = [graph["commands"][i] for i in (0, 2, 4)]
+        graph["diagnostic_children"] = {
+            "entrypoint": [
+                PYTHON,
+                "-I",
+                "-c",
+                "fixed contextctl.main import",
+                str(ROOT),
+                "--json",
+                "integration",
+                "doctor",
+                "codex",
+                "--connect",
+            ],
+            "runtime_inputs": (
+                "exact owned HTTPS origin/CA from manifest; recipient temporary token file; "
+                "explicit evaluation-notes project"
+            ),
+            "limits": "75s CLI, 60s doctor, 8s HTTP, 10s stdio request; same named job deadline",
+            "stdio": [
+                PYTHON,
+                "-I",
+                "-c",
+                "fixed run_stdio(McpSettings(_env_file=None))",
+                str(ROOT),
+            ],
+            "no_other_journeys": True,
         }
     if job["kind"] == "browser":
         prepared["harness_nodes"] = [BROWSER_HARNESS]

@@ -596,6 +596,28 @@ def _preflight(api_image, console_image, evidence, instance, docker_config):
     }
 
 
+def root_grants(instance):
+    """Explicit reviewed evaluation ceiling, including only own-org MCP discovery."""
+    return [
+        {
+            "action": action,
+            "resource_kind": "project_directory" if action == "projects:read" else "project",
+            "selector": "all_in_org",
+            "ids": [],
+            "conditions": {},
+        }
+        for action in ("projects:read", "context:read", "context:write", "search:read")
+    ] + [
+        {
+            "action": "agent:self",
+            "resource_kind": "organization_knowledge",
+            "selector": "include",
+            "ids": ["eval-" + instance],
+            "conditions": {},
+        }
+    ]
+
+
 def compose_config(evaluation, inputs, api_image, console_image):
     # Safe-load the maintained base only. No Compose interpolation or implicit
     # .env/default volumes/secrets ever enter the generated execution graph.
@@ -910,16 +932,7 @@ def create(instance, approval, inputs, api_image, console_image):
     )
     atomic(
         evaluation.state / "intent/root.json",
-        [
-            {
-                "action": action,
-                "resource_kind": "project_directory" if action == "projects:read" else "project",
-                "selector": "all_in_org",
-                "ids": [],
-                "conditions": {},
-            }
-            for action in ("projects:read", "context:read", "context:write", "search:read")
-        ],
+        root_grants(instance),
     )
     atomic(
         evaluation.state / "compose.json",

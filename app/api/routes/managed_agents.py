@@ -8,6 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.routes.human_management import management
 from app.identity.browser import CurrentBrowser
+from app.integrations.connection import ConnectionSelection, read_only_scopes
+from app.integrations.connection import preview as connection_recipe
 from app.managed_agents.models import (
     ClientApproval,
     CredentialIssue,
@@ -142,6 +144,35 @@ async def approve(org_id: str, body: ClientApproval, context: CurrentBrowser) ->
 @router.get("/managed-clients/{client_id}", response_model=InspectionDTO)
 async def inspect(org_id: str, client_id: str, context: CurrentBrowser) -> Any:
     return await agents(context).inspect(org_id, context.row["user_id"], client_id)
+
+
+@router.get("/managed-clients/{client_id}/connection-preview")
+async def connection_preview(
+    org_id: str,
+    client_id: str,
+    context: CurrentBrowser,
+    integration_id: str,
+    origin: str,
+    project_id: str,
+    require_read_only: bool = False,
+) -> Any:
+    """Read current client policy and return a recipe; no token or outbound connection."""
+    inspected = await agents(context).inspect(org_id, context.row["user_id"], client_id)
+    try:
+        selection = ConnectionSelection(
+            integration_id=integration_id,
+            origin=origin,
+            project_id=project_id,
+            require_read_only=require_read_only,
+        )
+    except ValueError:
+        raise HTTPException(400, "CONNECTION_SELECTION_INVALID") from None
+    return {
+        **connection_recipe(selection),
+        "approved_client_read_only": read_only_scopes(
+            [g["action"] for g in inspected["effective_tuples"] if g["selector"] != "none"]
+        ),
+    }
 
 
 @router.post(

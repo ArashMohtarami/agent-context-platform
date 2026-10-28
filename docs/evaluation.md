@@ -55,7 +55,9 @@ The installation operator must review this bounded intent before passing an
 approval reference. The proposed owner can create projects in this fictional
 organization. Its delegation ceiling includes current/future projects **within
 this evaluation organization only**, for project listing, context read/write and
-search. A ceiling is not the owner's personal corpus access. The operator later
+search. The intent also includes `agent:self` on this exact evaluation
+organization for MCP capability discovery; it grants no machine administration
+or session writes. A ceiling is not the owner's personal corpus access. The operator later
 approves management over the named worker, contributor role, own credential
 issue/revoke and client metadata. Root authority expires within 24 hours. The
 worker/client receive only the actual `evaluation-notes` project, for at most

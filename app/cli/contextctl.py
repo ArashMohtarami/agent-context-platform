@@ -15,7 +15,7 @@ import asyncio
 import logging
 import sys
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, NoReturn
 
 from pydantic import ValidationError
 
@@ -85,9 +85,24 @@ _NOT_CONFIGURED = "this command needs the platform's database settings, and they
 logger = logging.getLogger("agent_context.cli")
 
 
-def build_parser() -> argparse.ArgumentParser:
+class ConnectionArgumentsInvalid(Exception):
+    """A doctor argument error must not echo a pasted credential or path."""
+
+
+class ConnectionParser(argparse.ArgumentParser):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        kwargs["allow_abbrev"] = False
+        super().__init__(*args, **kwargs)
+
+    def error(self, message: str) -> NoReturn:
+        raise ConnectionArgumentsInvalid
+
+
+def build_parser(
+    parser_type: type[argparse.ArgumentParser] = argparse.ArgumentParser,
+) -> argparse.ArgumentParser:
     """Build the whole command tree."""
-    parser = argparse.ArgumentParser(
+    parser = parser_type(
         prog=PROGRAM,
         description=DESCRIPTION,
         epilog=EPILOG,
@@ -159,6 +174,10 @@ def _settings(arguments: argparse.Namespace) -> CliSettings | Settings:
     A search must not fail because MongoDB credentials are absent from the
     shell, and an import must not fail because an API address is not set.
     """
+    if arguments.group == "integration":
+        # Integration recipes/doctor take explicit inputs and must never read
+        # deployment .env or unrelated inherited API/database credentials.
+        return CliSettings.model_construct()
     if arguments.needs_platform:
         return _cli_settings(arguments)
     try:
@@ -219,9 +238,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     driven from a test without a subprocess, which is what makes the exit
     codes themselves testable.
     """
-    parser = build_parser()
+    raw = list(sys.argv[1:] if argv is None else argv)
+    doctor = any(raw[i : i + 2] == ["integration", "doctor"] for i in range(len(raw) - 1))
+    parser = build_parser(ConnectionParser if doctor else argparse.ArgumentParser)
     try:
-        arguments = parser.parse_args(argv)
+        arguments = parser.parse_args(raw)
+    except ConnectionArgumentsInvalid:
+        render_error(
+            "CONNECTION_ARGUMENTS_INVALID",
+            as_json="--json" in raw,
+            exit_code=EXIT_USAGE,
+            hint="Use integration doctor --help; supply a token file, never a token argument.",
+        )
+        return EXIT_USAGE
     except SystemExit as exit_request:
         # argparse exits 2 for a usage error and 0 for --help; both are already
         # the right answer, and both have already printed.
@@ -255,6 +284,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     render(result, as_json=as_json)
     if arguments.group == "organizations" and result.data.get("compatible") is False:
+        return EXIT_FAILED
+    if (
+        arguments.group == "integration"
+        and result.data.get("ready") is False
+        and arguments.integration == "doctor"
+    ):
         return EXIT_FAILED
     return EXIT_OK
 

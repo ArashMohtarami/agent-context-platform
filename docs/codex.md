@@ -128,6 +128,7 @@ database credentials: it reaches the platform through the API and nothing else.
 | `MCP_PROJECT_IDS` | Comma-separated projects; empty adds no local narrowing; backend policy still applies | empty |
 | `MCP_PROFILE_IDS` | Comma-separated creator profiles; empty adds no local narrowing; backend policy still applies | empty |
 | `MCP_API_TOKEN_FILE` | File holding a bearer token for the API | unset |
+| `MCP_API_CA_FILE` | Explicit reviewed private CA for this process; normal hostname verification stays enabled | unset (normal public CA trust) |
 | `LOG_LEVEL` | `DEBUG`…`CRITICAL`; logs go to stderr | `INFO` |
 
 Narrowing is how you hand one Codex session one project:

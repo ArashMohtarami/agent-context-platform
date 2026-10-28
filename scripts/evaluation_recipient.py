@@ -154,9 +154,11 @@ def approve_client(evaluation, browser):
         for row in rows
         if row["parent_id"] is None and row["remaining_depth"] > 0 and row["status"] == "active"
     )
-    domain = [grant("projects:read", "project_directory", project)] + [
-        grant(a, "project", project) for a in ("context:read", "context:write", "search:read")
-    ]
+    domain = (
+        [grant("projects:read", "project_directory", project)]
+        + [grant(a, "project", project) for a in ("context:read", "context:write", "search:read")]
+        + [grant("agent:self", "organization_knowledge", org)]
+    )
     worker_rows = browser.request("GET", root + "/assignments?subject_id=" + worker)["assignments"]
     expiry = min(
         datetime.fromisoformat(evaluation.data["expires_at"]),

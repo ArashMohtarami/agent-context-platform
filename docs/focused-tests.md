@@ -154,3 +154,36 @@ backups and secret files are not evidence exports. Runtime evaluation state is
 separately owned under `.private/evaluations/` and excluded from source/builds.
 See [the implemented evaluation path](evaluation.md) for operator review, trust,
 human effort, one-time delivery, stop/resume and cleanup requirements.
+
+## Connection preview and diagnosis (Phase 4)
+
+`p04-unit` inventories the 80 named integration/configuration cases. `p04-doctor`
+selects only the 46 new doctor/CLI cases when that is the changed boundary.
+Neither starts services or activates isolation. The console component check is
+only `src/clients/onboarding.test.tsx` with non-watch Vitest, not the default
+unit-test wrapper.
+
+`p04-real` selects the genuine 21+11+1 activation dependency and one distributed
+Phase 3 commissioning/doctor case. Before planning/running it, build the current
+API with cached pinned inputs into the separate `acp-evaluation-api:p04` tag:
+
+```sh
+docker build --network=none --pull=false --target production -t acp-evaluation-api:p04 .
+env -u DOCKER_HOST .venv/bin/python scripts/test-focused.py --phase p04-real --plan
+env -u DOCKER_HOST .venv/bin/python scripts/test-focused.py --phase p04-real --run
+```
+
+It uses the cached `acp-v6-console:phase15` console for commissioning; the new
+console preview is separately exercised by `p04-browser` on the freshly built
+SPA and real in-pytest HTTPS/session fixture. That profile selects only
+`e2e/evaluation-onboarding.spec.ts` title `connection preview preserves policy and
+guides recipient diagnostics`. Global setup only attaches to the selected owned
+fixture. It does not run other journeys or provide installer evidence.
+
+The aggregate `p04` is an explicit union; do not run it merely to repeat valid
+boundary evidence. Inspect the chosen profile's plan first. New phase reports
+stay under ignored `.private/v7-competitive-planning/phase-4/runs/`. Real access
+proof includes scoped CA validation, effective read-only grants, actual retrieval,
+forbidden write and credential revocation over both MCP transports. These checks
+use fictional recipients, no paid provider and no active client config. A vendor
+label on a protocol connection is not vendor-client compatibility certification.

@@ -44,7 +44,12 @@ remote HTTP configuration, Gemini CLI's Streamable HTTP settings, and a
 vendor-neutral `custom` Streamable HTTP template. All use the existing tools
 and gateway controls.
 
-## Administrative flow
+## Historical unmanaged administration
+
+The following V4 commands apply only to an explicitly unmanaged rehearsal. They
+are refused by managed policy and are not the current evaluation setup path.
+For the evaluation use [staged commissioning](evaluation.md), independent client
+approval and recipient-only delivery above.
 
 An operator creates the client identity and grants only the necessary scopes
 and projects. For example, a custom Streamable HTTP client can start with a
@@ -122,3 +127,102 @@ stable errors, revision conflicts, idempotency, per-client rate limits, and
 reconnection behavior. The suite uses Codex-like, Claude-like, Gemini-like, and
 custom fixtures only; it does not require a vendor account or external model
 call.
+
+## Preview and diagnose an evaluation connection
+
+Use the exact origin and project printed/approved during evaluation. Preview is
+always the default, including when a token path is supplied:
+
+```sh
+contextctl --json integration doctor codex \
+  --origin https://127.0.0.1:YOUR_PORT --project-id evaluation-notes
+```
+
+Replace `YOUR_PORT` with the actual numeric port. Select `claude-code`,
+`gemini-cli` or `custom` for their HTTP recipes. The preview returns the existing
+registry metadata, an actual TOML/JSON fragment and a recipient-terminal command.
+It opens no active client configuration, token, CA or deployment `.env`, sends
+no requests and changes no grants. There is no apply mode. Manually review and
+merge only the `agent-context` server into your selected destination, preserving
+other servers. Replace the stdio launcher/token/CA path placeholders locally.
+
+An explicit live check reads only the selected recipient-owned regular 0600 file
+and uses this exact origin. A private CA is trusted only for this process:
+
+```sh
+contextctl --json integration doctor codex \
+  --origin https://127.0.0.1:YOUR_PORT --project-id evaluation-notes \
+  --token-file /recipient/private/platform-token \
+  --ca-file /evaluation/state/tls/ca.crt --connect
+```
+
+Inspect the evaluation CA fingerprint first. Normal public CA trust is used
+when `--ca-file` is omitted. Codex's stdio bridge accepts `MCP_API_CA_FILE` in its
+process environment for the same scoped trust. For Claude Code/Gemini CLI using
+a private CA, configure that Node process's reviewed `NODE_EXTRA_CA_CERTS` before
+startup; the doctor does not change vendor client trust. See the official
+[Claude Code CA guidance](https://code.claude.com/docs/en/network-config#custom-ca-certificates)
+and [Node CA contract](https://nodejs.org/api/cli.html#node_extra_ca_certsfile). Never bypass certificate
+validation or silently import an evaluation CA into system trust.
+
+The doctor returns one status/code/next step for each stage:
+
+| Stage | What it actually proves |
+| --- | --- |
+| Configuration | Explicit selection and private credential source are valid; not an audit of installed vendor settings |
+| Transport | The selected listener responds; HTTPS certificate/hostname verification passed (loopback HTTP is labeled separately) |
+| Authentication | The actual server accepts this credential under current policy |
+| Capabilities | Actual MCP initialization, tool discovery and `get_platform_capabilities` succeed; needs approved `agent:self` |
+| Project | `resolve_project` resolves the exact selected authorized project; needs `projects:read` on its directory |
+| Retrieval | Project-context `search_knowledge` succeeds with bounded results; needs coupled `search:read` and `context:read` for that project |
+| Policy (requested) | `--require-read-only` checks the server credential's current scopes and coupled tuples contain only reads/`agent:self` |
+| Write (opt-in) | A harmless context probe is created, or an expected read-only refusal is observed, only on the explicit disposable project |
+
+A failed stage returns nonzero; later dependent checks remain `not_run`.
+Explicit CA inputs must be regular files no larger than 1 MiB; symlinks and
+devices are refused.
+Reports contain fixed codes and a result count, never token/header/environment
+values, private local paths, record IDs or retrieved text. Requests, responses,
+stdio lifetime and total time are bounded. There is no model-provider call.
+`EMPTY` is a successful empty retrieval, not proof of useful knowledge or search
+relevance. Protocol success is not a claim that an installed vendor CLI was run.
+
+For read-only evaluation, the manager first approves the necessary ceiling and
+the verified recipient issues a narrower credential without write, approval,
+promotion, publication, management or session-write scopes. Run doctor with
+`--require-read-only`. This verifies server policy; Gemini's existing setup
+`--read-only` option remains only a local discovery filter and is labeled as
+unverified server access. Preview never narrows/replaces an existing credential.
+Sponsor/team/parent expiry and action/resource grants remain authoritative on
+every real request. A credential with broader server rights fails the read-only
+check even if its client hides write tools.
+
+A write check is a separate opt-in:
+
+```sh
+contextctl --json integration doctor claude-code \
+  --origin https://127.0.0.1:YOUR_PORT --project-id evaluation-notes \
+  --token-file /recipient/private/platform-token \
+  --ca-file /evaluation/state/tls/ca.crt --connect \
+  --write-probe --disposable-project-id evaluation-notes
+```
+
+It leaves one clearly labeled context record if allowed. With
+`--require-read-only`, only a real gateway write refusal passes this optional
+check. Do not select a real project as disposable. There is no automatic retry,
+record deletion, policy update or credential minting. Lost-token replacement
+continues to require explicit revoke/replacement and new one-time delivery.
+
+The console's **Machine clients → View client → Connect this client** provides
+the same offline recipe and staged checklist through its current session-only
+inspection permission. It never accepts a bearer token or runs a live bearer
+probe in the browser. The displayed client ceiling and actual credential may
+differ; terminal doctor verifies the credential separately. Human sessions and
+machine credentials remain separate.
+
+Client syntax was checked against current official documentation on 27 October
+2026: [Codex MCP](https://developers.openai.com/codex/mcp/),
+[Claude Code MCP](https://code.claude.com/docs/en/mcp), and
+[Gemini CLI MCP](https://geminicli.com/docs/tools/mcp-server/).
+The existing stdio and Streamable HTTP shapes are preserved. Full release
+reconciliation remains open.

@@ -66,6 +66,8 @@ class McpSettings(BaseSettings):
     mcp_api_base_url: str = "http://127.0.0.1:8000"
     mcp_api_token: SecretStr | None = None
     mcp_api_token_file: Path | None = None
+    # Explicit per-process CA trust for self-hosted HTTPS; no OS trust edits.
+    mcp_api_ca_file: Path | None = None
     mcp_request_timeout_seconds: float = Field(default=120.0, gt=0.0, le=300.0)
     # Per-client gateway controls are process-local in this self-hosted,
     # single-instance deployment.  Their adapter is deliberately separate so
