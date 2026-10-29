@@ -12,6 +12,13 @@ the versioned REST API. All three use the same domain services and current polic
 
 ### Start with one useful outcome
 
+Begin with the implemented [disposable evaluation](evaluation.md), then
+[connection diagnosis](client-onboarding.md#preview-and-diagnose-an-evaluation-connection)
+and the [single-fact demo/storyboard](demo.md). Commissioning has explicit image,
+evidence, root-review, enrollment/MFA and recipient-issuance prerequisites; no
+end-to-end setup-time promise is measured. The default evaluator has one client;
+the full two-client boundary demo needs additional independent approvals.
+
 Follow the [first handoff](#06-coding-examples-across-projects-and-agents): verify
 the teaching Notes API, save its retry behavior, then retrieve the same record
 from a fresh session in another agent. You can inspect the example and the
@@ -54,6 +61,13 @@ nothing to external platforms.
 
 ### Current boundaries
 
+The [quality report](retrieval-evaluation.md) compares the same permitted
+fictional corpus with Markdown, platform lexical and real-model hybrid retrieval.
+Hybrid and Markdown both reach held-out recall1.0; hybrid's unsupported retrieval
+on no-answer questions remains unresolved. No coding-task benefit is measured.
+See the [dated alternatives comparison](alternatives.md) and
+[exact compatibility evidence](client-onboarding.md#compatibility-and-tested-environments).
+
 **Release readiness remains unapproved.** Read the embedded [verification and
 known limits](verification.md) before operating the console. A documentation
 build, clean archive or passing component selector does not override a failed
@@ -74,6 +88,10 @@ operator or team manager, then [connect your agent](#04-connect-your-agents).
 You do not need database access or a new deployment to join an existing one.
 
 ### Commission a new installation
+
+For a separate fictional trial, follow [the actual evaluation lifecycle](evaluation.md).
+The remainder of this section maps production/operator commissioning and is not
+the shortest evaluation recipe or release approval.
 
 Use the [same-origin HTTPS deployment guide](dashboard-deployment.md) and
 [staged migration/recovery procedure](migration-recovery.md). A fresh checkout
@@ -241,6 +259,10 @@ content, not that the project has no records.
 ## 06. Coding examples across projects and agents
 
 ### First handoff: a verified Notes API fact
+
+For executable steps and capture checkpoints, use the [demo page](demo.md) and
+[maintained protocol command](../examples/agent-handoff/README.md). Client labels
+in a protocol fixture do not verify installed vendor application versions.
 
 **Goal:** a second agent retrieves the exact record the first agent saved, without
 receiving its chat transcript. This walkthrough assumes an activated installation,

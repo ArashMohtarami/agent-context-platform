@@ -392,3 +392,29 @@ def test_site_source_download_checks_unlinked_sources_for_private_text(
     with pytest.raises(subprocess.CalledProcessError):
         site.assemble(tmp_path / "staged")
     assert not (tmp_path / "staged/downloads/agent-context-platform-source.tar.gz").exists()
+
+
+def test_site_allows_only_reviewed_evaluation_and_benchmark_download_inputs(
+    public_root, monkeypatch
+):
+    from website import build as site
+
+    monkeypatch.setattr(site, "ROOT", public_root)
+    for name in (
+        "deploy/evaluation/inputs.json",
+        "benchmarks/retrieval/corpus.json",
+        "dashboard/.node-version",
+    ):
+        expected = put(public_root, name, b"{}\n")
+        assert site.safe_source(name) == expected
+    for name in (
+        "deploy/evaluation/unreviewed.json",
+        "benchmarks/retrieval/runs/report.json",
+        "benchmarks/retrieval/model.safetensors",
+    ):
+        private = put(public_root, name, b"not a reviewed public download")
+        forbid_reads(monkeypatch, {private})
+        with pytest.raises(ValueError, match="outside the reviewed public file inventory"):
+            site.safe_source(name)
+    with pytest.raises(ValueError, match="Hidden files are not public site inputs"):
+        site.safe_source("dashboard/.private/result.json")

@@ -472,6 +472,8 @@
     if (errors.length) return;
     const create = "1. A permitted manager approves the bounded client policy and verified sponsor/team.\n2. The authenticated recipient generates their credential once in the console.\n3. Copy it explicitly into your approved private token file: " + client + "-token\n4. Lost delivery requires revoke/replacement; retries do not replay secrets.\n\nThe descriptive owner label and this generated configuration establish no authority.";
     outputBlock("1 / Obtain a verified managed credential", create, "text");
+    const adapter = ({codex:"codex",claude_code:"claude-code",gemini_cli:"gemini-cli",custom:"custom"})[currentAgent];
+    outputBlock("Preview the actual connection contract (no requests)", "contextctl --json integration doctor " + adapter + " \\\n  --origin " + shellQuote(url.replace(/\/mcp$/, "")) + " --project-id " + shellQuote(project) + "\n# After recipient issuance: select --token-file, --ca-file and --connect explicitly.\n# A private evaluation CA needs explicit process/client trust; never ignore TLS errors.", "bash");
     if (currentAgent === "codex") {
       const file = location === "user" ? "~/.codex/config.toml" : "<working-repository>/.codex/config.toml";
       outputBlock("2 / Merge into " + file, `[mcp_servers.agent-context]\ncommand = ${tomlString(checkout + "/scripts/codex-mcp-server.sh")}\nstartup_timeout_sec = 30\ntool_timeout_sec = 120\n\n[mcp_servers.agent-context.env]\nMCP_API_BASE_URL = ${tomlString(url.replace(/\/mcp$/, ""))}\nMCP_API_TOKEN_FILE = ${tomlString(checkout + "/secrets/" + client + "-token")}\nMCP_PROJECT_IDS = ${tomlString(project)}\nMCP_SCOPES = ${tomlString(scopes[access].join(","))}`, "toml");

@@ -1,5 +1,12 @@
 # Disposable local evaluation
 
+Start here to obtain one fictional organization and one recipient-issued client
+credential. Then use [connection diagnosis](client-onboarding.md#preview-and-diagnose-an-evaluation-connection)
+and the [first-handoff recipe](demo.md). The full two-client boundary demo needs
+additional reviewed policy and a second credential; the default setup does not
+silently grant them. This path suits teams that need shared project decisions
+and controlled access. For a solo repository, plain Markdown can be enough.
+
 This path commissions a **fictional, disposable organization**, separately from
 an existing installation. It is not production activation or release approval.
 Full release reconciliation remains open. Do not restore evaluation volumes into
@@ -175,3 +182,26 @@ Raw logs, reports, invitation messages, CA/private keys and backups live under
 ignored `.private/` state and must never be exported. A successful evaluation is
 not approval for production, external client compatibility, adoption or benchmark
 claims. See [verification](verification.md) and [focused tests](focused-tests.md).
+
+## First failure and timing expectations
+
+No cold-install or human-effort target has been measured. Separate image/wheel/npm
+preparation, activation checks, service startup and recipient/MFA/approval effort;
+do not turn a fixture's runtime into a setup-time claim. Current-source evidence
+and images are required even when an older rehearsal passed.
+
+| First failing step | Next action |
+| --- | --- |
+| Pinned image/input missing | Prepare the named input; preflight does not download it or fall back to another deployment |
+| Activation receipt/source mismatch | Generate genuine current ordered reports and rebuild the reviewed image; never edit XML or activation requirements |
+| Certificate trust | Compare the instance CA fingerprint and use only its explicit process CA or dedicated temporary browser profile; do not disable validation |
+| Enrollment interrupted before verification | Reset that disposable instance as documented above; do not mark a user verified in storage |
+| Client/project refusal | Inspect the exact failed doctor stage, current sponsor/team/parent and coupled grants; a local read-only filter cannot grant access |
+| Empty retrieval | Confirm explicit project, expected record ID and search readiness; an empty successful request is not relevance evidence |
+| Lost one-time token | Revoke/replace through the recipient workflow; repeated start does not recover it |
+| Failed stop/reset | Inspect the retained checkpoint and retry the exact instance only; never global-prune or remove similarly named live volumes |
+
+Use [redacted connection diagnosis](client-onboarding.md#preview-and-diagnose-an-evaluation-connection)
+after issuance, then the [two-client recipe and storyboard](demo.md). The model-free
+commissioning/protocol checks and [real-model quality study](retrieval-evaluation.md)
+are separate surfaces. Production approval remains separate from both.

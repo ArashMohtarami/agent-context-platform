@@ -1,8 +1,13 @@
 [
   {
     "path": "README.md",
-    "sha256": "b5e78e7558576ca6b0aae387ccf852a217364fbe3a5244ca9ae0fdb54b6da6db",
-    "lines": 149
+    "sha256": "5a3ff6f385aa1b27df92bab3ad76fd8cc968d2b2945ce507a03c68e2a3f7638b",
+    "lines": 172
+  },
+  {
+    "path": "docs/alternatives.md",
+    "sha256": "07c15c2e47511a4bf78cb77096b97e74fe0bd0adddfdeb9ab5e5448f1265ac5e",
+    "lines": 44
   },
   {
     "path": "docs/architecture.md",
@@ -26,8 +31,8 @@
   },
   {
     "path": "docs/client-onboarding.md",
-    "sha256": "90f9b57a9894da58e0eaaaf3e323cbe66171bdbbdf0f9be3f8e312064c790268",
-    "lines": 228
+    "sha256": "bd98c98581399c9bc60883f49a566d159b874a7877d63e50a1383061271a0135",
+    "lines": 253
   },
   {
     "path": "docs/client-profiles.md",
@@ -150,6 +155,11 @@
     "lines": 180
   },
   {
+    "path": "docs/demo.md",
+    "sha256": "46820565f272669973239441cd5ee98f714e1d42181c60956e2499fa2a2d19d5",
+    "lines": 60
+  },
+  {
     "path": "docs/deployment.md",
     "sha256": "d2059d2f25de582547b8322d7ceaff2f164a5b60939d2f2ec4988dc44f14166c",
     "lines": 180
@@ -158,6 +168,16 @@
     "path": "docs/embeddings.md",
     "sha256": "b24a337a30884a8a1e3ea1351396f0b92a3c682b2d05987c9883093d5c92f700",
     "lines": 169
+  },
+  {
+    "path": "docs/evaluation.md",
+    "sha256": "c0edd73c3462a23d615c235bd25814ec39fd945d1f0a634053ad56e03667a3e0",
+    "lines": 207
+  },
+  {
+    "path": "docs/focused-tests.md",
+    "sha256": "d081e7ce0a610bae7bac0b675b15066c16514a8618e944f75a5db7ba5d0eca7e",
+    "lines": 268
   },
   {
     "path": "docs/human-organization-management.md",
@@ -233,6 +253,11 @@
     "path": "docs/research.md",
     "sha256": "1d2fc58f56b0e29a8258a5ccababf2deee8b984e7884f32cec2535197b6b0373",
     "lines": 177
+  },
+  {
+    "path": "docs/retrieval-evaluation.md",
+    "sha256": "9197135778384c0a92599d17f90b6f58a08f8cca620bdabab8dedd892f808707",
+    "lines": 210
   },
   {
     "path": "docs/retrieval.md",

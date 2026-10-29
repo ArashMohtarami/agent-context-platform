@@ -1,11 +1,15 @@
 # Agent Context Platform
 
-Self-hosted knowledge for coding agents and an organization console for people.
-Store reviewed skills, project decisions, intentional memories, research evidence
-and content history, then retrieve them through MCP, versioned bearer APIs or
-session-authenticated human workflows.
+Save one verified project fact. Retrieve the same record from another coding
+agent's fresh session, using its own credential and project grants. No copied
+conversation is needed. Start with the [Notes API handoff](docs/demo.md).
 
-Codex, Claude Code, Gemini CLI and compatible clients share the same services.
+This is self-hosted knowledge for small engineering teams using several coding
+agents across projects. Shared decisions, current access policy and provenance
+must justify operating MongoDB/mongot, HTTPS, identity and backups. For one
+repository or a solo workflow, maintained Markdown instructions may be enough.
+
+Stdio and Streamable HTTP MCP clients share the same services.
 Organizations have explicit ownership and action/resource grants. Embeddings run
 locally; MongoDB and MongoDB Community Search provide lexical, vector and hybrid
 retrieval. Installation database and backup operators remain trusted across
@@ -14,6 +18,15 @@ organizations. **Release readiness is not yet approved:** see
 
 [Usage guide](docs/usage-guide.html) · [Console](docs/dashboard.md) ·
 [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md)
+
+**Status:** disposable commissioning, connection diagnosis and the two-client
+protocol handoff have scoped real-service evidence. Installed Codex, Claude Code
+and Gemini CLI versions have **not** been exercised; see the
+[compatibility table](docs/client-onboarding.md#compatibility-and-tested-environments).
+The [fictional retrieval study](docs/retrieval-evaluation.md) found no recall
+advantage over Markdown and an unresolved unsupported-retrieval limitation.
+[Alternatives and edition boundaries](docs/alternatives.md) were reviewed on
+29 October 2026. None of this approves a production release.
 
 ## What you can do
 
@@ -42,6 +55,13 @@ For a separate fictional organization, follow the
 [disposable evaluation guide](docs/evaluation.md). It covers reviewed root intent,
 private HTTPS trust, verified enrollment/MFA and recipient-owned credentials.
 The current commissioning mode is model-free; it makes no retrieval-quality claim.
+
+Expect several explicit steps: prepare pinned images/dependencies, obtain genuine
+current activation evidence, review root intent, enroll two recipients with MFA,
+independently approve bounded client policy and deliver the worker's token once.
+There is no measured end-to-end setup-time promise. The default evaluation creates
+one client; the [full two-client demo](docs/demo.md) needs the additional reviewed
+grants and second credential documented in its recipe.
 
 Start with the [HTTPS console deployment guide](docs/dashboard-deployment.md) and
 [maintenance migration/recovery procedure](docs/migration-recovery.md). A fresh
@@ -112,6 +132,9 @@ hostable and has no console session, runtime data or secret mounts.
 | Interfaces | [MCP](docs/mcp.md), [CLI](docs/cli.md), [permission templates](docs/client-profiles.md) |
 | Operations | [Console deployment](docs/dashboard-deployment.md), [migration/recovery](docs/migration-recovery.md), [backup](docs/backup.md), [security](docs/security.md) |
 | Readiness and licenses | [Verification](docs/verification.md), [MIT License](LICENSE), [dependency notices](docs/third-party-notices.md) |
+
+Research, creator and monitoring are separate advanced paths in the table above;
+they are not prerequisites for the first project-fact handoff.
 
 The repository includes a [skill catalog](docs/skill-catalog.md), fictional
 [payment-service](examples/payment-service/README.md), [Notes API](examples/starter-notes-api/README.md)

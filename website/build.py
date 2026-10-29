@@ -19,6 +19,10 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts.prepare_open_source_release import BENCHMARK_FILES  # noqa: E402
+
 HERE = Path(__file__).resolve().parent
 OUTPUT = ROOT / "dist/site"
 PUBLIC_DOCS = frozenset(
@@ -27,6 +31,7 @@ PUBLIC_DOCS = frozenset(
 ROOT_DOWNLOADS = frozenset(
     {
         "dashboard/README.md",
+        "dashboard/.node-version",
         "dashboard/DEPENDENCIES.md",
         "dashboard/LICENSE",
         "dashboard/THIRD_PARTY_NOTICES.txt",
@@ -45,6 +50,7 @@ ROOT_DOWNLOADS = frozenset(
         "requirements-test.lock",
         "deploy/website/compose.yml",
         "deploy/website/nginx.conf",
+        "deploy/evaluation/inputs.json",
         "deploy/licenses/mongodb-database-tools/README.md",
         "deploy/licenses/mongodb-database-tools/LICENSE.md",
         "deploy/licenses/mongodb-database-tools/APACHE-2.0.txt",
@@ -77,11 +83,15 @@ def safe_source(relative: str) -> Path:
         raise ValueError(f"File leaves the checkout: {relative}")
     if any(part.is_symlink() for part in (path, *path.parents[: len(Path(relative).parts)])):
         raise ValueError(f"Symlinks are not included in the website: {relative}")
-    if any(part.startswith(".") for part in Path(relative).parts):
+    if (
+        any(part.startswith(".") for part in Path(relative).parts)
+        and relative != "dashboard/.node-version"
+    ):
         raise ValueError(f"Hidden files are not public site inputs: {relative}")
     allowed = (
         relative in ROOT_DOWNLOADS
         or relative in PUBLIC_DOCS
+        or relative in BENCHMARK_FILES
         or relative in {"website/README.md", "website/build.py"}
         or relative == "docs/usage-guide.html"
         or (
@@ -157,6 +167,7 @@ def assemble(output: Path) -> tuple[int, int]:
     landing_page = landing_page.replace(
         'href="../docs/usage-guide.html', 'href="docs/usage-guide.html'
     ).replace('href="../LICENSE"', 'href="LICENSE"')
+    landing_page = re.sub(r'(href|src)="\.\./(docs|examples|benchmarks)/', r'\1="\2/', landing_page)
     landing_page = landing_page.replace(
         "</footer>",
         '<p class="section-shell"><a href="downloads/agent-context-platform-source.tar.gz">'

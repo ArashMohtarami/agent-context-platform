@@ -1,5 +1,23 @@
 "use strict";
 
+const themeButton = document.getElementById("site-theme");
+let dark = matchMedia("(prefers-color-scheme: dark)").matches;
+try {
+  const saved = localStorage.getItem("acp-site-theme");
+  if (saved) dark = saved === "dark";
+} catch { /* File/offline storage can be unavailable. */ }
+function renderTheme() {
+  document.body.classList.toggle("dark", dark);
+  themeButton.textContent = dark ? "Light" : "Dark";
+  themeButton.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+}
+themeButton.addEventListener("click", () => {
+  dark = !dark;
+  try { localStorage.setItem("acp-site-theme", dark ? "dark" : "light"); } catch { /* Preview only. */ }
+  renderTheme();
+});
+renderTheme();
+
 const tabs = [...document.querySelectorAll('[role="tab"]')];
 function selectTab(tab, focus = false) {
   for (const item of tabs) {

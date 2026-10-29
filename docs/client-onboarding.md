@@ -1,5 +1,30 @@
 # Generic MCP client onboarding
 
+For the first evaluation, obtain a recipient-owned credential through the
+[disposable setup](evaluation.md), preview a recipe below, then follow the
+[single-fact handoff](demo.md). Keep the transport, authorization and useful
+retrieval checks separate: a successful connection is only one step.
+
+## Compatibility and tested environments
+
+Evidence reviewed 29 October 2026. A configuration recipe or fixture client name
+does not verify an installed vendor application. No provider-backed demonstration
+has been run or paid for.
+
+| Surface | Exact exercised version / environment | Evidence boundary |
+| --- | --- | --- |
+| Platform MCP protocol harness | Python 3.12.3, Python `mcp`1.19.0; Linux; actual stdio child and HTTPS Streamable HTTP sessions with separately issued credentials | Persisted ID/content handoff, project/private-memory negatives, connected revocation; not a vendor CLI |
+| Platform local commissioning | Disposable authenticated MongoDB/mongot, staged HTTPS enrollment/MFA and recipient issuance with reviewed pinned inputs | Original scoped acceptance; rebuild/current genuine activation required after source changes, not release approval |
+| Codex application | No installed version exercised | Maintained stdio recipe and doctor contract; vendor compatibility unverified |
+| Claude Code application | No installed version exercised | Maintained Streamable HTTP recipe and doctor contract; vendor compatibility unverified |
+| Gemini CLI application | No installed version exercised | Maintained Streamable HTTP recipe and doctor contract; vendor compatibility unverified |
+| Other MCP clients | No installed product/version exercised | Vendor-neutral protocol contract; verify your actual product/version before claiming support |
+
+The protocol harness uses the committed locks and fictional fixtures. Client
+adapters describe connection metadata; they do not implement a new runtime. See
+[the demo's limits](demo.md#capture-and-compatibility) and
+[the quality report](retrieval-evaluation.md) for separate measured environments.
+
 ## Managed installation setup
 
 Complete the [organization console](dashboard.md) cutovers first. A lead
