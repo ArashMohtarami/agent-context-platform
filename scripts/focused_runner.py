@@ -21,6 +21,8 @@ BROWSER_HARNESS = "tests/integration/test_v6_dashboard_browser.py::test_real_das
 
 
 def evidence_folder(phase):
+    if phase == "p06" or phase.startswith("p06-"):
+        return EVIDENCE.parents[1] / "phase-6" / "runs" / phase
     if phase == "p05" or phase.startswith("p05-"):
         return EVIDENCE.parents[1] / "phase-5" / "runs" / phase
     if phase == "p04" or phase.startswith("p04-"):
@@ -49,7 +51,7 @@ def clean_environment(values):
                 "DOCKER_CONTEXT",
             }
         )
-        and k not in {"ACP_FOCUSED_NODE", "ACP_FOCUSED_CHROMIUM"}
+        and k not in {"ACP_FOCUSED_NODE", "ACP_FOCUSED_CHROMIUM", "ACP_FOCUSED_MODEL_CACHE"}
     ]
     if forbidden:
         raise FocusedError(
@@ -66,6 +68,8 @@ def clean_environment(values):
         TOKENIZERS_PARALLELISM="false",
         OMP_NUM_THREADS="2",
     )
+    if values.get("ACP_FOCUSED_MODEL_CACHE"):
+        env["ACP_FOCUSED_MODEL_CACHE"] = values["ACP_FOCUSED_MODEL_CACHE"]
     return env
 
 
@@ -149,6 +153,8 @@ def load_profile(phase, manifest=MANIFEST):
 
 
 def identity():
+    from scripts.prepare_open_source_release import BENCHMARK_FILES
+
     paths = [
         *ROOT.joinpath("app").rglob("*.py"),
         *ROOT.joinpath("tests").rglob("*.py"),
@@ -157,6 +163,9 @@ def identity():
         *ROOT.joinpath("scripts").glob("evaluation_*.py"),
         *ROOT.joinpath("deploy/evaluation").glob("*"),
         *ROOT.joinpath("dashboard/e2e").glob("*.ts"),
+        *[ROOT / p for p in BENCHMARK_FILES],
+        ROOT / "scripts/prepare_open_source_release.py",
+        ROOT / "MANIFEST.in",
     ]
     paths += [
         ROOT / p
@@ -401,6 +410,15 @@ def prepare_job(job, nodes, run_id, env, folder, node):
         if job["kind"] == "pytest"
         else browser_argv(job, node),
     }
+    if job["id"] == "p06-real":
+        from benchmarks.retrieval.model import model_identity
+
+        try:
+            prepared["model_input"] = model_identity(env.get("ACP_FOCUSED_MODEL_CACHE", ""))
+        except (OSError, ValueError) as error:
+            raise FocusedError(
+                "p06-real requires the pinned explicit offline model cache"
+            ) from error
     if job["fixture"] in {"mongo", "browser", "hosting", "browser-hosted"}:
         stack = OwnedStack(
             run_id + "-" + job["id"],
@@ -777,6 +795,8 @@ def execute(phase, values):
             started = time.monotonic()
             if job["id"] == "p05-smoke":
                 current["ACP_FOCUSED_HANDOFF_REPORT"] = str(target)
+            if job["id"] == "p06-real":
+                current["ACP_FOCUSED_RETRIEVAL_REPORT"] = str(target)
 
             def perform(active, job=job, target=target, current=current):
                 if job["kind"] == "browser":

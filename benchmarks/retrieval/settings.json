@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "top_k": 5,
+  "token_budget": 4000,
+  "reference_time": "2026-10-24T00:00:00+00:00",
+  "bm25": {
+    "k1": 1.2,
+    "b": 0.75
+  },
+  "timing_passes": 3,
+  "concurrency": 1,
+  "bootstrap": {
+    "samples": 2000,
+    "seed": 20261024
+  },
+  "targets": {
+    "hybrid_recall_at_5": 0.8,
+    "absolute_recall_lift": 0.1,
+    "unsupported_increase": 0,
+    "forbidden_items": 0
+  },
+  "model": {
+    "name": "sentence-transformers/all-MiniLM-L6-v2",
+    "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+    "dimensions": 384,
+    "device": "cpu",
+    "torch_threads": 2,
+    "normalize": true,
+    "batch_size": 32,
+    "max_batch_texts": 256,
+    "max_text_characters": 20000,
+    "allow_downloads": false
+  },
+  "ranking": {
+    "vector": 0.45,
+    "lexical": 0.25,
+    "importance": 0.15,
+    "recency": 0.1,
+    "source_priority": 0.05,
+    "half_life_days": 90,
+    "duplicate_overlap": 0.85,
+    "candidate_multiplier": 10,
+    "max_candidates": 1000,
+    "score_cutoff": null
+  }
+}

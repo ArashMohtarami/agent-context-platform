@@ -1,0 +1,482 @@
+{
+  "version": 1,
+  "license": "MIT",
+  "tasks": [
+    {
+      "id": "cursor",
+      "family": "cursor",
+      "prompt": "Implement cursor in starter.py for the fictional Oriole pagination. Preserve the supplied function signature. Follow the project decision if knowledge is supplied. Return only the code change. Do not read the checker, labels or reference solution.",
+      "support": [
+        "org-a|project_context|fact-cursor|1"
+      ],
+      "cases": [
+        {
+          "args": [
+            0
+          ],
+          "expected": "0"
+        },
+        {
+          "args": [
+            26
+          ],
+          "expected": "1a"
+        },
+        {
+          "args": [
+            -1
+          ],
+          "raises": "ValueError"
+        },
+        {
+          "args": [
+            true
+          ],
+          "raises": "ValueError"
+        }
+      ]
+    },
+    {
+      "id": "ttl",
+      "family": "ttl",
+      "prompt": "Implement ttl in starter.py for the fictional Larch cache TTL. Preserve the supplied function signature. Follow the project decision if knowledge is supplied. Return only the code change. Do not read the checker, labels or reference solution.",
+      "support": [
+        "org-a|project_context|fact-ttl|1"
+      ],
+      "cases": [
+        {
+          "args": [
+            true
+          ],
+          "expected": 45
+        },
+        {
+          "args": [
+            false
+          ],
+          "expected": 7
+        }
+      ]
+    },
+    {
+      "id": "retry",
+      "family": "retry",
+      "prompt": "Implement retry in starter.py for the fictional Heron retry policy. Preserve the supplied function signature. Follow the project decision if knowledge is supplied. Return only the code change. Do not read the checker, labels or reference solution.",
+      "support": [
+        "org-a|active_skill|fact-retry|1"
+      ],
+      "cases": [
+        {
+          "args": [
+            0,
+            "network"
+          ],
+          "expected": 1
+        },
+        {
+          "args": [
+            6,
+            "network"
+          ],
+          "expected": 32
+        },
+        {
+          "args": [
+            0,
+            "validation"
+          ],
+          "expected": null
+        }
+      ]
+    },
+    {
+      "id": "money",
+      "family": "money",
+      "prompt": "Implement money in starter.py for the fictional Finch money representation. Preserve the supplied function signature. Follow the project decision if knowledge is supplied. Return only the code change. Do not read the checker, labels or reference solution.",
+      "support": [
+        "org-a|memory|fact-money|1"
+      ],
+      "cases": [
+        {
+          "args": [
+            "1.005"
+          ],
+          "expected": 101
+        },
+        {
+          "args": [
+            "2.675"
+          ],
+          "expected": 268
+        },
+        {
+          "args": [
+            "0.004"
+          ],
+          "expected": 0
+        },
+        {
+          "args": [
+            "-1.005"
+          ],
+          "expected": -101
+        }
+      ]
+    },
+    {
+      "id": "slug",
+      "family": "slug",
+      "prompt": "Implement slug in starter.py for the fictional Cedar route convention. Preserve the supplied function signature. Follow the project decision if knowledge is supplied. Return only the code change. Do not read the checker, labels or reference solution.",
+      "support": [
+        "org-a|memory|fact-slug|1"
+      ],
+      "cases": [
+        {
+          "args": [
+            " Hello__WORLD "
+          ],
+          "expected": "hello-world"
+        },
+        {
+          "args": [
+            "a---b"
+          ],
+          "expected": "a---b"
+        },
+        {
+          "args": [
+            "   "
+          ],
+          "raises": "ValueError"
+        },
+        {
+          "args": [
+            "Ä A"
+          ],
+          "expected": "Ä-a"
+        }
+      ]
+    },
+    {
+      "id": "order",
+      "family": "order",
+      "prompt": "Implement order in starter.py for the fictional Ibis delivery order. Preserve the supplied function signature. Follow the project decision if knowledge is supplied. Return only the code change. Do not read the checker, labels or reference solution.",
+      "support": [
+        "org-a|project_context|fact-order|1"
+      ],
+      "cases": [
+        {
+          "args": [
+            [
+              {
+                "priority": 2,
+                "sequence": 1,
+                "name": "a"
+              },
+              {
+                "priority": 1,
+                "sequence": 2,
+                "name": "z"
+              },
+              {
+                "priority": 1,
+                "sequence": 2,
+                "name": "b"
+              },
+              {
+                "priority": 1,
+                "sequence": 1,
+                "name": "c"
+              }
+            ]
+          ],
+          "expected": [
+            {
+              "priority": 1,
+              "sequence": 1,
+              "name": "c"
+            },
+            {
+              "priority": 1,
+              "sequence": 2,
+              "name": "z"
+            },
+            {
+              "priority": 1,
+              "sequence": 2,
+              "name": "b"
+            },
+            {
+              "priority": 2,
+              "sequence": 1,
+              "name": "a"
+            }
+          ]
+        },
+        {
+          "args": [
+            []
+          ],
+          "expected": []
+        }
+      ]
+    },
+    {
+      "id": "deadline",
+      "family": "deadline",
+      "prompt": "Implement deadline in starter.py for the fictional Plover deadline decision. Preserve the supplied function signature. Follow the project decision if knowledge is supplied. Return only the code change. Do not read the checker, labels or reference solution.",
+      "support": [
+        "org-a|project_context|fact-deadline|2"
+      ],
+      "cases": [
+        {
+          "args": [
+            9,
+            10
+          ],
+          "expected": false
+        },
+        {
+          "args": [
+            10,
+            10
+          ],
+          "expected": true
+        },
+        {
+          "args": [
+            11,
+            10
+          ],
+          "expected": true
+        }
+      ]
+    },
+    {
+      "id": "filename",
+      "family": "filename",
+      "prompt": "Implement filename in starter.py for the fictional Juniper filename decision. Preserve the supplied function signature. Follow the project decision if knowledge is supplied. Return only the code change. Do not read the checker, labels or reference solution.",
+      "support": [
+        "org-a|project_context|fact-filename|2"
+      ],
+      "cases": [
+        {
+          "args": [
+            "NOTE.MD"
+          ],
+          "expected": true
+        },
+        {
+          "args": [
+            "a.txt"
+          ],
+          "expected": true
+        },
+        {
+          "args": [
+            "a.html"
+          ],
+          "expected": false
+        },
+        {
+          "args": [
+            "a"
+          ],
+          "expected": false
+        },
+        {
+          "args": [
+            "a.md.exe"
+          ],
+          "expected": false
+        }
+      ]
+    },
+    {
+      "id": "percent",
+      "family": "task_percent",
+      "prompt": "Implement percent in starter.py for the fictional Cicada percentage output. Preserve the supplied function signature. Follow the project decision if knowledge is supplied. Return only the code change. Do not read the checker, labels or reference solution.",
+      "support": [
+        "org-a|project_context|fact-task_percent|1"
+      ],
+      "cases": [
+        {
+          "args": [
+            45
+          ],
+          "expected": 45
+        },
+        {
+          "args": [
+            -1
+          ],
+          "expected": 0
+        },
+        {
+          "args": [
+            101
+          ],
+          "expected": 100
+        },
+        {
+          "args": [
+            true
+          ],
+          "raises": "ValueError"
+        },
+        {
+          "args": [
+            1.5
+          ],
+          "raises": "ValueError"
+        }
+      ]
+    },
+    {
+      "id": "overlay",
+      "family": "task_overlay",
+      "prompt": "Implement overlay in starter.py for the fictional Peat configuration overlay. Preserve the supplied function signature. Follow the project decision if knowledge is supplied. Return only the code change. Do not read the checker, labels or reference solution.",
+      "support": [
+        "org-a|project_context|fact-task_overlay|1"
+      ],
+      "cases": [
+        {
+          "args": [
+            {
+              "a": 1,
+              "b": 2
+            },
+            {
+              "a": null,
+              "b": 3,
+              "c": 4
+            }
+          ],
+          "expected": {
+            "a": 1,
+            "b": 3,
+            "c": 4
+          }
+        },
+        {
+          "args": [
+            {},
+            {
+              "a": null
+            }
+          ],
+          "expected": {}
+        },
+        {
+          "args": [
+            {
+              "x": 1
+            },
+            {}
+          ],
+          "expected": {
+            "x": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "path",
+      "family": "task_path",
+      "prompt": "Implement path in starter.py for the fictional Brook object names. Preserve the supplied function signature. Follow the project decision if knowledge is supplied. Return only the code change. Do not read the checker, labels or reference solution.",
+      "support": [
+        "org-a|project_context|fact-task_path|1"
+      ],
+      "cases": [
+        {
+          "args": [
+            "a/b"
+          ],
+          "expected": true
+        },
+        {
+          "args": [
+            "é/x"
+          ],
+          "expected": true
+        },
+        {
+          "args": [
+            "/a"
+          ],
+          "expected": false
+        },
+        {
+          "args": [
+            "a//b"
+          ],
+          "expected": false
+        },
+        {
+          "args": [
+            "a/../b"
+          ],
+          "expected": false
+        },
+        {
+          "args": [
+            "a/./b"
+          ],
+          "expected": false
+        },
+        {
+          "args": [
+            "a\\b"
+          ],
+          "expected": false
+        },
+        {
+          "args": [
+            ""
+          ],
+          "expected": false
+        }
+      ]
+    },
+    {
+      "id": "lane",
+      "family": "task_lane",
+      "prompt": "Implement lane in starter.py for the fictional Moss lane assignment. Preserve the supplied function signature. Follow the project decision if knowledge is supplied. Return only the code change. Do not read the checker, labels or reference solution.",
+      "support": [
+        "org-a|project_context|fact-task_lane|1"
+      ],
+      "cases": [
+        {
+          "args": [
+            0
+          ],
+          "expected": 0
+        },
+        {
+          "args": [
+            7
+          ],
+          "expected": 0
+        },
+        {
+          "args": [
+            8
+          ],
+          "expected": 1
+        },
+        {
+          "args": [
+            -1
+          ],
+          "raises": "ValueError"
+        },
+        {
+          "args": [
+            true
+          ],
+          "raises": "ValueError"
+        }
+      ]
+    }
+  ]
+}

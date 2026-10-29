@@ -1,0 +1,189 @@
+{
+  "$defs": {
+    "Arm": {
+      "enum": [
+        "markdown",
+        "lexical",
+        "hybrid"
+      ],
+      "type": "string"
+    },
+    "Attempt": {
+      "additionalProperties": false,
+      "properties": {
+        "query_id": {
+          "title": "Query Id",
+          "type": "string"
+        },
+        "arm": {
+          "$ref": "#/$defs/Arm"
+        },
+        "stage": {
+          "$ref": "#/$defs/Stage"
+        },
+        "repeat": {
+          "maximum": 3,
+          "minimum": 0,
+          "title": "Repeat",
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/Status"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Code"
+        },
+        "latency_ms": {
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "number"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Item"
+          },
+          "maxItems": 50,
+          "title": "Items",
+          "type": "array"
+        },
+        "diagnostics": {
+          "additionalProperties": true,
+          "title": "Diagnostics",
+          "type": "object"
+        }
+      },
+      "required": [
+        "query_id",
+        "arm",
+        "stage",
+        "repeat",
+        "status",
+        "latency_ms",
+        "items"
+      ],
+      "title": "Attempt",
+      "type": "object"
+    },
+    "Item": {
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "title": "Identity",
+          "type": "string"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        },
+        "runtime_id": {
+          "title": "Runtime Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identity",
+        "content",
+        "score",
+        "runtime_id"
+      ],
+      "title": "Item",
+      "type": "object"
+    },
+    "Stage": {
+      "enum": [
+        "quality",
+        "cold",
+        "warm"
+      ],
+      "type": "string"
+    },
+    "Status": {
+      "enum": [
+        "ok",
+        "denied",
+        "timeout",
+        "error",
+        "incomplete"
+      ],
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "identities": {
+      "additionalProperties": true,
+      "title": "Identities",
+      "type": "object"
+    },
+    "settings": {
+      "additionalProperties": true,
+      "title": "Settings",
+      "type": "object"
+    },
+    "setup": {
+      "additionalProperties": true,
+      "title": "Setup",
+      "type": "object"
+    },
+    "attempts": {
+      "items": {
+        "$ref": "#/$defs/Attempt"
+      },
+      "title": "Attempts",
+      "type": "array"
+    },
+    "summaries": {
+      "additionalProperties": true,
+      "title": "Summaries",
+      "type": "object"
+    },
+    "comparisons": {
+      "additionalProperties": true,
+      "title": "Comparisons",
+      "type": "object"
+    },
+    "coding_benefit": {
+      "const": "not measured",
+      "title": "Coding Benefit",
+      "type": "string"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "version",
+    "identities",
+    "settings",
+    "setup",
+    "attempts",
+    "summaries",
+    "comparisons",
+    "coding_benefit",
+    "limitations"
+  ],
+  "title": "Report",
+  "type": "object"
+}

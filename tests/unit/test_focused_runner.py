@@ -460,3 +460,44 @@ def test_handoff_inputs_invalidate_focused_evidence(monkeypatch, source):
 
     monkeypatch.setattr(Path, "read_bytes", read)
     assert runner.identity() != before
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "benchmarks/retrieval/scorer.py",
+        "benchmarks/retrieval/queries.json",
+        "benchmarks/retrieval/split.json",
+        "benchmarks/retrieval/model-lock.json",
+        "benchmarks/retrieval/tasks/reference.py",
+        "MANIFEST.in",
+    ],
+)
+def test_benchmark_inputs_invalidate_focused_evidence(monkeypatch, source):
+    before = runner.identity()
+    original = Path.read_bytes
+
+    def read(path):
+        return original(path) + (b"changed input" if path == runner.ROOT / source else b"")
+
+    monkeypatch.setattr(Path, "read_bytes", read)
+    assert runner.identity() != before
+
+
+def test_retrieval_plan_requires_pinned_model_without_starting_services(tmp_path, monkeypatch):
+    from benchmarks.retrieval import model
+
+    job = runner.load_profile("p06-real")[0]
+    nodes = job["selectors"]
+    with pytest.raises(FocusedError, match="offline model cache"):
+        runner.prepare_job(job, nodes, "a" * 32, {}, tmp_path, "node")
+    monkeypatch.setattr(model, "model_identity", lambda cache: {"cache": cache, "sha256": "first"})
+    env = runner.clean_environment({"ACP_FOCUSED_MODEL_CACHE": str(tmp_path)})
+    planned = runner.prepare_job(job, nodes, "a" * 32, env, tmp_path, "node")
+    assert planned["model_input"]["sha256"] == "first"
+    assert planned["argv"][-1] == nodes[0]
+    assert len(planned["fixture_children"]) == 1  # only the known disposable archive
+    monkeypatch.setattr(
+        model, "model_identity", lambda cache: {"cache": cache, "sha256": "changed"}
+    )
+    assert runner.prepare_job(job, nodes, "a" * 32, env, tmp_path, "node") != planned

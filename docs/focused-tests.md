@@ -222,3 +222,21 @@ affected plans. The production activation verifier is unchanged.
 See the [repeatable recipe](../examples/agent-handoff/README.md) and labeled
 [storyboard](../examples/agent-handoff/storyboard.md). Neither protocol sessions
 nor fixtures establish installed vendor-client compatibility or release approval.
+
+## Retrieval benchmark
+
+The [fictional retrieval benchmark](../benchmarks/retrieval/README.md) has separate
+`p06-unit` (40 cases), `p06-export` (2 cases), `p06-runner` (9 cases) and `p06-real`
+(one real study) profiles. Inspect `--plan` before `--run`. The real profile
+requires an explicitly selected, hash-locked offline model cache and only its
+owned MongoDB/mongot fixture. It checks the actual permitted corpus before the
+60-query, three-arm study, records every attempt privately and verifies project
+refusal and credential revocation. It does not select activation or browser work.
+
+`p06-model`, `p06-lexical` and `p06-task` select the named affected guards after
+model-loading, fixture/parser and task-oracle corrections. They are narrower
+follow-ups, not extra release gates. Query labels, actual current grants and
+record identities must agree; a partial authorized export is an invalid quality
+comparison. Reports, including failures and invalidated attempts, stay private
+until reviewed. Coding-task benefit requires a separately authorized provider
+study and remains unmeasured by the retrieval run.

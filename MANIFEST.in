@@ -38,3 +38,14 @@ include deploy/evaluation/inputs.json docs/evaluation.md
 # Maintained, fictional protocol demo and the exact local source it verifies.
 recursive-include examples/agent-handoff *.py *.json *.md
 recursive-include examples/starter-notes-api *.py *.md requirements.txt
+# Original MIT fictional retrieval inputs and scorer only; never raw study runs.
+include benchmarks/retrieval/README.md benchmarks/retrieval/LICENSE
+include benchmarks/retrieval/corpus.json benchmarks/retrieval/queries.json
+include benchmarks/retrieval/split.json benchmarks/retrieval/settings.json
+include benchmarks/retrieval/freeze.json benchmarks/retrieval/model-lock.json
+include benchmarks/retrieval/report-schema.json benchmarks/retrieval/tasks.json
+include benchmarks/retrieval/scorer.py benchmarks/retrieval/model.py
+include benchmarks/retrieval/live.py benchmarks/retrieval/coding.py
+include benchmarks/retrieval/tasks/reference.py benchmarks/retrieval/tasks/starter.py
+include benchmarks/retrieval/skills/org-a/fact-retry.md benchmarks/retrieval/skills/org-a/fact-redact.md
+include benchmarks/retrieval/skills/org-b/fact-retry.md benchmarks/retrieval/skills/org-b/fact-redact.md

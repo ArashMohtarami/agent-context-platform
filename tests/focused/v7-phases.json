@@ -365,6 +365,93 @@
       "timeout": 600,
       "expected_count": 2,
       "requires": []
+    },
+    "p06-unit": {
+      "reason": "Hand-calculated metrics, frozen split/labels, model identity and twelve behavioral task checks",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_retrieval_evaluation.py"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 40,
+      "requires": []
+    },
+    "p06-export": {
+      "reason": "Exact benchmark allowlist and reproducible private-free source archive",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_public_release.py::test_benchmark_inventory_excludes_runs_and_includes_licensed_inputs",
+        "tests/unit/test_public_release.py::test_export_is_deterministic_contains_regular_files_and_reaudits_after_extraction"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 2,
+      "requires": []
+    },
+    "p06-runner": {
+      "reason": "Benchmark input invalidation, offline model plan and exact narrow command/graph regression",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_focused_runner.py::test_benchmark_inputs_invalidate_focused_evidence",
+        "tests/unit/test_focused_runner.py::test_retrieval_plan_requires_pinned_model_without_starting_services",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_focused_runner.py::test_commands_have_literal_narrow_arguments_and_no_shell"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 9,
+      "requires": []
+    },
+    "p06-real": {
+      "reason": "Frozen 60-query three-arm study with real local model, indexes, current managed auth, sentinels and revocation",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_retrieval_evaluation.py::test_frozen_corpus_real_retrieval"
+      ],
+      "fixture": "mongo",
+      "timeout": 1200,
+      "expected_count": 1,
+      "requires": []
+    },
+    "p06-model": {
+      "reason": "Snapshot alias pinning guard plus affected missing and changed artifact identity regressions after fixture import failure",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_retrieval_evaluation.py::test_model_loader_uses_hashed_snapshot_instead_of_mutable_cache_alias",
+        "tests/unit/test_retrieval_evaluation.py::test_model_identity_detects_modified_weights_before_any_load",
+        "tests/unit/test_retrieval_evaluation.py::test_model_cache_identity_rejects_missing_or_modified_artifacts"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 3,
+      "requires": []
+    },
+    "p06-lexical": {
+      "reason": "Canonical importer whitespace contract and fixed BM25 calculation after pre-query fixture assertion; no label changes",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_retrieval_evaluation.py::test_canonical_skill_fixtures_match_frozen_bodies_after_parser_normalization",
+        "tests/unit/test_retrieval_evaluation.py::test_bm25_positive_only_stable_ties_and_complete_budget"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 2,
+      "requires": []
+    },
+    "p06-task": {
+      "reason": "Task-only Unicode oracle correction and directly affected frozen-input/split regressions; retrieval labels unchanged",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_retrieval_evaluation.py::test_twelve_behavioral_task_checks_accept_oracle_and_reject_broken_solution[slug]",
+        "tests/unit/test_retrieval_evaluation.py::test_frozen_family_split_labels_and_cross_tenant_copies",
+        "tests/unit/test_retrieval_evaluation.py::test_public_corpus_source_hashes_are_not_placeholder_labels",
+        "tests/unit/test_retrieval_evaluation.py::test_frozen_input_tampering_fails_before_rankings"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 4,
+      "requires": []
     }
   },
   "profiles": {
@@ -471,6 +558,27 @@
     ],
     "p05-references": [
       "p05-references"
+    ],
+    "p06-unit": [
+      "p06-unit"
+    ],
+    "p06-export": [
+      "p06-export"
+    ],
+    "p06-runner": [
+      "p06-runner"
+    ],
+    "p06-real": [
+      "p06-real"
+    ],
+    "p06-model": [
+      "p06-model"
+    ],
+    "p06-lexical": [
+      "p06-lexical"
+    ],
+    "p06-task": [
+      "p06-task"
     ]
   }
 }
