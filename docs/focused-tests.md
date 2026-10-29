@@ -240,3 +240,29 @@ record identities must agree; a partial authorized export is an invalid quality
 comparison. Reports, including failures and invalidated attempts, stay private
 until reviewed. Coding-task benefit requires a separately authorized provider
 study and remains unmeasured by the retrieval run.
+
+## Bounded retrieval investigation
+
+`p07` selects 18 exact ranking, filtering, deduplication, token-budget, isolation
+and saved-plan cases, followed by one real managed-search policy-fencing case.
+The latter uses only its owned MongoDB/mongot fixture; its deterministic vectors
+test authorization boundaries, not retrieval quality. `p07-unit` and
+`p07-isolation` select those jobs separately when only one boundary needs checking.
+
+```sh
+env -u DOCKER_HOST .venv/bin/python scripts/test-focused.py --phase p07 --plan
+env -u DOCKER_HOST .venv/bin/python scripts/test-focused.py --phase p07 --run
+```
+
+Inspect the complete plan before execution. Unit and real job deadlines are 180
+and 600 seconds. There is no implicit activation, browser, model download or
+benchmark study. Evidence stays in ignored
+`.private/v7-competitive-planning/phase-7/runs/`.
+
+Select a candidate using development results and freeze its definition before
+any held-out comparison. A stored-response replay can reject a final-result
+filter, but cannot establish live candidate latency, memory use or independent
+validation of an exposed holdout. Keep both wins and regressions; reject a
+candidate that loses required support. A no-change decision retains the original
+retrieval contract and its unresolved limitations. Do not rerun the study or
+these checks merely to repeat evidence for unchanged inputs.

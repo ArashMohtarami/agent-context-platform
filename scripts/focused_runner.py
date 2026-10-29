@@ -21,6 +21,8 @@ BROWSER_HARNESS = "tests/integration/test_v6_dashboard_browser.py::test_real_das
 
 
 def evidence_folder(phase):
+    if phase == "p07" or phase.startswith("p07-"):
+        return EVIDENCE.parents[1] / "phase-7" / "runs" / phase
     if phase == "p06" or phase.startswith("p06-"):
         return EVIDENCE.parents[1] / "phase-6" / "runs" / phase
     if phase == "p05" or phase.startswith("p05-"):

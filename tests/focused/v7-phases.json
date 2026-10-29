@@ -452,6 +452,44 @@
       "timeout": 60,
       "expected_count": 4,
       "requires": []
+    },
+    "p07-unit": {
+      "reason": "Retained retrieval contracts after development-only response-filter investigation: score interpretation, prefilters, project and private memory ownership, active revisions, whole-chunk budgets and exact saved plans",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_ranking.py::test_the_final_score_combines_every_weighted_signal",
+        "tests/unit/test_ranking.py::test_relative_scaling_keeps_the_weakest_result_above_zero",
+        "tests/unit/test_ranking.py::test_lexical_relevance_is_scaled_within_each_source",
+        "tests/unit/test_ranking.py::test_lexical_only_retrieval_is_not_penalised_for_the_missing_vector",
+        "tests/unit/test_hybrid_retrieval.py::test_filtering_happens_before_scores_are_normalized",
+        "tests/unit/test_hybrid_retrieval.py::test_one_project_cannot_reach_another_project_s_context",
+        "tests/unit/test_hybrid_retrieval.py::test_results_are_bounded_by_the_requested_limit",
+        "tests/unit/test_hybrid_retrieval.py::test_a_superseded_version_loses_to_the_active_one_it_duplicates",
+        "tests/unit/test_context_builder.py::test_the_budget_cuts_the_results_that_do_not_fit",
+        "tests/unit/test_context_builder.py::test_a_budget_no_result_fits_returns_nothing_rather_than_half_a_rule",
+        "tests/unit/test_context_builder.py::test_a_request_can_never_exceed_the_configured_maximum",
+        "tests/unit/test_v6_search_isolation.py::test_lexical_vector_and_lookup_candidates_have_org_resource_prefilters",
+        "tests/unit/test_v6_search_isolation.py::test_defensive_search_result_check_refuses_foreign_ownership",
+        "tests/unit/test_v6_search_isolation.py::test_empty_resource_vector_filter_compiles_to_a_valid_false_predicate",
+        "tests/unit/test_v6_search_isolation.py::test_denied_private_memory_branches_do_not_preselect_shared_memory_ids",
+        "tests/unit/test_v6_search_isolation.py::test_all_in_org_identifier_filters_stay_in_mongot_without_id_enumeration",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 18,
+      "requires": []
+    },
+    "p07-isolation": {
+      "reason": "One real lexical/vector candidate-filter regression for coupled action/resource grants; deterministic boundary fixture is not relevance evidence",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_v6_policy_fencing.py::test_real_managed_search_intersects_action_resources_before_mongot_selection"
+      ],
+      "fixture": "mongo",
+      "timeout": 600,
+      "expected_count": 1,
+      "requires": []
     }
   },
   "profiles": {
@@ -579,6 +617,16 @@
     ],
     "p06-task": [
       "p06-task"
+    ],
+    "p07": [
+      "p07-unit",
+      "p07-isolation"
+    ],
+    "p07-unit": [
+      "p07-unit"
+    ],
+    "p07-isolation": [
+      "p07-isolation"
     ]
   }
 }
