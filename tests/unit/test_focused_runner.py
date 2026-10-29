@@ -438,3 +438,25 @@ def test_phase_four_evaluation_plan_only_names_selected_startup(tmp_path):
     assert planned["fixture_graph"]["diagnostic_children"]["no_other_journeys"]
     assert runner.evidence_folder("p04-real").parent.name == "runs"
     assert runner.evidence_folder("p04-real").parent.parent.name == "phase-4"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "examples/agent-handoff/smoke.py",
+        "examples/agent-handoff/fact.json",
+        "examples/starter-notes-api/notes_app.py",
+        "examples/starter-notes-api/test_app.py",
+        "docs/guide/content.md",
+    ],
+)
+def test_handoff_inputs_invalidate_focused_evidence(monkeypatch, source):
+    before = runner.identity()
+    original = Path.read_bytes
+    changed = runner.ROOT / source
+
+    def read(path):
+        return original(path) + (b"\nchanged input" if path == changed else b"")
+
+    monkeypatch.setattr(Path, "read_bytes", read)
+    assert runner.identity() != before

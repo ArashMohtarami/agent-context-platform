@@ -11,7 +11,7 @@
       ],
       "fixture": "none",
       "timeout": 180,
-      "expected_count": 51,
+      "expected_count": 56,
       "requires": []
     },
     "stack-lifecycle": {
@@ -292,6 +292,79 @@
       "timeout": 180,
       "expected_count": 7,
       "requires": []
+    },
+    "p05-unit": {
+      "reason": "Handoff selection/checkpoint/revocation signal guards and existing guide safety contracts",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_handoff_recipe.py",
+        "tests/unit/test_guide_walkthrough.py"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 31,
+      "requires": []
+    },
+    "p05-runner": {
+      "reason": "New demo source identity and exact plan/source-drift regressions",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_focused_runner.py::test_handoff_inputs_invalidate_focused_evidence",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_focused_runner.py::test_stale_plan_is_refused_before_collection_or_services",
+        "tests/unit/test_focused_runner.py::test_commands_have_literal_narrow_arguments_and_no_shell"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 8,
+      "requires": []
+    },
+    "p05-smoke": {
+      "reason": "Actual distributed two-client stdio to HTTPS MCP persistence handoff, negatives and open-session revocation; fixture is not installer proof",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_agent_handoff.py::test_real_protocol_handoff_and_boundaries"
+      ],
+      "fixture": "mongo",
+      "timeout": 600,
+      "expected_count": 1,
+      "requires": []
+    },
+    "p05-regressions": {
+      "reason": "Current authority on both connected MCP transports and coupled project/private memory boundary",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_v6_managed_client_revocation.py::test_actual_stdio_connected_session_rechecks_revocation",
+        "tests/integration/test_v6_managed_client_revocation.py::test_active_http_mcp_session_rechecks_revocation",
+        "tests/integration/test_v6_knowledge_adapters.py::test_read_a_write_b_and_private_memory_do_not_borrow_authority"
+      ],
+      "fixture": "mongo",
+      "timeout": 900,
+      "expected_count": 7,
+      "requires": []
+    },
+    "p05-errors": {
+      "reason": "Safe complete MCP error enum parsing after the real smoke exposed a validation refusal",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_handoff_recipe.py::test_protocol_error_export_allowlists_codes"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 3,
+      "requires": []
+    },
+    "p05-references": {
+      "reason": "Real narrow own-client memory reference and nearest existing foreign-reference/project/global-memory regression after reproduced 422",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_agent_handoff.py::test_private_memory_reference_checks_remain_action_owner_and_tenant_bound",
+        "tests/integration/test_v6_tenant_isolation.py::test_live_resource_denials_joins_references_and_org_global_memory"
+      ],
+      "fixture": "mongo",
+      "timeout": 600,
+      "expected_count": 2,
+      "requires": []
     }
   },
   "profiles": {
@@ -373,6 +446,31 @@
     ],
     "p04-parser": [
       "p04-parser"
+    ],
+    "p05-unit": [
+      "p05-unit"
+    ],
+    "p05-runner": [
+      "p05-runner"
+    ],
+    "p05-smoke": [
+      "p05-smoke"
+    ],
+    "p05-regressions": [
+      "p05-regressions"
+    ],
+    "p05": [
+      "p05-unit",
+      "p05-runner",
+      "p05-smoke",
+      "p05-regressions",
+      "p05-references"
+    ],
+    "p05-errors": [
+      "p05-errors"
+    ],
+    "p05-references": [
+      "p05-references"
     ]
   }
 }

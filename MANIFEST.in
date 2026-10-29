@@ -35,3 +35,6 @@ recursive-include docker *.py *.template
 include docs/backup.md docs/deployment.md docs/dashboard-*.md docs/guide/public-sources.json
 include docs/focused-tests.md
 include deploy/evaluation/inputs.json docs/evaluation.md
+# Maintained, fictional protocol demo and the exact local source it verifies.
+recursive-include examples/agent-handoff *.py *.json *.md
+recursive-include examples/starter-notes-api *.py *.md requirements.txt

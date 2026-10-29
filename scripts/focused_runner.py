@@ -21,6 +21,8 @@ BROWSER_HARNESS = "tests/integration/test_v6_dashboard_browser.py::test_real_das
 
 
 def evidence_folder(phase):
+    if phase == "p05" or phase.startswith("p05-"):
+        return EVIDENCE.parents[1] / "phase-5" / "runs" / phase
     if phase == "p04" or phase.startswith("p04-"):
         return EVIDENCE.parents[1] / "phase-4" / "runs" / phase
     if phase == "p03" or phase.startswith("p03-"):
@@ -184,6 +186,13 @@ def identity():
             "Dockerfile",
             "deploy/console/compose.yml",
         )
+    ]
+    paths += [
+        *ROOT.joinpath("examples/agent-handoff").glob("*.py"),
+        *ROOT.joinpath("examples/agent-handoff").glob("*.json"),
+        ROOT / "examples/starter-notes-api/notes_app.py",
+        ROOT / "examples/starter-notes-api/test_app.py",
+        ROOT / "docs/guide/content.md",
     ]
     digest = hashlib.sha256()
     for path in sorted(set(paths)):
@@ -421,20 +430,104 @@ def prepare_job(job, nodes, run_id, env, folder, node):
                 "owned container removed on timeout",
             }
         ]
-        if any("::test_actual_stdio_mcp_" in selector for selector in job["selectors"]):
+        if any(
+            "::test_actual_stdio_mcp_" in selector
+            or "::test_actual_stdio_connected_session_" in selector
+            for selector in job["selectors"]
+        ):
+            connected_stdio = any(
+                "::test_actual_stdio_connected_session_" in selector
+                for selector in job["selectors"]
+            )
             prepared["fixture_children"].append(
                 {
-                    "source": "tests/integration/test_v6_mcp_isolation.py::"
-                    "test_actual_stdio_mcp_uses_one_org_and_rechecks_revocation",
+                    "source": (
+                        "tests/integration/test_v6_managed_client_revocation.py::"
+                        "test_actual_stdio_connected_session_rechecks_revocation"
+                        if connected_stdio
+                        else "tests/integration/test_v6_mcp_isolation.py::"
+                        "test_actual_stdio_mcp_uses_one_org_and_rechecks_revocation"
+                    ),
                     "argv": [
                         PYTHON,
                         "-c",
                         "import asyncio; from app.mcp.server import run_stdio; "
                         "asyncio.run(run_stdio())",
                     ],
-                    "bounds": "two sequential fictional credentials; private temporary cwd; "
-                    "loopback API; request timeout 10s; same job deadline",
+                    "bounds": (
+                        "three selected sponsor/client/key variants; one issued client each; "
+                        "private temporary cwd; loopback API; "
+                        "request timeout 15s; same job deadline"
+                        if connected_stdio
+                        else "two sequential fictional credentials; private temporary cwd; "
+                        "loopback API; request timeout 10s; same job deadline"
+                    ),
                 }
+            )
+        if job["id"] == "p05-smoke":
+            prepared["fixture_children"].extend(
+                [
+                    {
+                        "source": (
+                            "tests/integration/test_agent_handoff.py::"
+                            "test_real_protocol_handoff_and_boundaries"
+                        ),
+                        "argv": [
+                            PYTHON,
+                            "-I",
+                            str(ROOT / "examples/agent-handoff/smoke.py"),
+                            "--origin",
+                            "<fresh loopback HTTPS origin>",
+                            "--project-id",
+                            "payment-service",
+                            "--negative-project-id",
+                            "payments-api",
+                            "--run-id",
+                            "fictional-focused",
+                            "--client-a-token-file",
+                            "<private tmp_path/a>",
+                            "--client-b-token-file",
+                            "<private tmp_path/b>",
+                            "--ca-file",
+                            "<fresh CA>",
+                            "--revocation-signal",
+                            "<private tmp_path/revoked>",
+                            "--allow-disposable-writes",
+                            "--confirm-verified-notes",
+                        ],
+                        "bounds": (
+                            "300s demo / 330s fixture child / 600s job; fixed stdio bridge "
+                            "child uses Phase 4 transport; no other runner or provider"
+                        ),
+                    },
+                    {
+                        "source": (
+                            "tests/integration/test_agent_handoff.py::"
+                            "test_real_protocol_handoff_and_boundaries"
+                        ),
+                        "argv": [
+                            "/usr/bin/openssl",
+                            "req",
+                            "-x509",
+                            "-newkey",
+                            "rsa:2048",
+                            "-nodes",
+                            "-days",
+                            "1",
+                            "-subj",
+                            "/CN=fictional-handoff",
+                            "-addext",
+                            "subjectAltName=IP:127.0.0.1",
+                            "-addext",
+                            "basicConstraints=critical,CA:TRUE",
+                            "-keyout",
+                            "<private tmp_path/server.key>",
+                            "-out",
+                            "<private tmp_path/ca.crt>",
+                        ],
+                        "bounds": "30s; fresh fixture key/CA only; no OS trust edits",
+                    },
+                ]
             )
     if job["fixture"] == "self":
         prepared["fixture_graph"] = {
@@ -682,6 +775,8 @@ def execute(phase, values):
                     V6_REAL_EVIDENCE_XML=str(run_folder / "activation-real/result.xml"),
                 )
             started = time.monotonic()
+            if job["id"] == "p05-smoke":
+                current["ACP_FOCUSED_HANDOFF_REPORT"] = str(target)
 
             def perform(active, job=job, target=target, current=current):
                 if job["kind"] == "browser":

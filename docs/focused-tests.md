@@ -187,3 +187,38 @@ proof includes scoped CA validation, effective read-only grants, actual retrieva
 forbidden write and credential revocation over both MCP transports. These checks
 use fictional recipients, no paid provider and no active client config. A vendor
 label on a protocol connection is not vendor-client compatibility certification.
+
+## Notes API handoff (Phase 5)
+
+Run the six teaching tests from `examples/starter-notes-api` with
+`../../.venv/bin/python -m pytest test_app.py -q`, then return to the root.
+The runner deliberately accepts only named maintained test paths; it does not
+gain arbitrary example-directory execution or nested test wrappers.
+
+`p05-unit` selects the handoff validation/checkpoint/gate module and the existing
+guide walkthrough module (31 resolved cases). The separately selected
+`p05-errors` is the three-case safe MCP error-envelope parser regression; use it
+when only that boundary changed. `p05-runner` selects eight exact
+source-identity/saved-plan/argv regressions. `p05-smoke` selects only
+`tests/integration/test_agent_handoff.py::test_real_protocol_handoff_and_boundaries`
+with a 600-second job deadline. It runs the distributed example using real
+disposable MongoDB/mongot, scoped TLS, a stdio child and fresh HTTP MCP session,
+independently approved recipient-issued clients and actual connected revocation.
+Private reports contain exact returned identity/content and source hashes, never
+credentials. This maintained synthetic fixture is not installer evidence.
+
+`p05-regressions` selects only the three existing connected-stdio revocation
+variants, three connected-HTTP variants and the one coupled project/private-memory
+case (seven total; 900 seconds). `p05-references` selects only the new real
+private-memory own-client reference case and the existing foreign-reference/
+project/global-memory case (two total; 600 seconds), for the narrow reference
+fix exposed by the handoff. Inspect the selected `--plan` before `--run` as
+above; no activation dependency is implicit. The aggregate `p05` is an explicit
+union, not a request to replay passing cases. Evidence stays under ignored
+`.private/v7-competitive-planning/phase-5/runs/`. Handoff code/fact, Notes source/
+tests and the guide source now join the runner fingerprint; edits invalidate the
+affected plans. The production activation verifier is unchanged.
+
+See the [repeatable recipe](../examples/agent-handoff/README.md) and labeled
+[storyboard](../examples/agent-handoff/storyboard.md). Neither protocol sessions
+nor fixtures establish installed vendor-client compatibility or release approval.

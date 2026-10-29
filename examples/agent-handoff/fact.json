@@ -1,0 +1,13 @@
+{
+  "project_id": "notes-api",
+  "type": "implementation",
+  "title": "Notes API retry behavior",
+  "content": "In the teaching Notes API, POST /notes with the same Idempotency-Key and the same validated payload returns the existing note with HTTP 200. Reusing the key with a changed payload returns HTTP 409. A new key creates a note with HTTP 201. Verified against examples/starter-notes-api/notes_app.py and its six tests. This local example has no authentication or key expiry; it is not evidence of production multi-user safety.",
+  "importance": 0.8,
+  "source": "guide-notes-api",
+  "tags": [
+    "notes",
+    "idempotency"
+  ],
+  "external_id": "guide-notes-retry-v1"
+}

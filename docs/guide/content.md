@@ -256,6 +256,7 @@ checkout, using an environment with the repository's development dependencies:
 ```sh
 cd examples/starter-notes-api
 ../../.venv/bin/python -m pytest test_app.py -q
+cd ../..
 ```
 
 Expected: **six passing tests** for create, read, identical retry, changed-payload
@@ -334,6 +335,29 @@ project should be refused. This is a useful smoke check, not a full isolation au
 You have finished when the second client can retrieve and explain the same
 verified fact, including its teaching limits, and another project cannot expose
 that record. Use the [handoff checklist](#onboarding-checklist) to track your run.
+
+#### Repeatable protocol smoke and capture
+
+The maintained [two-client handoff](../examples/agent-handoff/README.md) runs the
+same fact through an actual stdio process and a fresh HTTPS MCP session with two
+distinct recipient-issued clients. It verifies returned ID/revision/content,
+external-ID replay, permitted second-project absence, private-memory ownership
+and revocation of the already-connected reader. Its local fact fixture is
+[fact.json](../examples/agent-handoff/fact.json). It uses no model provider and
+does not transfer a transcript or prefill an agent answer.
+
+The default evaluator has no private-memory grants and only one approved client.
+Follow the example's explicit bounded operator/independent approval prerequisites;
+the smoke never installs, approves itself or changes policy. A real indexed query
+and direct read are both required; missing services, permissions or checkpoints
+fail the run. The maintained fixture is test setup, not a supported installer.
+
+The example includes separate instructions for real installed Codex and Claude
+Code/Gemini CLI sessions. A protocol label does not verify a vendor application's
+version; no vendor/provider run is implied. Its
+[75-second storyboard](../examples/agent-handoff/storyboard.md) is a storyboard,
+not a completed video or benchmark. Capture only fictional identities and actual
+checkpoints; keep issuance/enrollment, credentials and human sessions off camera.
 
 ### Extend the pattern to your own work
 
