@@ -69,6 +69,68 @@
       "timeout": 90,
       "expected_count": 6,
       "requires": []
+    },
+    "v8-p02-runner": {
+      "reason": "Literal sealed plans, authorization, all-attempt budgets/unknown resume/owned cleanup and isolated synthetic stub tools",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_agent_value_runner.py::test_plan_is_narrow_sealed_and_launches_nothing",
+        "tests/unit/test_agent_value_runner.py::test_budget_reservation_and_unknown_resume_never_double_charge",
+        "tests/unit/test_agent_value_runner.py::test_timeout_signal_and_cleanup_refuse_foreign_resources",
+        "tests/unit/test_agent_value_runner.py::test_task_tools_cannot_read_control_secrets_or_grader_inputs"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 4,
+      "requires": []
+    },
+    "v8-p02-usage": {
+      "reason": "One Codex adapter, authored numeric counter/incomplete coverage/redaction examples; no provider",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_agent_value_usage.py::test_selected_adapter_normalizes_turn_cache_and_reasoning_without_double_count",
+        "tests/unit/test_agent_value_usage.py::test_missing_receipts_model_fallback_and_unknown_events_are_explicit",
+        "tests/unit/test_agent_value_usage.py::test_stream_filter_drops_secrets_and_reasoning_text"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 3,
+      "requires": []
+    },
+    "v8-p02-mapping": {
+      "reason": "Only exact new phase names/evidence route; retain unchanged Phase1 R1 regressions",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_agent_value_profiles.py::test_v8_profiles_keep_v7_selection_and_phase_identities"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 1,
+      "requires": []
+    },
+    "v8-p02-export": {
+      "reason": "Only affected exact licensed source/sdist/private exclusions and narrow archive roundtrip",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_public_release.py::test_benchmark_inventory_excludes_runs_and_includes_licensed_inputs",
+        "tests/unit/test_public_release.py::test_site_allows_only_reviewed_evaluation_and_benchmark_download_inputs",
+        "tests/unit/test_public_release.py::test_export_is_deterministic_contains_regular_files_and_reaudits_after_extraction"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 3,
+      "requires": []
+    },
+    "v8-p02-ledger": {
+      "reason": "Only strengthened active-status and globally unique settlement receipt guards; retain other three runner case results",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_agent_value_runner.py::test_budget_reservation_and_unknown_resume_never_double_charge"
+      ],
+      "fixture": "none",
+      "timeout": 90,
+      "expected_count": 1,
+      "requires": []
     }
   },
   "profiles": {
@@ -86,6 +148,21 @@
     ],
     "v8-p01-mutants": [
       "v8-p01-mutants"
+    ],
+    "v8-p02-runner": [
+      "v8-p02-runner"
+    ],
+    "v8-p02-usage": [
+      "v8-p02-usage"
+    ],
+    "v8-p02-mapping": [
+      "v8-p02-mapping"
+    ],
+    "v8-p02-export": [
+      "v8-p02-export"
+    ],
+    "v8-p02-ledger": [
+      "v8-p02-ledger"
     ]
   }
 }

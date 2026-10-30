@@ -17,7 +17,18 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "tests/focused/v7-phases.json"
 V8_MANIFEST = ROOT / "tests/focused/v8-phases.json"
 V8_PHASES = frozenset(
-    {"v8-p01-fixtures", "v8-p01-graders", "v8-p01-mutants", "v8-p01-runner", "v8-p01-export"}
+    {
+        "v8-p01-fixtures",
+        "v8-p01-graders",
+        "v8-p01-mutants",
+        "v8-p01-runner",
+        "v8-p01-export",
+        "v8-p02-runner",
+        "v8-p02-usage",
+        "v8-p02-mapping",
+        "v8-p02-export",
+        "v8-p02-ledger",
+    }
 )
 EVIDENCE = ROOT / ".private/v7-competitive-planning/phase-1/runs"
 PYTHON = str(ROOT / ".venv/bin/python")
@@ -26,7 +37,8 @@ BROWSER_HARNESS = "tests/integration/test_v6_dashboard_browser.py::test_real_das
 
 def evidence_folder(phase):
     if phase in V8_PHASES:
-        return ROOT / ".private/v8-agent-value-planning/phase-1/runs" / phase
+        stage = "phase-2" if phase.startswith("v8-p02-") else "phase-1"
+        return ROOT / ".private/v8-agent-value-planning" / stage / "runs" / phase
     if phase == "p07" or phase.startswith("p07-"):
         return EVIDENCE.parents[1] / "phase-7" / "runs" / phase
     if phase == "p06" or phase.startswith("p06-"):
@@ -428,6 +440,50 @@ def prepare_job(job, nodes, run_id, env, folder, node):
         if job["kind"] == "pytest"
         else browser_argv(job, node),
     }
+    if job["id"] in {"v8-p02-runner", "v8-p02-ledger"}:
+        from importlib import import_module
+
+        sandbox = import_module("benchmarks.agent-value-runner.sandbox")
+        source = ROOT / ".private/v8-agent-value-planning"
+        receipt = source / "phase-1/initial-seal.json"
+        value = json.loads(receipt.read_text())
+        import_module("benchmarks.agent-value.seal").verify(value, source / "phase-1/hidden")
+        bounds = {"workspace_bytes": 1048576}
+        prepared["fixture_inputs"] = {
+            "initial_seal_sha256": hashlib.sha256(receipt.read_bytes()).hexdigest(),
+            "phase0_help_sha256": hashlib.sha256(
+                (source / "phase-0/cli-help.json").read_bytes()
+            ).hexdigest(),
+            "adapter_sha256": hashlib.sha256(
+                (ROOT / "benchmarks/agent-value-runner/adapter.json").read_bytes()
+            ).hexdigest(),
+            "bwrap_sha256": hashlib.sha256(Path("/usr/bin/bwrap").read_bytes()).hexdigest(),
+            "python_sha256": hashlib.sha256(Path("/usr/bin/python3").read_bytes()).hexdigest(),
+        }
+        prepared["fixture_children"] = [
+            {
+                "source": "benchmarks/agent-value-runner/sandbox.py::execute",
+                "argv": sandbox.argv(
+                    Path("<copied development inputs>"),
+                    Path("<common skills>"),
+                    bounds,
+                    "<seccomp-fd>",
+                ),
+                "limits": (
+                    "wall2s/CPU2s/128MiB/tmpfs1MiB/output64KiB/64fds/core0; "
+                    f"job{job['timeout']}s"
+                ),
+                "selection": (
+                    "synthetic stubs for only the selected runner/ledger nodes; "
+                    "no Codex/provider/service/grader or nested test runner"
+                ),
+                "maximum_children": 4 if job["id"] == "v8-p02-ledger" else 9,
+                "cleanup": (
+                    "inherited focused Child.stop; own descendants/group only; "
+                    "unresolved liabilities retained"
+                ),
+            }
+        ]
     if job["id"] in {"v8-p01-fixtures", "v8-p01-graders", "v8-p01-mutants"}:
         from importlib import import_module
 

@@ -290,6 +290,7 @@ def test_benchmark_inventory_excludes_runs_and_includes_licensed_inputs(public_r
             "benchmarks/agent-value/references/answer.py",
             "benchmarks/agent-value/runs/report.json",
             "benchmarks/agent-value/initial-seal.json",
+            "benchmarks/agent-value-runner/runs/receipt.json",
         )
     }
     forbid_reads(monkeypatch, private)
@@ -408,6 +409,7 @@ def test_site_allows_only_reviewed_evaluation_and_benchmark_download_inputs(
         "deploy/evaluation/inputs.json",
         "benchmarks/retrieval/corpus.json",
         "benchmarks/agent-value/tasks.json",
+        "benchmarks/agent-value-runner/adapter.json",
         "dashboard/.node-version",
     ):
         expected = put(public_root, name, b"{}\n")

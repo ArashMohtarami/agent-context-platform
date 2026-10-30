@@ -22,10 +22,14 @@ def test_v8_profiles_keep_v7_selection_and_phase_identities(tmp_path, monkeypatc
         runner.evidence_folder("v8-p01-fixtures")
         == runner.ROOT / ".private/v8-agent-value-planning/phase-1/runs/v8-p01-fixtures"
     )
+    assert (
+        runner.evidence_folder("v8-p02-runner")
+        == runner.ROOT / ".private/v8-agent-value-planning/phase-2/runs/v8-p02-runner"
+    )
     for phase in runner.V8_PHASES:
         jobs = runner.load_profile(phase)
         assert all(j["fixture"] == "none" and not j["requires"] for j in jobs)
-    for phase in ("v8-p02-runner", "v8-../../private", "--manifest"):
+    for phase in ("v8-p03-runner", "v8-../../private", "--manifest"):
         with pytest.raises(FocusedError):
             runner.load_profile(phase)
     monkeypatch.setattr(runner, "identity", lambda: "unchanged-v7-formula")

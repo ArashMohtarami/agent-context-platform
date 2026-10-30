@@ -435,6 +435,22 @@ PRIVATE_DOCUMENT = re.compile(
     r"(?:acceptance-report|v\d+-readiness-report|v\d+-.*security-review)\.md)$"
 )
 
+# Exact maintained Phase2 controls; no private state or directory opening.
+BENCHMARK_FILES = BENCHMARK_FILES | frozenset(
+    {
+        "benchmarks/agent-value-runner/LICENSE",
+        "benchmarks/agent-value-runner/README.md",
+        "benchmarks/agent-value-runner/adapter.json",
+        "benchmarks/agent-value-runner/driver.py",
+        "benchmarks/agent-value-runner/inventory.json",
+        "benchmarks/agent-value-runner/sandbox.py",
+        "benchmarks/agent-value-runner/skills/python-testing/SKILL.md",
+        "benchmarks/agent-value-runner/skills/systematic-debugging/SKILL.md",
+        "benchmarks/agent-value-runner/stub.py",
+        "benchmarks/agent-value-runner/usage.py",
+    }
+)
+
 
 def eligible(path: PurePosixPath) -> bool:
     """Return whether a relative path belongs to the public source inventory."""

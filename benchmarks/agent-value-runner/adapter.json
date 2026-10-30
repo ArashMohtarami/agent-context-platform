@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "adapter": "codex-exec-jsonl",
+  "cli_version": "0.166.0",
+  "binary_sha256": "b8a11fedf24b2dfb59a70c9e52b030f9a508dcd49cd2dd0d41956f4c785156b8",
+  "docs": [
+    "https://learn.chatgpt.com/docs/non-interactive-mode",
+    "https://learn.chatgpt.com/docs/config-file/config-reference"
+  ],
+  "usage_scope": "completed-turn; request completeness not proven",
+  "cache_read_in_input": null,
+  "reasoning_in_output": null,
+  "resolved_model_event": null,
+  "hard_spend_cap_supported": false,
+  "skills": [
+    {
+      "source": "skills/python/testing.md",
+      "source_sha256": "08de8e060fda8fc261117fc6435aa44d88c5fddda7f0f9b6f250cb85553699ce",
+      "path": "skills/python-testing/SKILL.md",
+      "sha256": "c79eb96b0ea01129e7f670434346e053ab17d6f2f98303c356ea42c041889957",
+      "version": "1.0.0",
+      "license": "MIT",
+      "review": "existing trusted Git source; author-reviewed native wrapper; installed-client discovery not tested"
+    },
+    {
+      "source": "skills/engineering/debugging.md",
+      "source_sha256": "5b1f3bc9fbce9550f13e0027f0edde01ac22a077ad74491df6deb192c7d3a592",
+      "path": "skills/systematic-debugging/SKILL.md",
+      "sha256": "9750428c9b8e2fe4b10fbaeb55556abd4315a86852569c2baef1967b5c952959",
+      "version": "1.0.0",
+      "license": "MIT",
+      "review": "existing trusted Git source; author-reviewed native wrapper; installed-client discovery not tested"
+    }
+  ],
+  "common_skill_treatment": "identical bytes/discovery across repository, markdown, mcp; no special MCP skill; no global install",
+  "paid_execution_supported": false
+}

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "license": "MIT",
+  "files": [
+    "LICENSE",
+    "README.md",
+    "adapter.json",
+    "driver.py",
+    "inventory.json",
+    "sandbox.py",
+    "skills/python-testing/SKILL.md",
+    "skills/systematic-debugging/SKILL.md",
+    "stub.py",
+    "usage.py"
+  ]
+}

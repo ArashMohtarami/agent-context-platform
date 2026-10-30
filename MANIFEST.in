@@ -332,3 +332,15 @@ include benchmarks/agent-value/tasks/studio-heldout-waitlist/repository.py
 include benchmarks/agent-value/tasks/studio-heldout-waitlist/test_visible.py
 include benchmarks/agent-value/tasks/studio-heldout-waitlist/visible.json
 include benchmarks/agent-value/worker.py
+
+# Exact original MIT Phase2 controls; never private plans/receipts/runs.
+include benchmarks/agent-value-runner/LICENSE
+include benchmarks/agent-value-runner/README.md
+include benchmarks/agent-value-runner/adapter.json
+include benchmarks/agent-value-runner/driver.py
+include benchmarks/agent-value-runner/inventory.json
+include benchmarks/agent-value-runner/sandbox.py
+include benchmarks/agent-value-runner/skills/python-testing/SKILL.md
+include benchmarks/agent-value-runner/skills/systematic-debugging/SKILL.md
+include benchmarks/agent-value-runner/stub.py
+include benchmarks/agent-value-runner/usage.py
