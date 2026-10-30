@@ -37,7 +37,6 @@ BLOCKERS = [
     "FULL_REQUEST_RETRY_COMPACTION_ACCOUNTING_UNPROVEN",
     "CLI_COUNTER_INCLUSION_AND_RESOLVED_MODEL_UNPROVEN",
     "INSTALLED_TOOL_CONFIG_SKILL_EQUIVALENCE_UNVERIFIED",
-    "INDEPENDENT_DESIGN_LICENSE_AND_EXPOSED_TASK_REVIEW_PENDING",
     "CURRENT_RUNTIME_ACTIVATION_AND_NARROW_CREDENTIAL_SCOPE_RECEIPTS_REQUIRED",
 ]
 HEX = r"[a-f0-9]{64}"
@@ -280,7 +279,8 @@ def make_plan(config, input_seal: Path = INPUT_SEAL, hidden: Path = HIDDEN):
         "paid_launch_blockers": BLOCKERS.copy(),
         "execution_authorized": False,
         "task_exposure": (
-            "Phase1 prompts published by user request; independent exposure/design review required"
+            "Phase1 prompts published by user request; author-reviewed; independent task review "
+            "unavailable is a disclosed limitation, not a coding-pilot launch prohibition"
         ),
         "provider_credentials": (
             "no values accepted or inherited; broker not implemented; paid launch refused"

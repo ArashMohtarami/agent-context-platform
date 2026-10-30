@@ -10,8 +10,10 @@ Unsupported accounting blocks all paid launch, even with an authorization file.
 The driver lives separately from `benchmarks/agent-value/` so that Phase1's exact
 initial task/checker seal remains unchanged. Those maintained prompts were pushed
 to Git at the user's request: treat them as exposed source inputs, not an
-unpublished blind holdout. Independent design/exposure/license review remains a
-gate before calibration. Hidden labels/references/seals remain operator-private.
+unpublished blind holdout. Record author/source/license review and disclose absent
+independent task review as a limitation. It does not itself prohibit the coding
+pilot. Actual platform policy approvals and separately prescribed claim reviews
+still apply. Hidden labels/references/seals remain operator-private.
 
 Use the checkout's Python environment, from its root:
 
@@ -116,7 +118,8 @@ documents effort/tier, isolated configuration and skills. Documentation is newer
 than the pinned binary: no config/tool support beyond observed help is certified
 by stubs. Required paid gates include hard request/input/output limits, receipt
 coverage, resolved model/routing, key brokerage, real tool/skill config equality,
-real MCP commission/activation, independent review and explicit selected budget.
+real MCP commission/activation and explicit selected budget. Independent task
+review coverage is disclosed separately from those technical execution gates.
 
 Two native skill wrappers preserve the exact bodies of trusted MIT Git sources
 `skills/python/testing.md` and `skills/engineering/debugging.md`, with reviewed
