@@ -28,6 +28,10 @@ V8_PHASES = frozenset(
         "v8-p02-mapping",
         "v8-p02-export",
         "v8-p02-ledger",
+        "v8-p03-unit",
+        "v8-p03-sandbox",
+        "v8-p03-activation",
+        "v8-p03-real",
     }
 )
 EVIDENCE = ROOT / ".private/v7-competitive-planning/phase-1/runs"
@@ -37,7 +41,7 @@ BROWSER_HARNESS = "tests/integration/test_v6_dashboard_browser.py::test_real_das
 
 def evidence_folder(phase):
     if phase in V8_PHASES:
-        stage = "phase-2" if phase.startswith("v8-p02-") else "phase-1"
+        stage = "phase-" + phase.split("-")[1][1:].lstrip("0")
         return ROOT / ".private/v8-agent-value-planning" / stage / "runs" / phase
     if phase == "p07" or phase.startswith("p07-"):
         return EVIDENCE.parents[1] / "phase-7" / "runs" / phase
@@ -430,6 +434,43 @@ def tools_for(jobs, values, env, folder):
     return node, chrome
 
 
+def evaluation_image_ids(env, target):
+    """Read-only local inventory in a fresh Docker config; no pulls/services."""
+    import tempfile
+
+    inputs = json.loads((ROOT / "deploy/evaluation/inputs.json").read_text())
+    result = {}
+    with tempfile.TemporaryDirectory(prefix="v8-plan-docker-") as config:
+        for index, image in enumerate(
+            (
+                inputs["mongo_image"],
+                inputs["search_image"],
+                "acp-evaluation-api:p04",
+                "acp-v6-console:phase15",
+            )
+        ):
+            log = target.parent.parent / f"image-{index}.json"
+            if run(
+                [
+                    "docker",
+                    "--host",
+                    "unix:///var/run/docker.sock",
+                    "--config",
+                    config,
+                    "image",
+                    "inspect",
+                    image,
+                ],
+                cwd=ROOT,
+                env=env,
+                log=log,
+                timeout=30,
+            ):
+                raise FocusedError("required cached evaluation image unavailable")
+            result[image] = json.loads(log.read_text())[0]["Id"]
+    return result
+
+
 def prepare_job(job, nodes, run_id, env, folder, node):
     target = folder / run_id / job["id"]
     prepared = {
@@ -470,8 +511,7 @@ def prepare_job(job, nodes, run_id, env, folder, node):
                     "<seccomp-fd>",
                 ),
                 "limits": (
-                    "wall2s/CPU2s/128MiB/tmpfs1MiB/output64KiB/64fds/core0; "
-                    f"job{job['timeout']}s"
+                    f"wall2s/CPU2s/128MiB/tmpfs1MiB/output64KiB/64fds/core0; job{job['timeout']}s"
                 ),
                 "selection": (
                     "synthetic stubs for only the selected runner/ledger nodes; "
@@ -663,6 +703,18 @@ def prepare_job(job, nodes, run_id, env, folder, node):
         from scripts.evaluation_lifecycle import Evaluation
 
         evaluation = Evaluation(run_id)
+        activation = str(folder / run_id)
+        if job["id"] == "v8-p03-commission":
+            from benchmarks.retrieval.model import model_identity
+            from scripts.evaluation_agent_value import selected_activation
+
+            prepared["activation_input"] = selected_activation()
+            prepared["model_input"] = model_identity(env.get("ACP_FOCUSED_MODEL_CACHE", ""))
+            activation = prepared["activation_input"]["path"]
+            prepared["fixture_inputs"] = {
+                "images": evaluation_image_ids(env, target),
+                "local_model": "locked copied artifacts; CPU only, downloads disabled",
+            }
         prepared["fixture_graph"] = {
             "owner": "distributed evaluate.sh command selected by bootstrap test",
             "instance": run_id,
@@ -675,11 +727,15 @@ def prepare_job(job, nodes, run_id, env, folder, node):
                     "--instance",
                     run_id,
                     "--approve-root",
-                    "fictional-acceptance-review",
+                    "fictional-v8-agent-value-initial"
+                    if job["id"] == "v8-p03-commission"
+                    else "fictional-acceptance-review",
                     "--activation-run",
-                    str(folder / run_id),
+                    activation,
                     "--api-image",
-                    "acp-evaluation-api:p04" if job["id"] == "p04-real" else "acp-v6-api:phase15",
+                    "acp-evaluation-api:p04"
+                    if job["id"] in {"p04-real", "v8-p03-commission"}
+                    else "acp-v6-api:phase15",
                     "--console-image",
                     "acp-v6-console:phase15",
                 ],
@@ -694,6 +750,40 @@ def prepare_job(job, nodes, run_id, env, folder, node):
             "maintained staged operator APIs, probe <=120s, setup <=240s",
             "cleanup": "parent fallback loads exact manifest and verifies every owned label/path",
         }
+        if job["id"] == "v8-p03-commission":
+            prepared["fixture_graph"].update(
+                activation="explicit genuine cached ordered 21/11/1 cases, current fingerprints",
+                handoff="two approved client IDs; A stdio, B HTTP+stdio; "
+                "exact project/revision/content; "
+                "recipient delivery, connected revoke, stop/resume and scoped cleanup",
+                operator="stopped owned API/console; agent-value-root invokes "
+                "existing approve-root; "
+                "agent-value-readiness reads actual READY/queryable/vector metadata",
+                limits="job1800s; evaluate start600s; operator240s; HTTP30s; MCP8s; "
+                "local search120s; no pull/build/download/provider",
+            )
+    if job["id"] == "v8-p03-sandbox":
+        from scripts.evaluation_agent_value import cli_identity
+
+        prepared["vendor_binary"] = cli_identity()
+        prepared["fixture_children"] = [
+            {
+                "source": "tests/integration/test_agent_value_mcp.py::native_inventory",
+                "argv": "bwrap isolated empty config; installed Codex --no-daemon + "
+                "exact version/mcp help/add/list/get",
+                "maximum_children": 7,
+                "limits": "10s/CPU10s/1GiB/output1MiB each; 64fds/core0; denied sockets; job120s",
+                "selection": "model-free config inventory only; "
+                "no login/doctor/exec/agent/provider",
+            },
+            {
+                "source": "benchmarks/agent-value/grading.py::sandbox",
+                "argv": "fixed bwrap/Python worker; one fresh implementation-only directory",
+                "maximum_children": 1,
+                "limits": "5s/CPU3s/256MiB/output1MiB; all sockets/fork denied",
+                "selection": "real OS denial probe; throwaway secret controls only, no real keys",
+            },
+        ]
     if job["fixture"] == "evaluation" and job["id"] == "p04-real":
         graph = prepared["fixture_graph"]
         graph["commands"] = [graph["commands"][i] for i in (0, 2, 4)]
@@ -890,7 +980,9 @@ def execute(phase, values):
             if job["fixture"] == "evaluation":
                 current.update(
                     ACP_EVALUATION_ACCEPTANCE_INSTANCE=plan["run_id"],
-                    ACP_EVALUATION_ACTIVATION_RUN=str(run_folder),
+                    ACP_EVALUATION_ACTIVATION_RUN=job.get("activation_input", {}).get(
+                        "path", str(run_folder)
+                    ),
                 )
             if job["requires"]:
                 if set(job["requires"]) != {"activation-unit", "activation-real"}:

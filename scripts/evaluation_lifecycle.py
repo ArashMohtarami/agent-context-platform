@@ -122,13 +122,15 @@ def verify_resource(kind, value, name, instance):
 def activation_evidence(folder):
     """Only a reconciled, current, ordered runner execution can be reused."""
     from app.services.tenant_isolation_service import verify_evidence
-    from scripts.focused_runner import identity, load_profile, prepare_job, reconcile
+    from scripts.focused_runner import load_profile, phase_identity, prepare_job, reconcile
 
     folder = Path(folder).absolute()
     allowed = ROOT / ".private/v7-competitive-planning"
+    v8_activation = ROOT / ".private/v8-agent-value-planning/phase-3/runs/v8-p03-activation"
     if (
         not (
             folder.is_relative_to(allowed)
+            or (folder.parent == v8_activation and re.fullmatch(r"[a-f0-9]{32}", folder.name))
             or (folder.parent.parent == STATE_ROOT and folder.name == "evidence")
         )
         or folder.resolve() != folder
@@ -139,7 +141,10 @@ def activation_evidence(folder):
     summary = json.loads(summary_path.read_text())
     if summary["source_sha256"] != plan["source_sha256"]:
         raise FocusedError("activation dependency receipt source mismatch")
-    if plan["source_sha256"] != identity() or summary["status"] != "passed":
+    if (
+        plan["source_sha256"] != phase_identity(plan.get("phase", "activation"))
+        or summary["status"] != "passed"
+    ):
         raise FocusedError("activation reports are stale/incomplete; plan and run activation again")
     required = ("activation-unit", "activation-real", "activation-cutover")
     configured = {job["id"]: job for job in load_profile("activation")}

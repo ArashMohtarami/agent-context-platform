@@ -28,7 +28,19 @@ def test_v8_profiles_keep_v7_selection_and_phase_identities(tmp_path, monkeypatc
     )
     for phase in runner.V8_PHASES:
         jobs = runner.load_profile(phase)
-        assert all(j["fixture"] == "none" and not j["requires"] for j in jobs)
+        if phase == "v8-p03-activation":
+            assert [j["id"] for j in jobs] == old["profiles"]["activation"]
+            assert all(
+                {k: v for k, v in j.items() if k != "id"} == old["jobs"][j["id"]] for j in jobs
+            )
+        elif phase == "v8-p03-real":
+            assert [(j["fixture"], j["expected_count"]) for j in jobs] == [
+                ("evaluation", 1),
+                ("none", 1),
+            ]
+            assert runner.evidence_folder(phase).parent.parent.name == "phase-3"
+        else:
+            assert all(j["fixture"] == "none" and not j["requires"] for j in jobs)
     for phase in ("v8-p03-runner", "v8-../../private", "--manifest"):
         with pytest.raises(FocusedError):
             runner.load_profile(phase)

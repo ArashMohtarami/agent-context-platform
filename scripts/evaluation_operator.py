@@ -7,6 +7,7 @@ privileged row writes, fixture imports, activation exception or default password
 import argparse
 import asyncio
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from app.backup.manifest import read
@@ -19,6 +20,102 @@ from app.identity.repository import IdentityStore
 from app.identity.service import local_subject
 from app.repositories.backup_repository import MongoBackupRepository
 from app.services.backup_service import BackupService
+
+
+def agent_value_policy(intent, state, review, policy):
+    """Exact additional operator intent, never inferred from an owner role."""
+    import hashlib
+
+    from app.management.models import RootApproval
+
+    fields = {
+        "version",
+        "org_id",
+        "owner_id",
+        "worker_id",
+        "projects",
+        "clients",
+        "approval_reference",
+        "policy_sha256",
+    }
+    if (
+        set(review) != fields
+        or type(review["version"]) is not int
+        or review["version"] != 1
+        or state["schema"] != 42
+        or review["org_id"] != intent["org_id"]
+        or review["projects"] != ["evaluation-notes", "evaluation-agent-value-other"]
+        or review["clients"] != ["evaluation-handoff-a", "evaluation-handoff-b"]
+        or not isinstance(review["approval_reference"], str)
+        or not review["approval_reference"].startswith("fictional-v8-agent-value-")
+    ):
+        raise ValueError("explicit bounded agent-value operator review required")
+    for role in ("owner", "worker"):
+        member = state["members"][role]
+        if not member["active"] or not member["mfa"] or review[role + "_id"] != member["user_id"]:
+            raise ValueError("verified independent enrolled recipients required")
+    if review["owner_id"] == review["worker_id"]:
+        raise ValueError("independent approval required")
+    encoded = (json.dumps(policy, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    if hashlib.sha256(encoded).hexdigest() != review["policy_sha256"]:
+        raise ValueError("operator policy commitment changed")
+    command = RootApproval.model_validate(policy)
+    permitted = {
+        ("projects:read", "project_directory"): set(review["projects"]),
+        ("context:read", "project"): set(review["projects"]),
+        ("search:read", "project"): set(review["projects"]),
+        ("context:write", "project"): {"evaluation-notes"},
+        ("agent:self", "organization_knowledge"): {review["org_id"]},
+        **{(a, "project"): {"evaluation-notes"} for a in ("memory:read", "memory:write")},
+        **{(a, "client_memory"): set(review["clients"]) for a in ("memory:read", "memory:write")},
+        **{
+            (a, "member"): {review["worker_id"]}
+            for a in ("credentials:issue:own", "credentials:revoke:own", "clients:read:own")
+        },
+    }
+    if (
+        command.targets.mode != "include"
+        or tuple(command.targets.ids) != (review["worker_id"],)
+        or tuple(command.allowed_roles) != ("contributor",)
+    ):
+        raise ValueError("operator targets widened")
+    seen = set()
+    for row in command.ceiling:
+        key = (row.action, row.resource_kind)
+        if (
+            key in seen
+            or key not in permitted
+            or row.selector != "include"
+            or set(row.ids) != permitted[key]
+            or row.conditions
+        ):
+            raise ValueError("operator ceiling widened or incomplete")
+        seen.add(key)
+    if seen != set(permitted):
+        raise ValueError("operator ceiling incomplete")
+    # Existing management tuples remain service-validated; no new management action.
+    expected_management = {
+        ("grants:read", "member", (review["owner_id"],)),
+        ("grants:read", "member", (review["worker_id"],)),
+        ("grants:delegate", "member", (review["worker_id"],)),
+        ("members:read", "member", (review["worker_id"],)),
+        ("clients:manage:org", "organization", (review["org_id"],)),
+        ("clients:read:org", "organization", (review["org_id"],)),
+    }
+    if (
+        len(command.tuples) != len(expected_management)
+        or {(r.action, r.resource_kind, tuple(r.ids)) for r in command.tuples}
+        != expected_management
+        or any(r.selector != "include" or r.conditions for r in command.tuples)
+    ):
+        raise ValueError("additional management authority refused")
+    if (
+        not datetime.now(UTC)
+        < command.expires_at
+        <= min(datetime.fromisoformat(intent["expires_at"]), datetime.now(UTC) + timedelta(hours=2))
+    ):
+        raise ValueError("bounded operator expiry required")
+    return command
 
 
 def settings(stage):
@@ -166,6 +263,50 @@ async def operate(action):
         from app.security.tenant import TenantContext, tenant_scope
 
         with tenant_scope(TenantContext(org_id)):
+            if action == "agent-value-root":
+                review = json.loads(Path("/intent/agent-value-review.json").read_text())
+                policy_path = Path("/intent/agent-value-root.json")
+                command = agent_value_policy(
+                    intent, state, review, json.loads(policy_path.read_text())
+                )
+                await invoke(
+                    management,
+                    42,
+                    action="approve-root",
+                    user_id=review["owner_id"],
+                    policy_file=policy_path,
+                    approval_reference=review["approval_reference"],
+                    writers_stopped=True,
+                    worker_schema_version=[42],
+                )
+                return {
+                    "approved": True,
+                    "owner_id": review["owner_id"],
+                    "worker_id": review["worker_id"],
+                    "automatic_grants": False,
+                    "expires_at": command.expires_at.isoformat(),
+                }
+            if action == "agent-value-readiness":
+                indexes = {}
+                vectors = {}
+                for name in ("project_context", "memories"):
+                    indexes[name] = [
+                        {
+                            "name": r["name"],
+                            "status": r.get("status"),
+                            "queryable": r.get("queryable", False),
+                        }
+                        async for r in await db[name].list_search_indexes()
+                    ]
+                    row = await db[name].find_one(
+                        {"org_id": org_id, "embedding_model": "/evaluation-model"}
+                    )
+                    vectors[name] = bool(
+                        row
+                        and row.get("embedding_dimensions") == 384
+                        and len(row.get("embedding", [])) == 384
+                    )
+                return {"indexes": indexes, "real_model_vectors": vectors}
             if action == "foundation":
                 if state["schema"] > 36:
                     return state
