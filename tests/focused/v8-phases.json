@@ -5,9 +5,9 @@
       "reason": "Original family split/seal/allowlist and actual sandboxed reference/alternative/mutant graders; no agent/provider",
       "kind": "pytest",
       "selectors": [
-        "tests/unit/test_agent_value_tasks.py::test_family_split_and_seal_reject_leakage_or_tampering",
-        "tests/unit/test_agent_value_tasks.py::test_allowed_inputs_exclude_oracle_history_and_sibling_workspaces",
-        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants"
+        "tests/integration/test_agent_value_tasks.py::test_family_split_and_seal_reject_leakage_or_tampering",
+        "tests/integration/test_agent_value_tasks.py::test_allowed_inputs_exclude_oracle_history_and_sibling_workspaces",
+        "tests/integration/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants"
       ],
       "fixture": "none",
       "timeout": 180,
@@ -46,8 +46,8 @@
       "reason": "Only affected sandbox isolation and 32 grader variants after explicit user-namespace startup correction; retained split check is not replayed",
       "kind": "pytest",
       "selectors": [
-        "tests/unit/test_agent_value_tasks.py::test_allowed_inputs_exclude_oracle_history_and_sibling_workspaces",
-        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants"
+        "tests/integration/test_agent_value_tasks.py::test_allowed_inputs_exclude_oracle_history_and_sibling_workspaces",
+        "tests/integration/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants"
       ],
       "fixture": "none",
       "timeout": 180,
@@ -58,12 +58,12 @@
       "reason": "Only six changed near-correct feature mutants; retain other current fixture evidence",
       "kind": "pytest",
       "selectors": [
-        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[folio-heldout-allocate]",
-        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[harbor-heldout-interpolate]",
-        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[parcel-development-tracking]",
-        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[parcel-heldout-page]",
-        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[studio-development-equipment]",
-        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[studio-heldout-waitlist]"
+        "tests/integration/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[folio-heldout-allocate]",
+        "tests/integration/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[harbor-heldout-interpolate]",
+        "tests/integration/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[parcel-development-tracking]",
+        "tests/integration/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[parcel-heldout-page]",
+        "tests/integration/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[studio-development-equipment]",
+        "tests/integration/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[studio-heldout-waitlist]"
       ],
       "fixture": "none",
       "timeout": 90,
@@ -74,10 +74,10 @@
       "reason": "Literal sealed plans, authorization, all-attempt budgets/unknown resume/owned cleanup and isolated synthetic stub tools",
       "kind": "pytest",
       "selectors": [
-        "tests/unit/test_agent_value_runner.py::test_plan_is_narrow_sealed_and_launches_nothing",
-        "tests/unit/test_agent_value_runner.py::test_budget_reservation_and_unknown_resume_never_double_charge",
-        "tests/unit/test_agent_value_runner.py::test_timeout_signal_and_cleanup_refuse_foreign_resources",
-        "tests/unit/test_agent_value_runner.py::test_task_tools_cannot_read_control_secrets_or_grader_inputs"
+        "tests/integration/test_agent_value_runner.py::test_plan_is_narrow_sealed_and_launches_nothing",
+        "tests/integration/test_agent_value_runner.py::test_budget_reservation_and_unknown_resume_never_double_charge",
+        "tests/integration/test_agent_value_runner.py::test_timeout_signal_and_cleanup_refuse_foreign_resources",
+        "tests/integration/test_agent_value_runner.py::test_task_tools_cannot_read_control_secrets_or_grader_inputs"
       ],
       "fixture": "none",
       "timeout": 180,
@@ -125,7 +125,7 @@
       "reason": "Only strengthened active-status and globally unique settlement receipt guards; retain other three runner case results",
       "kind": "pytest",
       "selectors": [
-        "tests/unit/test_agent_value_runner.py::test_budget_reservation_and_unknown_resume_never_double_charge"
+        "tests/integration/test_agent_value_runner.py::test_budget_reservation_and_unknown_resume_never_double_charge"
       ],
       "fixture": "none",
       "timeout": 90,

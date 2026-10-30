@@ -41,6 +41,14 @@ def test_v8_profiles_keep_v7_selection_and_phase_identities(tmp_path, monkeypatc
             assert runner.evidence_folder(phase).parent.parent.name == "phase-3"
         else:
             assert all(j["fixture"] == "none" and not j["requires"] for j in jobs)
+    # These proofs require the private checker seal / installed CLI / Linux
+    # sandbox. Public unit CI must not acquire or manufacture those prerequisites.
+    for phase in ("v8-p01-fixtures", "v8-p01-graders", "v8-p01-mutants", "v8-p02-runner"):
+        assert all(
+            selector.startswith("tests/integration/test_agent_value_")
+            for job in runner.load_profile(phase)
+            for selector in job["selectors"]
+        )
     for phase in ("v8-p03-runner", "v8-../../private", "--manifest"):
         with pytest.raises(FocusedError):
             runner.load_profile(phase)

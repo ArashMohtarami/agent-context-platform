@@ -130,3 +130,16 @@ budget/resume node (one,90s), retaining the other three runner cases. Inspect ea
 inputs are original MIT project sources; inventories are exact file lists,
 never an open results/private directory. This phase stops before real MCP setup,
 calibration, skill activation or any provider launch.
+
+Public CI runs portable contracts in `tests/unit/test_agent_value_tasks.py`,
+`test_agent_value_runner.py` and `test_agent_value_usage.py` without private
+labels, a Codex installation or sandbox prerequisites. The original sealed
+grader and installed-CLI/OS validation modules live at
+`tests/integration/test_agent_value_tasks.py` and
+`tests/integration/test_agent_value_runner.py`. Their exact focused selectors,
+counts and assertions are preserved in `tests/focused/v8-phases.json`, including
+the prerequisite-bound `v8-p01-fixtures` and `v8-p02-runner` profiles. Missing
+private seals, reviewed CLI inventory or sandbox support still fail those
+explicit validations; public CI neither skips them after collection nor creates
+replacement labels. Portable unit success does not establish private grader,
+installed vendor CLI, OS isolation, model or provider evidence.
