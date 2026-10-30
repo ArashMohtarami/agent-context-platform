@@ -276,12 +276,12 @@
   },
   {
     "path": "docs/skill-catalog.md",
-    "sha256": "475627ba56b13f24c9bccf2bb3341bfd71efa246730c376e7145a495bfc9aa4d",
-    "lines": 151
+    "sha256": "404f465c571f60740eafa1cece0309cd26685a28b3645cf63933e2b3741a340d",
+    "lines": 153
   },
   {
     "path": "docs/skills.md",
-    "sha256": "b5b3f242c9cf39d4d3f50de7073ff2db727ee27fb41087a3a08db887065ec196",
+    "sha256": "807d2d73d6b789cea19e8249df3885aed6974c266af01fd3e1e34e8503d7a0d5",
     "lines": 188
   },
   {

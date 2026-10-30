@@ -332,6 +332,25 @@
     "chunks": 1
   },
   {
+    "id": "agent-outcome-benchmarking",
+    "name": "Agent Outcome Benchmarking",
+    "version": "1.0.0",
+    "description": "Compare coding agents, MCP knowledge delivery and model configurations through behavioral task outcomes, matched controls, actual token/cost accounting and uncertainty. Use for agent benchmark design, execution and evidence review; retrieval relevance alone needs a retrieval evaluation.",
+    "category": "engineering",
+    "trust_level": "trusted",
+    "tags": [
+      "agents",
+      "benchmarking",
+      "evaluation",
+      "mcp",
+      "tokens",
+      "cost"
+    ],
+    "source_path": "skills/engineering/agent-outcome-benchmarking.md",
+    "content_hash": "305940dfae730487cc13a30dfc150713e744612f3884493adf424e1749fdf8c6",
+    "chunks": 2
+  },
+  {
     "id": "code-review",
     "name": "Risk-Focused Code Review",
     "version": "1.0.0",

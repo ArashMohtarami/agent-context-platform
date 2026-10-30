@@ -26,6 +26,11 @@ def catalog():
         ("content review", "content-review"),
         ("typescript contracts", "typescript-contracts"),
         ("django-rest-framework", "django-rest-framework"),
+        pytest.param(
+            "agent benchmark token cost",
+            "agent-outcome-benchmarking",
+            id="agent-outcome-benchmarking",
+        ),
     ],
 )
 def test_technical_queries_rank_applicable_guidance(catalog, query, expected):

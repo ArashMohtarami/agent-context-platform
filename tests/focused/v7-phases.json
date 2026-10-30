@@ -490,6 +490,21 @@
       "timeout": 600,
       "expected_count": 1,
       "requires": []
+    },
+    "skill-agent-benchmark": {
+      "reason": "New benchmark skill discoverability, canonical catalog and rebuilt public guide/source consistency",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_skill_source_catalog.py::test_technical_queries_rank_applicable_guidance[agent-outcome-benchmarking]",
+        "tests/unit/test_skill_source_catalog.py::test_empty_query_is_stable_bounded_discovery",
+        "tests/documentation/test_release_readiness.py::test_maintained_registry_links_anchors_logo_and_hashes_are_current",
+        "tests/documentation/test_release_readiness.py::test_extracted_site_download_is_exact_audited_source_with_frontend_licenses",
+        "tests/documentation/test_release_readiness.py::test_site_manifest_and_html_links_cover_real_export_without_runtime_state"
+      ],
+      "fixture": "none",
+      "timeout": 120,
+      "expected_count": 5,
+      "requires": []
     }
   },
   "profiles": {
@@ -627,6 +642,9 @@
     ],
     "p07-isolation": [
       "p07-isolation"
+    ],
+    "skill-agent-benchmark": [
+      "skill-agent-benchmark"
     ]
   }
 }
