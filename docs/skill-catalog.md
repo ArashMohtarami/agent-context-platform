@@ -75,6 +75,7 @@ data and must be checked against the actual framework version and project code.
 | Data import/replay | `data-pipeline-reliability`, `python-testing` | database skill, `service-observability` |
 | Technical article/post | target-platform writing skill, `technical-explanation` | `content-editing`, `content-review`, `content-repurposing` |
 | Research to project guidance | `research-evidence`, `agent-context-workflow` | domain skill, `architecture-decisions` |
+| Agent/MCP outcome comparison | `agent-outcome-benchmarking` | `retrieval-evaluation`, `python-testing` |
 
 Load only the relevant bundle and sections, not every skill. Put reusable
 procedures in skills, verified project-specific facts in context, and scoped
@@ -114,6 +115,7 @@ metadata. Read the linked file for its applicability, decisions, examples and li
 | [Django REST Framework Contracts](../skills/django/rest-framework.md) · `django-rest-framework` | 1.0.0 | django | Build Django REST Framework APIs with explicit serializers, authorized querysets, object permissions, bounded pagination, schema contracts, and error behavior. Use for DRF views and viewsets. |
 | [Django Behavioral and Async Testing](../skills/django/testing.md) · `django-testing` | 1.0.0 | django | Test Django and async Django behavior with appropriate test classes, AsyncClient, real permission/CSRF boundaries, query budgets, commit hooks, and production-engine integration checks. |
 | [Production Docker and Compose](../skills/docker/production-docker.md) · `docker-production` | 1.0.0 | operations | Build reproducible containers and operate Compose services with explicit secrets, network boundaries, readiness, persistent state and recovery. Use for Dockerfile, build and deployment changes. |
+| [Agent Outcome Benchmarking](../skills/engineering/agent-outcome-benchmarking.md) · `agent-outcome-benchmarking` | 1.0.0 | engineering | Compare coding agents, MCP knowledge delivery and model configurations through behavioral task outcomes, matched controls, actual token/cost accounting and uncertainty. Use for agent benchmark design, execution and evidence review; retrieval relevance alone needs a retrieval evaluation. |
 | [Risk-Focused Code Review](../skills/engineering/code-review.md) · `code-review` | 1.0.0 | engineering | Review a change for concrete correctness, authorization, concurrency, migration and operational regressions using evidence from code and tests. Use for requested reviews and high-risk implementation checks. |
 | [Reliable Data Pipelines](../skills/engineering/data-pipelines.md) · `data-pipeline-reliability` | 1.0.0 | engineering | Build and review repeatable ingestion and transformation pipelines with explicit schema, deduplication, checkpoints, late-data policy and recovery. Use for batch imports, ETL and analytics jobs. |
 | [Systematic Debugging and Incident Diagnosis](../skills/engineering/debugging.md) · `systematic-debugging` | 1.0.0 | engineering | Diagnose failures through a minimal reproduction, bounded hypotheses, boundary evidence and verified repairs. Use for incorrect behavior, intermittent failures and performance regressions. |

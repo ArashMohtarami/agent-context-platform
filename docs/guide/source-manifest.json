@@ -1,8 +1,13 @@
 [
   {
     "path": "README.md",
-    "sha256": "7ca5c2952070c7960f57458fe696b7fb16e5f861097905f240b7d96553d42a86",
-    "lines": 144
+    "sha256": "5a3ff6f385aa1b27df92bab3ad76fd8cc968d2b2945ce507a03c68e2a3f7638b",
+    "lines": 172
+  },
+  {
+    "path": "docs/alternatives.md",
+    "sha256": "07c15c2e47511a4bf78cb77096b97e74fe0bd0adddfdeb9ab5e5448f1265ac5e",
+    "lines": 44
   },
   {
     "path": "docs/architecture.md",
@@ -26,8 +31,8 @@
   },
   {
     "path": "docs/client-onboarding.md",
-    "sha256": "8ae63698477a6d110d46d2d367e6691a0620c4cc47a460e82b697da7ab0e55df",
-    "lines": 124
+    "sha256": "bd98c98581399c9bc60883f49a566d159b874a7877d63e50a1383061271a0135",
+    "lines": 253
   },
   {
     "path": "docs/client-profiles.md",
@@ -46,8 +51,8 @@
   },
   {
     "path": "docs/codex.md",
-    "sha256": "9edcb8c0cd15db4380bd07fef32ee785f9e5ae260eaa01448969b9f63cd8b6a1",
-    "lines": 314
+    "sha256": "87e79781ba0f6a86002d5fa7092e97748cd50238d26b2af137ed2296976b4b80",
+    "lines": 315
   },
   {
     "path": "docs/content-discovery.md",
@@ -150,6 +155,11 @@
     "lines": 180
   },
   {
+    "path": "docs/demo.md",
+    "sha256": "46820565f272669973239441cd5ee98f714e1d42181c60956e2499fa2a2d19d5",
+    "lines": 60
+  },
+  {
     "path": "docs/deployment.md",
     "sha256": "d2059d2f25de582547b8322d7ceaff2f164a5b60939d2f2ec4988dc44f14166c",
     "lines": 180
@@ -158,6 +168,16 @@
     "path": "docs/embeddings.md",
     "sha256": "b24a337a30884a8a1e3ea1351396f0b92a3c682b2d05987c9883093d5c92f700",
     "lines": 169
+  },
+  {
+    "path": "docs/evaluation.md",
+    "sha256": "c0edd73c3462a23d615c235bd25814ec39fd945d1f0a634053ad56e03667a3e0",
+    "lines": 207
+  },
+  {
+    "path": "docs/focused-tests.md",
+    "sha256": "d081e7ce0a610bae7bac0b675b15066c16514a8618e944f75a5db7ba5d0eca7e",
+    "lines": 268
   },
   {
     "path": "docs/human-organization-management.md",
@@ -235,6 +255,11 @@
     "lines": 177
   },
   {
+    "path": "docs/retrieval-evaluation.md",
+    "sha256": "9197135778384c0a92599d17f90b6f58a08f8cca620bdabab8dedd892f808707",
+    "lines": 210
+  },
+  {
     "path": "docs/retrieval.md",
     "sha256": "a6be6dfbe526d4a526b7235d1494c19b011036c6f2a145520605a196e2c75683",
     "lines": 514
@@ -251,12 +276,12 @@
   },
   {
     "path": "docs/skill-catalog.md",
-    "sha256": "475627ba56b13f24c9bccf2bb3341bfd71efa246730c376e7145a495bfc9aa4d",
-    "lines": 151
+    "sha256": "404f465c571f60740eafa1cece0309cd26685a28b3645cf63933e2b3741a340d",
+    "lines": 153
   },
   {
     "path": "docs/skills.md",
-    "sha256": "b5b3f242c9cf39d4d3f50de7073ff2db727ee27fb41087a3a08db887065ec196",
+    "sha256": "807d2d73d6b789cea19e8249df3885aed6974c266af01fd3e1e34e8503d7a0d5",
     "lines": 188
   },
   {
@@ -281,8 +306,8 @@
   },
   {
     "path": "docs/verification.md",
-    "sha256": "f884f922cdf60a8feb1d37995660d6e53bc8a2a075cf082e193ce1dd7f740f14",
-    "lines": 140
+    "sha256": "20fa95bc9266af092999b7f639ee6a6d924f76cb48767a31cb9be880989cd2db",
+    "lines": 173
   },
   {
     "path": "docs/website.md",

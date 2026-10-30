@@ -30,7 +30,7 @@ For documentation/distribution changes, rebuild before checking the actual artif
 
 ```sh
 .venv/bin/python website/build.py
-.venv/bin/python -m pytest tests/documentation -q
+.venv/bin/python -m pytest -q tests/documentation/test_release_readiness.py tests/unit/test_public_release.py
 .venv/bin/python scripts/prepare_open_source_release.py --check
 ```
 
@@ -39,6 +39,10 @@ source rather than skipping missing build output. The full real acceptance runne
 and its isolated MongoDB/mongot/OIDC/browser requirements are described in
 [verification](docs/verification.md). Required skips or known blocking failures
 leave release approval open. Keep reports/private plans out of public inventories.
+
+For explicit runner, disposable lifecycle and activation-evidence selections, use
+the [focused test runner](docs/focused-tests.md). Inspect its `--plan` before
+`--run`; required skips and mismatched selections fail the check.
 
 Run meaningful focused tests while editing, then these checks before submitting.
 For a database or search change, also run the relevant integration tests in a
@@ -115,3 +119,21 @@ notes out of commits. Audit selected release files before creating an archive:
 Contributions to this repository are submitted under its [MIT License](LICENSE).
 Only contribute material you are authorized to share. Preserve third-party
 licenses and attribution; linking a source does not grant permission to copy it.
+
+## Proposed small contributor tasks
+
+These are suggestions, not posted issues or implemented features. Discuss a
+bounded change and exact selectors before starting; do not run full suites merely
+to label a milestone complete.
+
+- Record one installed coding-client/version rehearsal with its exact transport,
+  permitted read, forbidden write and already-connected revocation. Current
+  [compatibility evidence](docs/client-onboarding.md#compatibility-and-tested-environments)
+  stops at protocol fixtures; a provider run needs an explicit choice/budget.
+- Extend independent fictional no-answer fact families before another retrieval
+  improvement. Keep the exposed heldout out of tuning and preserve forbidden
+  sentinels, complete budgets and failed outcomes; see the
+  [initial study and limits](docs/retrieval-evaluation.md).
+- Improve one redacted first-failure explanation in the evaluation/doctor path,
+  using a concrete reproduced failure and its nearest existing focused regression.
+  Preserve MFA, independent approval and one-time recipient delivery.

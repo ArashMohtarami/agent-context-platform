@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "unit": "fact-family; copies/revisions/paraphrases remain together",
+  "families": {
+    "dev": [
+      "cursor",
+      "ttl",
+      "retry",
+      "money",
+      "slug",
+      "order",
+      "deadline",
+      "filename",
+      "telemetry",
+      "private_retry"
+    ],
+    "holdout": [
+      "page",
+      "etag",
+      "header",
+      "window",
+      "dedupe",
+      "unicode",
+      "redact",
+      "overlap",
+      "export",
+      "status",
+      "tags",
+      "checksum",
+      "timeout",
+      "sort",
+      "delete",
+      "port",
+      "billing",
+      "mobile",
+      "other_project",
+      "foreign_backup"
+    ],
+    "task_only": [
+      "task_percent",
+      "task_overlay",
+      "task_path",
+      "task_lane"
+    ]
+  },
+  "counts": {
+    "dev": 20,
+    "holdout": 40
+  }
+}

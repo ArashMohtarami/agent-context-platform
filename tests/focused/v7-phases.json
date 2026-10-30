@@ -1,0 +1,650 @@
+{
+  "version": 1,
+  "jobs": {
+    "runner-unit": {
+      "reason": "Strict plan/result/process/ownership regressions and genuine evidence-verifier contract",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_focused_runner.py",
+        "tests/unit/test_v6_tenant_authorization.py::test_cutover_evidence_rejects_missing_modules_stale_source_and_skips",
+        "tests/unit/test_v6_tenant_authorization.py::test_evidence_runtime_fingerprint_survives_production_image_layout"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 56,
+      "requires": []
+    },
+    "stack-lifecycle": {
+      "reason": "Actual owned replica/search readiness and cleanup after a failing body",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_focused_stack_lifecycle.py::test_owned_stack_queries_search_and_cleans_after_error"
+      ],
+      "fixture": "self",
+      "timeout": 600,
+      "expected_count": 1,
+      "requires": []
+    },
+    "browser-serving": {
+      "reason": "One selected browser check; own serving harness with no nested npm suite",
+      "kind": "browser",
+      "selectors": [
+        {
+          "file": "e2e/focused-fixture.spec.ts",
+          "title": "focused fixture serves only the selected browser check"
+        }
+      ],
+      "fixture": "browser",
+      "timeout": 120,
+      "expected_count": 1,
+      "requires": []
+    },
+    "activation-unit": {
+      "reason": "All three required isolation unit modules",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_v6_tenant_authorization.py",
+        "tests/unit/test_v6_tenant_repositories.py",
+        "tests/unit/test_v6_search_isolation.py"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 21,
+      "requires": []
+    },
+    "activation-real": {
+      "reason": "All eleven non-cutover cases of the three required real isolation modules",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_v6_tenant_isolation.py::test_every_collection_crud_counts_distinct_and_foreign_ids",
+        "tests/integration/test_v6_tenant_isolation.py::test_real_mongot_all_production_indexes_have_tenant_candidate_filters",
+        "tests/integration/test_v6_tenant_isolation.py::test_live_resource_denials_joins_references_and_org_global_memory",
+        "tests/integration/test_v6_tenant_isolation.py::test_idempotency_uses_org_and_rechecks_effective_authority",
+        "tests/integration/test_v6_mcp_isolation.py::test_rest_v1_v4_v5_and_spoofed_headers",
+        "tests/integration/test_v6_mcp_isolation.py::test_http_mcp_sessions_cannot_switch_org",
+        "tests/integration/test_v6_mcp_isolation.py::test_actual_stdio_mcp_uses_one_org_and_rechecks_revocation",
+        "tests/integration/test_v6_mcp_isolation.py::test_rest_content_export_history_and_research_are_tenant_bound",
+        "tests/integration/test_v6_job_isolation.py::test_matching_job_ids_never_share_payloads_or_replay_across_orgs",
+        "tests/integration/test_v6_job_isolation.py::test_revocation_during_provider_work_prevents_result_persistence",
+        "tests/integration/test_v6_job_isolation.py::test_cached_mcp_ingestion_result_rechecks_source_authority"
+      ],
+      "fixture": "mongo",
+      "timeout": 900,
+      "expected_count": 11,
+      "requires": []
+    },
+    "activation-cutover": {
+      "reason": "Genuine earlier unit/real reports consumed by explicit cutover, additional org stays sealed",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_v6_tenant_isolation.py::test_operator_cutover_rehearsal_keeps_additional_org_sealed"
+      ],
+      "fixture": "mongo",
+      "timeout": 300,
+      "expected_count": 1,
+      "requires": [
+        "activation-unit",
+        "activation-real"
+      ]
+    },
+    "p02-runner": {
+      "reason": "Phase 2 evidence isolation and unchanged narrow browser/collection/plan boundaries",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_focused_runner.py::test_phase_two_outputs_do_not_reuse_phase_one_evidence",
+        "tests/unit/test_focused_runner.py::test_browser_plan_never_uses_a_broad_wrapper",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_focused_runner.py::test_pytest_plugin_refuses_changed_collection_before_fixtures",
+        "tests/unit/test_focused_runner.py::test_hosted_cleanup_refuses_foreign_auxiliary_resources",
+        "tests/unit/test_focused_runner.py::test_hosted_profile_keeps_original_browser_and_local_hosting_nodes",
+        "tests/unit/test_focused_runner.py::test_cleanup_validates_all_resources_before_removing_any",
+        "tests/unit/test_focused_runner.py::test_foreign_resource_cleanup_is_refused"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 10,
+      "requires": []
+    },
+    "p02-browser-directory": {
+      "reason": "H7 original production-image performance journey and serving harness; first-wave successful response budget unchanged",
+      "kind": "browser",
+      "selectors": [
+        {
+          "file": "e2e/performance.spec.ts",
+          "title": "records cold browser timings at the declared CPU and network profile"
+        }
+      ],
+      "fixture": "browser-hosted",
+      "timeout": 120,
+      "expected_count": 1,
+      "requires": []
+    },
+    "p02-hosting": {
+      "reason": "H1 original local-only startup node and nearest MFA regression after focused hosted-fixture ownership changes",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_v6_dashboard_hosting.py::test_tls_console_only_fallback_errors_headers_and_proxy_spoof[local-only]",
+        "tests/integration/test_v6_dashboard_hosting.py::test_real_local_mfa_cookie_csrf_bearer_mcp_and_backup_boundary[local-only]"
+      ],
+      "fixture": "hosting",
+      "timeout": 900,
+      "expected_count": 2,
+      "requires": []
+    },
+    "p03-unit": {
+      "reason": "Evaluation lifecycle refusals, isolated inputs, one-time delivery and unchanged production deployment regressions",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_evaluation_lifecycle.py",
+        "tests/unit/test_v6_dashboard_deployment.py",
+        "tests/unit/test_compose.py",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_focused_runner.py::test_pytest_plugin_refuses_changed_collection_before_fixtures"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 62,
+      "requires": []
+    },
+    "p03-bootstrap": {
+      "reason": "Distributed empty-store staged operator contracts, real HTTPS enrollment/MFA/independent approval and recipient-only issuance; interrupted resume, stop and owned reset",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_evaluation_bootstrap.py::test_distributed_empty_store_resume_enroll_issue_stop_reset"
+      ],
+      "fixture": "evaluation",
+      "timeout": 1800,
+      "expected_count": 1,
+      "requires": [
+        "activation-unit",
+        "activation-real"
+      ]
+    },
+    "p03-lifecycle": {
+      "reason": "Affected checkpoint locks, read-only diagnosis, preflight collision and lost-delivery lifecycle contracts",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_evaluation_lifecycle.py"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 26,
+      "requires": []
+    },
+    "p03-preflight": {
+      "reason": "Confirmed Docker diagnostic fix, pure port planner stub after sandbox socket refusal, genuine receipt and graph regressions",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_evaluation_lifecycle.py::test_fresh_preflight_accepts_real_missing_resource_diagnostics_without_mutation",
+        "tests/unit/test_evaluation_lifecycle.py::test_preflight_refuses_existing_resource_before_creating_state",
+        "tests/unit/test_evaluation_lifecycle.py::test_stale_activation_stops_before_any_report_or_service_use",
+        "tests/unit/test_evaluation_lifecycle.py::test_p03_profile_has_ordered_activation_and_owned_timeout_cleanup",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 6,
+      "requires": []
+    },
+    "p03-fixes": {
+      "reason": "Preflight scratch configuration, full mount identity and private diagnostic retention after the real Compose preflight failure",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_evaluation_lifecycle.py::test_fresh_preflight_accepts_real_missing_resource_diagnostics_without_mutation",
+        "tests/unit/test_evaluation_lifecycle.py::test_preflight_refuses_existing_resource_before_creating_state",
+        "tests/unit/test_evaluation_lifecycle.py::test_stale_activation_stops_before_any_report_or_service_use",
+        "tests/unit/test_evaluation_lifecycle.py::test_p03_profile_has_ordered_activation_and_owned_timeout_cleanup",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_evaluation_lifecycle.py::test_owned_diagnostics_exclude_handoff_backups_and_secrets"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 7,
+      "requires": []
+    },
+    "p03-config": {
+      "reason": "Directly affected service inputs, disjoint network planning, image-volume coverage and inherited environment discard",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_evaluation_lifecycle.py::test_generated_graph_has_only_owned_private_database_and_loopback_tls",
+        "tests/unit/test_evaluation_lifecycle.py::test_inherited_deployment_configuration_is_discarded",
+        "tests/unit/test_evaluation_lifecycle.py::test_fresh_preflight_accepts_real_missing_resource_diagnostics_without_mutation"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 4,
+      "requires": []
+    },
+    "p04-unit": {
+      "reason": "Explicit integration recipe/input/redaction contracts, scoped stdio TLS, unchanged client configuration shapes and CLI behavior",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_integration_doctor.py",
+        "tests/unit/test_cli_integration.py",
+        "tests/unit/test_codex_integration.py",
+        "tests/unit/test_claude_code_configuration.py",
+        "tests/unit/test_gemini_cli_configuration.py"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 80,
+      "requires": []
+    },
+    "p04-real": {
+      "reason": "Actual Phase 3 commissioning then HTTP/stdio doctor, effective read-only grants, retrieval/write refusal/revocation and session-only preview",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_integration_doctor.py::test_evaluation_connection_steps_and_revocation"
+      ],
+      "fixture": "evaluation",
+      "timeout": 1800,
+      "expected_count": 1,
+      "requires": []
+    },
+    "p04-browser": {
+      "reason": "One selected connection-preview journey on real HTTPS session APIs, with keyboard/theme/mobile inspection",
+      "kind": "browser",
+      "selectors": [
+        {
+          "file": "e2e/evaluation-onboarding.spec.ts",
+          "title": "connection preview preserves policy and guides recipient diagnostics"
+        }
+      ],
+      "fixture": "browser",
+      "timeout": 180,
+      "expected_count": 1,
+      "requires": []
+    },
+    "p04-doctor": {
+      "reason": "Explicit integration recipe/input/redaction contracts, scoped stdio TLS, unchanged client configuration shapes and CLI behavior",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_integration_doctor.py",
+        "tests/unit/test_cli_integration.py"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 46,
+      "requires": []
+    },
+    "p04-runner": {
+      "reason": "Selected evaluation planning retains exact commissioning argv and isolated phase evidence; no services",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_focused_runner.py::test_phase_four_evaluation_plan_only_names_selected_startup",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_focused_runner.py::test_pytest_plugin_refuses_changed_collection_before_fixtures"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 3,
+      "requires": []
+    },
+    "p04-parser": {
+      "reason": "Exact failed argument-abbreviation family plus legitimate preview and failed-preflight parsing after fail-closed doctor parser fix",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_integration_doctor.py::test_doctor_argument_errors_never_echo_private_input",
+        "tests/unit/test_integration_doctor.py::test_preview_ignores_deployment_settings_and_does_not_read_token",
+        "tests/unit/test_integration_doctor.py::test_failed_preflight_has_nonzero_exit_and_no_raw_error"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 7,
+      "requires": []
+    },
+    "p05-unit": {
+      "reason": "Handoff selection/checkpoint/revocation signal guards and existing guide safety contracts",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_handoff_recipe.py",
+        "tests/unit/test_guide_walkthrough.py"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 31,
+      "requires": []
+    },
+    "p05-runner": {
+      "reason": "New demo source identity and exact plan/source-drift regressions",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_focused_runner.py::test_handoff_inputs_invalidate_focused_evidence",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_focused_runner.py::test_stale_plan_is_refused_before_collection_or_services",
+        "tests/unit/test_focused_runner.py::test_commands_have_literal_narrow_arguments_and_no_shell"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 8,
+      "requires": []
+    },
+    "p05-smoke": {
+      "reason": "Actual distributed two-client stdio to HTTPS MCP persistence handoff, negatives and open-session revocation; fixture is not installer proof",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_agent_handoff.py::test_real_protocol_handoff_and_boundaries"
+      ],
+      "fixture": "mongo",
+      "timeout": 600,
+      "expected_count": 1,
+      "requires": []
+    },
+    "p05-regressions": {
+      "reason": "Current authority on both connected MCP transports and coupled project/private memory boundary",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_v6_managed_client_revocation.py::test_actual_stdio_connected_session_rechecks_revocation",
+        "tests/integration/test_v6_managed_client_revocation.py::test_active_http_mcp_session_rechecks_revocation",
+        "tests/integration/test_v6_knowledge_adapters.py::test_read_a_write_b_and_private_memory_do_not_borrow_authority"
+      ],
+      "fixture": "mongo",
+      "timeout": 900,
+      "expected_count": 7,
+      "requires": []
+    },
+    "p05-errors": {
+      "reason": "Safe complete MCP error enum parsing after the real smoke exposed a validation refusal",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_handoff_recipe.py::test_protocol_error_export_allowlists_codes"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 3,
+      "requires": []
+    },
+    "p05-references": {
+      "reason": "Real narrow own-client memory reference and nearest existing foreign-reference/project/global-memory regression after reproduced 422",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_agent_handoff.py::test_private_memory_reference_checks_remain_action_owner_and_tenant_bound",
+        "tests/integration/test_v6_tenant_isolation.py::test_live_resource_denials_joins_references_and_org_global_memory"
+      ],
+      "fixture": "mongo",
+      "timeout": 600,
+      "expected_count": 2,
+      "requires": []
+    },
+    "p06-unit": {
+      "reason": "Hand-calculated metrics, frozen split/labels, model identity and twelve behavioral task checks",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_retrieval_evaluation.py"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 40,
+      "requires": []
+    },
+    "p06-export": {
+      "reason": "Exact benchmark allowlist and reproducible private-free source archive",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_public_release.py::test_benchmark_inventory_excludes_runs_and_includes_licensed_inputs",
+        "tests/unit/test_public_release.py::test_export_is_deterministic_contains_regular_files_and_reaudits_after_extraction"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 2,
+      "requires": []
+    },
+    "p06-runner": {
+      "reason": "Benchmark input invalidation, offline model plan and exact narrow command/graph regression",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_focused_runner.py::test_benchmark_inputs_invalidate_focused_evidence",
+        "tests/unit/test_focused_runner.py::test_retrieval_plan_requires_pinned_model_without_starting_services",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_focused_runner.py::test_commands_have_literal_narrow_arguments_and_no_shell"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 9,
+      "requires": []
+    },
+    "p06-real": {
+      "reason": "Frozen 60-query three-arm study with real local model, indexes, current managed auth, sentinels and revocation",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_retrieval_evaluation.py::test_frozen_corpus_real_retrieval"
+      ],
+      "fixture": "mongo",
+      "timeout": 1200,
+      "expected_count": 1,
+      "requires": []
+    },
+    "p06-model": {
+      "reason": "Snapshot alias pinning guard plus affected missing and changed artifact identity regressions after fixture import failure",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_retrieval_evaluation.py::test_model_loader_uses_hashed_snapshot_instead_of_mutable_cache_alias",
+        "tests/unit/test_retrieval_evaluation.py::test_model_identity_detects_modified_weights_before_any_load",
+        "tests/unit/test_retrieval_evaluation.py::test_model_cache_identity_rejects_missing_or_modified_artifacts"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 3,
+      "requires": []
+    },
+    "p06-lexical": {
+      "reason": "Canonical importer whitespace contract and fixed BM25 calculation after pre-query fixture assertion; no label changes",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_retrieval_evaluation.py::test_canonical_skill_fixtures_match_frozen_bodies_after_parser_normalization",
+        "tests/unit/test_retrieval_evaluation.py::test_bm25_positive_only_stable_ties_and_complete_budget"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 2,
+      "requires": []
+    },
+    "p06-task": {
+      "reason": "Task-only Unicode oracle correction and directly affected frozen-input/split regressions; retrieval labels unchanged",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_retrieval_evaluation.py::test_twelve_behavioral_task_checks_accept_oracle_and_reject_broken_solution[slug]",
+        "tests/unit/test_retrieval_evaluation.py::test_frozen_family_split_labels_and_cross_tenant_copies",
+        "tests/unit/test_retrieval_evaluation.py::test_public_corpus_source_hashes_are_not_placeholder_labels",
+        "tests/unit/test_retrieval_evaluation.py::test_frozen_input_tampering_fails_before_rankings"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 4,
+      "requires": []
+    },
+    "p07-unit": {
+      "reason": "Retained retrieval contracts after development-only response-filter investigation: score interpretation, prefilters, project and private memory ownership, active revisions, whole-chunk budgets and exact saved plans",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_ranking.py::test_the_final_score_combines_every_weighted_signal",
+        "tests/unit/test_ranking.py::test_relative_scaling_keeps_the_weakest_result_above_zero",
+        "tests/unit/test_ranking.py::test_lexical_relevance_is_scaled_within_each_source",
+        "tests/unit/test_ranking.py::test_lexical_only_retrieval_is_not_penalised_for_the_missing_vector",
+        "tests/unit/test_hybrid_retrieval.py::test_filtering_happens_before_scores_are_normalized",
+        "tests/unit/test_hybrid_retrieval.py::test_one_project_cannot_reach_another_project_s_context",
+        "tests/unit/test_hybrid_retrieval.py::test_results_are_bounded_by_the_requested_limit",
+        "tests/unit/test_hybrid_retrieval.py::test_a_superseded_version_loses_to_the_active_one_it_duplicates",
+        "tests/unit/test_context_builder.py::test_the_budget_cuts_the_results_that_do_not_fit",
+        "tests/unit/test_context_builder.py::test_a_budget_no_result_fits_returns_nothing_rather_than_half_a_rule",
+        "tests/unit/test_context_builder.py::test_a_request_can_never_exceed_the_configured_maximum",
+        "tests/unit/test_v6_search_isolation.py::test_lexical_vector_and_lookup_candidates_have_org_resource_prefilters",
+        "tests/unit/test_v6_search_isolation.py::test_defensive_search_result_check_refuses_foreign_ownership",
+        "tests/unit/test_v6_search_isolation.py::test_empty_resource_vector_filter_compiles_to_a_valid_false_predicate",
+        "tests/unit/test_v6_search_isolation.py::test_denied_private_memory_branches_do_not_preselect_shared_memory_ids",
+        "tests/unit/test_v6_search_isolation.py::test_all_in_org_identifier_filters_stay_in_mongot_without_id_enumeration",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 18,
+      "requires": []
+    },
+    "p07-isolation": {
+      "reason": "One real lexical/vector candidate-filter regression for coupled action/resource grants; deterministic boundary fixture is not relevance evidence",
+      "kind": "pytest",
+      "selectors": [
+        "tests/integration/test_v6_policy_fencing.py::test_real_managed_search_intersects_action_resources_before_mongot_selection"
+      ],
+      "fixture": "mongo",
+      "timeout": 600,
+      "expected_count": 1,
+      "requires": []
+    },
+    "skill-agent-benchmark": {
+      "reason": "New benchmark skill discoverability, canonical catalog and rebuilt public guide/source consistency",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_skill_source_catalog.py::test_technical_queries_rank_applicable_guidance[agent-outcome-benchmarking]",
+        "tests/unit/test_skill_source_catalog.py::test_empty_query_is_stable_bounded_discovery",
+        "tests/documentation/test_release_readiness.py::test_maintained_registry_links_anchors_logo_and_hashes_are_current",
+        "tests/documentation/test_release_readiness.py::test_extracted_site_download_is_exact_audited_source_with_frontend_licenses",
+        "tests/documentation/test_release_readiness.py::test_site_manifest_and_html_links_cover_real_export_without_runtime_state"
+      ],
+      "fixture": "none",
+      "timeout": 120,
+      "expected_count": 5,
+      "requires": []
+    }
+  },
+  "profiles": {
+    "p01": [
+      "runner-unit",
+      "stack-lifecycle",
+      "browser-serving"
+    ],
+    "p01-unit": [
+      "runner-unit"
+    ],
+    "p01-stack": [
+      "stack-lifecycle"
+    ],
+    "p01-browser": [
+      "browser-serving"
+    ],
+    "activation": [
+      "activation-unit",
+      "activation-real",
+      "activation-cutover"
+    ],
+    "p02-runner": [
+      "p02-runner"
+    ],
+    "p02-browser-directory": [
+      "p02-browser-directory"
+    ],
+    "p02-hosting": [
+      "p02-hosting"
+    ],
+    "p03-unit": [
+      "p03-unit"
+    ],
+    "p03-bootstrap": [
+      "activation-unit",
+      "activation-real",
+      "activation-cutover",
+      "p03-bootstrap"
+    ],
+    "p03-lifecycle": [
+      "p03-lifecycle"
+    ],
+    "p03-preflight": [
+      "p03-preflight"
+    ],
+    "p03-fixes": [
+      "p03-fixes"
+    ],
+    "p03-config": [
+      "p03-config"
+    ],
+    "p04-unit": [
+      "p04-unit"
+    ],
+    "p04-real": [
+      "activation-unit",
+      "activation-real",
+      "activation-cutover",
+      "p04-real"
+    ],
+    "p04-browser": [
+      "p04-browser"
+    ],
+    "p04": [
+      "p04-unit",
+      "p04-runner",
+      "activation-unit",
+      "activation-real",
+      "activation-cutover",
+      "p04-real",
+      "p04-browser"
+    ],
+    "p04-doctor": [
+      "p04-doctor"
+    ],
+    "p04-runner": [
+      "p04-runner"
+    ],
+    "p04-parser": [
+      "p04-parser"
+    ],
+    "p05-unit": [
+      "p05-unit"
+    ],
+    "p05-runner": [
+      "p05-runner"
+    ],
+    "p05-smoke": [
+      "p05-smoke"
+    ],
+    "p05-regressions": [
+      "p05-regressions"
+    ],
+    "p05": [
+      "p05-unit",
+      "p05-runner",
+      "p05-smoke",
+      "p05-regressions",
+      "p05-references"
+    ],
+    "p05-errors": [
+      "p05-errors"
+    ],
+    "p05-references": [
+      "p05-references"
+    ],
+    "p06-unit": [
+      "p06-unit"
+    ],
+    "p06-export": [
+      "p06-export"
+    ],
+    "p06-runner": [
+      "p06-runner"
+    ],
+    "p06-real": [
+      "p06-real"
+    ],
+    "p06-model": [
+      "p06-model"
+    ],
+    "p06-lexical": [
+      "p06-lexical"
+    ],
+    "p06-task": [
+      "p06-task"
+    ],
+    "p07": [
+      "p07-unit",
+      "p07-isolation"
+    ],
+    "p07-unit": [
+      "p07-unit"
+    ],
+    "p07-isolation": [
+      "p07-isolation"
+    ],
+    "skill-agent-benchmark": [
+      "skill-agent-benchmark"
+    ]
+  }
+}

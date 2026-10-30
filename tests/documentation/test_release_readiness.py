@@ -47,6 +47,11 @@ def test_maintained_registry_links_anchors_logo_and_hashes_are_current():
         "docs/dashboard-deployment.md",
         "docs/migration-recovery.md",
         "docs/verification.md",
+        "docs/evaluation.md",
+        "docs/client-onboarding.md",
+        "docs/demo.md",
+        "docs/retrieval-evaluation.md",
+        "docs/alternatives.md",
     }
     assert required <= set(registry)
     assert {row["path"] for row in manifest} == set(registry)
@@ -146,3 +151,26 @@ def test_site_manifest_and_html_links_cover_real_export_without_runtime_state():
             assert target.is_relative_to(SITE) and target.is_file(), (path, href)
             if url.fragment and target in documents:
                 assert unquote(url.fragment) in documents[target].ids, (path, href)
+
+
+def test_first_handoff_examples_match_actual_mcp_schemas_and_fact():
+    from jsonschema import Draft202012Validator
+
+    from app.mcp.tools import TOOLS
+
+    prose = (ROOT / "docs/guide/content.md").read_text()
+    handoff = prose.split("### First handoff: a verified Notes API fact", 1)[1].split(
+        "### Extend the pattern", 1
+    )[0]
+    calls = [json.loads(block) for block in re.findall(r"```json\n(.*?)\n```", handoff, re.S)]
+    assert len(calls) == 3
+    schemas = {tool.name: tool.input_schema for tool in TOOLS}
+    for name, payload in zip(
+        ("resolve_project", "save_context", "search_knowledge"), calls, strict=True
+    ):
+        Draft202012Validator(schemas[name]).validate(payload)
+    fact = json.loads((ROOT / "examples/agent-handoff/fact.json").read_text())
+    assert calls[1] == fact
+    assert calls[0]["project_id"] == calls[2]["project_id"] == fact["project_id"]
+    assert calls[2]["sources"] == ["project_context"]
+    assert calls[2]["limit"] == 5 and calls[2]["token_budget"] == 2000

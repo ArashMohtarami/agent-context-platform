@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "label_version": "fictional-v1",
+  "labels_authored_before_rankings": true,
+  "tuning": "none; initial baseline",
+  "sha256": {
+    "corpus.json": "6c6ab1d7563e8da19b0a7e748dc84e04ad039ace7b168ca4a93d5d662041c58d",
+    "queries.json": "af7b3adf1d0e538771ce70048eb8961a5fd7359378bde97832f71c34498c66c6",
+    "split.json": "d911b42afd7ddbbe2ca7e4df953f35f272e497fd4e1816d7e638957a6dccc173",
+    "settings.json": "7b16ff1863466c0fb01a74e5ba1c94850c926db32877bde32b51f4269d4e23ea",
+    "model-lock.json": "dedccf21c7e46d6c2b88018135a55940de2d5e624e40d75b8cae3617d2e7a3db",
+    "tasks.json": "4e541f201f45a9f2c51304633506b3478aa09050922fcb605cc911517ba13ab4",
+    "tasks/reference.py": "7c569b180de1038c0c9a9d476bff17c5e12e40a3b9f5567b0d5dc1047e97e742",
+    "tasks/starter.py": "87efc4c0cfc5f28add4a3db965720dc0f78c29740ea260994bbd487af9268cb6",
+    "skills/org-a/fact-redact.md": "8b78004f52e03eaa6933550dfbc18d2187f681a963f57943f3e865d06212319b",
+    "skills/org-a/fact-retry.md": "563c7e853fabc40057cd272afb789fb1c62336243b5be0712ecc10fa58cebfba",
+    "skills/org-b/fact-redact.md": "dd185e4d132adc4d935464a5a4dd841daf7a4e026e3f01001a42a10ed7d4147e",
+    "skills/org-b/fact-retry.md": "aa1108cbeffaf4f1f7c265167a9ef118a3bfcdbb5d97978ef6c58e5e7949bfa0"
+  },
+  "amendment": "Task-only ASCII/Unicode slug oracle correction before quality queries. Retrieval corpus, query labels, split, model and settings are unchanged; no ranking tuning.",
+  "previous_sha256": "0dc14e23e67ca8039d38cd8338248c0ee1078dd67dfc57d30fbd8ad823d3c3c7"
+}

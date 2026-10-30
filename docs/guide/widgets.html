@@ -17,7 +17,7 @@
         <div><label for="config-location">Client configuration scope</label><select id="config-location"><option value="user">Personal / all repositories</option><option value="project">This repository</option></select></div>
         <div><label for="config-checkout">Absolute platform checkout (Codex stdio)</label><input id="config-checkout" value="/absolute/path/to/agent-context-platform" spellcheck="false"></div>
       </div>
-      <p class="config-note">This form generates text in your browser. It never issues tokens, edits settings, connects to the platform, or executes commands. The endpoint may use HTTP only for same-machine loopback development.</p>
+      <p class="config-note">Preview text only: this form never issues tokens, edits settings, connects or executes commands. Use the exact HTTPS evaluation origin and its explicitly trusted CA. Loopback HTTP is only a separate development transport. Client recipes are not installed-vendor verification; local filters cannot establish server-approved read-only access.</p>
       <p class="field-error" id="config-error" role="status" hidden></p>
       <div id="config-output" class="config-output" aria-live="polite"></div>
     </div>
@@ -55,7 +55,7 @@
 
 <!-- START checklist -->
 <div class="widget"><div class="widget-header"><h3>First successful handoff</h3><span class="badge" id="checklist-count">0 / 7</span></div><div class="widget-body checklist" id="onboarding-checklist">
-  <label><input type="checkbox" data-check="ready">Readiness returns HTTP 200 and skills are imported.</label>
+  <label><input type="checkbox" data-check="ready">Staged setup and required search probes pass; HTTP health alone is not approval.</label>
   <label><input type="checkbox" data-check="project">The project exists and its binding resolves exactly.</label>
   <label><input type="checkbox" data-check="identity">Each agent has its own client identity and credential.</label>
   <label><input type="checkbox" data-check="capabilities">Each agent discovers tools and checks its effective capabilities.</label>

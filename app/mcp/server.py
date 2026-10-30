@@ -13,6 +13,7 @@ not, and may name internals a caller has no business seeing.
 
 import asyncio
 import logging
+import ssl
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import replace
@@ -629,6 +630,11 @@ def build_client(settings: McpSettings) -> ContextApiClient:
         settings.mcp_api_base_url,
         token=settings.mcp_api_token_value(),
         timeout_seconds=settings.mcp_request_timeout_seconds,
+        tls_context=(
+            ssl.create_default_context(cafile=settings.mcp_api_ca_file)
+            if settings.mcp_api_ca_file is not None
+            else None
+        ),
     )
 
 

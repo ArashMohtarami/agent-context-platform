@@ -14,7 +14,7 @@ from pymongo.asynchronous.collection import AsyncCollection
 from app.db.client_types import MongoDocument
 from app.security.policy.hooks import fenced
 from app.security.tenant import TenantContext, TenantContextRequired, current_tenant, require_tenant
-from app.security.tenant_policy import current_policy, policy_allows, policy_filter
+from app.security.tenant_policy import current_action, current_policy, policy_allows, policy_filter
 
 MAX_POLICY_CANDIDATE_IDS = 10_000
 _IMMUTABLE = {
@@ -302,8 +302,7 @@ class TenantCollection:
             scope = policy_filter(reference.target)
             policy = current_policy()
             if (
-                self.collection == "gateway_idempotency"
-                and reference.target == "agent_clients"
+                reference.target == "agent_clients"
                 and policy is not None
                 and policy.managed
                 and policy.subject_kind == "machine"
@@ -311,10 +310,20 @@ class TenantCollection:
                 and reference.query == {"client_id": policy.client_id}
                 and document.get("client_id") == policy.client_id
                 and document.get("org_id") == policy.org_id
+                and (
+                    self.collection == "gateway_idempotency"
+                    or (
+                        self.collection == "memories"
+                        and reference.path == "client_id"
+                        and document.get("scope") in {"agent", "project_agent"}
+                        and current_action() == "memory:write"
+                        and policy_allows(document, "memories")
+                    )
+                )
             ):
-                # A retry receipt references only the already verified calling
-                # client. This operational identity check grants no client
-                # administration or private corpus/memory permission.
+                # Only the verified calling client's active identity is linked.
+                # Private memory still needs its complete action/resource and
+                # ownership envelope; this grants no client administration.
                 scope = {"org_id": policy.org_id, "status": "active"}
             query = {"$and": [reference.query, scope]}
             rows = (

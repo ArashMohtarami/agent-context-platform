@@ -16,8 +16,19 @@ import httpx
 
 
 async def docker(*args, env=None, check=True):
+    inherited = env if env is not None else os.environ
+    options = ()
+    if inherited.get("ACP_FOCUSED_RUN_ID"):
+        config = str(Path(inherited["ACP_FOCUSED_STATE"]) / "docker")
+        assert inherited["DOCKER_CONFIG"] == config
+        options = ("--host", "unix:///var/run/docker.sock", "--config", config)
     process = await asyncio.create_subprocess_exec(
-        "docker", *args, env=env, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        "docker",
+        *options,
+        *args,
+        env=env,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
     stdout, _stderr = await process.communicate()
     if check and process.returncode:
@@ -35,18 +46,20 @@ async def hosted_stack(h, origin, tls, root, *, local_only=False):
     endpoint = urlsplit(origin)
     assert endpoint.scheme == "https" and endpoint.hostname == "127.0.0.1" and endpoint.port
     run = os.environ["V6_TEST_RUN"]
+    focused = os.environ.get("ACP_FOCUSED_RUN_ID") == run
     assert os.environ["V6_TEST_MONGODB_CONTAINER"].startswith("acp-v6-phase2-mongodb-")
     network = "acp-v6-phase2-isolated-" + run
     subnet = ipaddress.ip_network(f"10.240.{secrets.randbelow(250)}.0/28")
     proxy_ip, api_ip = str(subnet.network_address + 2), str(subnet.network_address + 3)
     root.mkdir(parents=True, exist_ok=True)
     # Ancestors must be traversable by the image's non-root nginx UID; no secrets in them.
-    os.chmod(root, 0o755)  # noqa: S103 - synthetic fixture traversal by non-root nginx.
-    for parent in root.parents:
-        if parent == Path(os.environ["V6_TEST_DIR"]):
+    if not focused:
+        os.chmod(root, 0o755)  # noqa: S103 - synthetic fixture traversal by non-root nginx.
+        for parent in root.parents:
+            if parent == Path(os.environ["V6_TEST_DIR"]):
+                os.chmod(parent, 0o755)  # noqa: S103 - disposable fixture ancestors only.
+                break
             os.chmod(parent, 0o755)  # noqa: S103 - disposable fixture ancestors only.
-            break
-        os.chmod(parent, 0o755)  # noqa: S103 - disposable fixture ancestors only.
     for name in ("secrets", "ca", "backups"):
         (root / name).mkdir(mode=0o755 if name != "backups" else 0o700, exist_ok=True)
     for source, target in (("server.crt", "console-cert"), ("server.key", "console-key")):
@@ -188,6 +201,14 @@ async def hosted_stack(h, origin, tls, root, *, local_only=False):
     ]
     ingress = rendered["networks"]["console_ingress"]
     ingress["name"] = "acp-v6-hosting-ingress-" + run
+    if focused:
+        from scripts.focused_stack import LABEL
+
+        for name, service in (("context-api", api), ("console", console)):
+            service["container_name"] = "acp-v6-hosting-" + name + "-" + run
+            service["labels"] = {LABEL: run}
+            service["pull_policy"] = "never"
+        ingress["labels"] = {LABEL: run}
     selected = {
         "name": "acp-v6-hosting-" + run,
         "services": {"context-api": api, "console": console},
@@ -197,12 +218,14 @@ async def hosted_stack(h, origin, tls, root, *, local_only=False):
             "fixture": {"external": True, "name": network},
         },
     }
+    if focused:
+        selected["networks"]["console_public"]["labels"] = {LABEL: run}
     manifest = root / "compose.json"
     manifest.write_text(json.dumps(selected))
     manifest.chmod(0o600)
     compose = ("compose", "-f", str(manifest))
     try:
-        await docker(*compose, "up", "-d", env=env)
+        await docker(*compose, "up", "-d", *(["--pull", "never"] if focused else []), env=env)
         async with (
             asyncio.timeout(90),
             httpx.AsyncClient(
@@ -284,4 +307,14 @@ async def hosted_stack(h, origin, tls, root, *, local_only=False):
         (report / ("hosting-" + root.name + ".log")).write_text(
             await docker(*compose, "logs", "--no-color", env=env, check=False)
         )
-        await docker(*compose, "down", "--remove-orphans", env=env, check=False)
+        if focused:
+            from scripts.focused_stack import OwnedStack
+
+            owned = OwnedStack(
+                run, dict(os.environ), report / ("cleanup-" + root.name), oidc=True, hosting=True
+            )
+            assert str(owned.state) == os.environ["ACP_FOCUSED_STATE"]
+            owned.owner = os.environ["ACP_FOCUSED_OWNER"]
+            owned.cleanup_hosting()
+        else:
+            await docker(*compose, "down", "--remove-orphans", env=env, check=False)

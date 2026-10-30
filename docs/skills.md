@@ -29,7 +29,7 @@ skills/
 └── security/
 ```
 
-The catalog contains 39 canonical skills across 11 metadata categories,
+The catalog contains 40 canonical skills across 11 metadata categories,
 including six Django skills, four FastAPI skills and ten content skills.
 Skill versions are declared individually in frontmatter; consult the catalog
 for the current version of each file. Directory names do not always equal category names: FastAPI uses

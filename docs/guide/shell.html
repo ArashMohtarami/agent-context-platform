@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="The complete offline field guide to Agent Context Platform: setup, Codex, Claude Code, Gemini CLI, multiple projects, research, memory and creator workflows.">
+  <meta name="description" content="Keep verified project knowledge across coding agents. An offline guide to your first two-agent handoff, managed connections, self-hosted setup and complete API references.">
   <meta name="color-scheme" content="light dark">
   <title>Agent Context — The complete field guide</title>
   <link rel="icon" href="{{FAVICON}}" type="image/svg+xml">
@@ -43,13 +43,15 @@
     <button id="mark-read" type="button" aria-pressed="false">{{ICON:check}}<span class="control-label">Mark chapter read</span></button>
   </div>
   <main id="main">
+    <aside class="release-note" aria-label="Release status"><span class="release-label">RELEASE STATUS</span><p>Readiness is not yet approved. Evaluate in a disposable environment and review the outstanding acceptance gates.</p><a href="#source-docs-verification-md">Read known limits {{ICON:arrow-right}}</a></aside>
     <div id="top" class="hero">
       <div class="eyebrow"><span class="status-dot"></span> THE KNOWLEDGE LAYER FOR YOUR AGENTS <span class="edition-pill">SELF-HOSTED</span></div>
       <div class="hero-grid">
         <div class="hero-copy">
-          <h1>Every agent.<br>Every project.<br><em>One context.</em></h1>
-          <p class="hero-description">Build once. Keep what you learn. Give Codex, Claude Code, and Gemini CLI the project knowledge they need to pick up where you left off.</p>
-          <div class="hero-buttons"><a href="#16-from-zero-to-a-project-and-reviewed-content" class="primary-button">Build your first project {{ICON:arrow-up-right}}</a><a href="#02-start-the-platform" class="secondary-button">Explore setup {{ICON:arrow-right}}</a></div>
+          <h1>New agent.<br>Same project.<br><em>Knowledge kept.</em></h1>
+          <p class="hero-description">Save a verified decision once. Let Codex, Claude Code, or Gemini CLI retrieve it in the next session, with its own access to the right project.</p>
+          <div class="hero-buttons"><a href="#06-coding-examples-across-projects-and-agents" class="primary-button">Try your first handoff {{ICON:arrow-up-right}}</a><a href="#01-understand-the-platform" class="secondary-button">See how it fits {{ICON:arrow-right}}</a></div>
+          <p class="hero-prerequisite">The live handoff needs a configured installation. Explore the illustrated flow offline, or follow the <a href="#02-start-the-platform">operator setup path</a>.</p>
           <div class="hero-stats"><span><strong>{{SKILLS}}</strong> reusable skills</span><span><strong>{{TOOLS}}</strong> MCP tools</span><span><strong>{{SOURCES}}</strong> source documents</span></div>
         </div>
         <div class="hero-diagram" id="context-demo" aria-label="Illustrated context flow through an MCP gateway and Context API">
@@ -72,15 +74,15 @@
     <noscript><p class="callout">The complete guide and references work without JavaScript. Enable JavaScript for the configurator, simulations, search filters, and copy buttons.</p></noscript>
     <div class="resume-card" id="resume-card" hidden><div><span class="chapter-label">PICK UP WHERE YOU LEFT OFF</span><a id="resume-link" href="#top">Continue reading</a></div><button id="resume-dismiss" type="button" aria-label="Dismiss reading reminder">{{ICON:close}}</button></div>
     <section class="start-here" aria-labelledby="start-heading">
-      <div class="section-heading"><div><span class="chapter-label">A GOOD PLACE TO BEGIN</span><h2 id="start-heading">What would you like to do?</h2></div><p>Choose a path. Keep the whole guide at hand.</p></div>
+      <div class="section-heading"><div><span class="chapter-label">START WITH YOUR ROLE</span><h2 id="start-heading">One guide. Your next step.</h2></div><p>Choose a starting point. The full reference stays within reach.</p></div>
       <div class="path-grid">
-        <a class="path-card" href="#16-from-zero-to-a-project-and-reviewed-content"><span class="path-icon">{{ICON:cube}}</span><span class="path-number">01 / BUILD</span><h3>Start a project</h3><p>From a clean checkout to an agent handoff and reviewed content.</p><span class="path-link">Follow the full recipe {{ICON:arrow-right}}</span></a>
-        <a class="path-card" href="#04-connect-your-agents"><span class="path-icon">{{ICON:terminal}}</span><span class="path-number">02 / CONNECT</span><h3>Bring your agent</h3><p>Generate settings for Codex, Claude Code, Gemini CLI, or a custom client.</p><span class="path-link">Configure a connection {{ICON:arrow-right}}</span></a>
-        <a class="path-card" href="#skill-catalog"><span class="path-icon">{{ICON:layers}}</span><span class="path-number">03 / DISCOVER</span><h3>Find a skill</h3><p>Explore {{SKILLS}} skills, from async Django and FastAPI to technical writing.</p><span class="path-link">Open the skill library {{ICON:arrow-right}}</span></a>
-        <a class="path-card" href="#10-create-content-from-reviewed-knowledge"><span class="path-icon">{{ICON:file}}</span><span class="path-number">04 / CREATE</span><h3>Share what you learn</h3><p>Turn verified project lessons into drafts, reviews, and exportable content.</p><span class="path-link">Explore creator workflows {{ICON:arrow-right}}</span></a>
+        <a class="path-card" href="#06-coding-examples-across-projects-and-agents"><span class="path-icon">{{ICON:cube}}</span><span class="path-number">01 / EVALUATOR</span><h3>See the handoff</h3><p>Follow one verified fact from a local test to another agent's fresh session.</p><span class="path-link">Walk through the example {{ICON:arrow-right}}</span></a>
+        <a class="path-card" href="#04-connect-your-agents"><span class="path-icon">{{ICON:terminal}}</span><span class="path-number">02 / DEVELOPER</span><h3>Connect your agent</h3><p>Join an existing organization with your own credential and explicit project access.</p><span class="path-link">Build a connection recipe {{ICON:arrow-right}}</span></a>
+        <a class="path-card" href="#02-start-the-platform"><span class="path-icon">{{ICON:database}}</span><span class="path-number">03 / OPERATOR</span><h3>Prepare the service</h3><p>Understand the build, identity, activation and verification stages before setup.</p><span class="path-link">Follow the setup path {{ICON:arrow-right}}</span></a>
+        <a class="path-card" href="#14-complete-tool-api-and-cli-reference"><span class="path-icon">{{ICON:code}}</span><span class="path-number">04 / INTEGRATOR</span><h3>Inspect the contract</h3><p>Find exact MCP schemas, REST operations and CLI commands generated from source.</p><span class="path-link">Open the reference {{ICON:arrow-right}}</span></a>
       </div>
     </section>
-    <div class="intro-strip"><span>YOUR WORKSPACE COMPANION</span><p>Read in order or jump to what you need. Examples are copyable. Progress stays in this browser.</p><a href="#01-understand-the-platform">Begin chapter 01 {{ICON:arrow-down}}</a></div>
+    <div class="intro-strip"><span>EXPLORE AS YOU NEED</span><p><a href="#skill-catalog">Skill library</a> · <a href="#07-use-memory-with-the-right-visibility">Memory visibility</a> · <a href="#13-operate-back-up-and-troubleshoot">Troubleshooting</a> · <a href="#10-create-content-from-reviewed-knowledge">Creator workflows</a></p><a href="#01-understand-the-platform">Begin chapter 01 {{ICON:arrow-down}}</a></div>
     {{BODY}}
     <footer class="page-footer">{{BRAND_LOGO}}<p>Agent Context Platform · The complete field guide<br><small>Built from this repository. No external assets, tracking, model calls, or live platform requests.</small></p><a href="#top">Back to top ↑</a></footer>
   </main>

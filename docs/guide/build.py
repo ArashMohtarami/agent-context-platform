@@ -82,7 +82,7 @@ def fields_table(schema: dict) -> str:
 
 def tool_reference() -> str:
     result = [
-        '<div class="reference-filter"><label for="tool-filter">Find a tool or scope</label><input id="tool-filter" type="search" placeholder="search_knowledge, research:write…"><output id="tool-count">55 tools</output></div><div id="tool-list">'
+        f'<div class="reference-filter"><label for="tool-filter">Find a tool or scope</label><input id="tool-filter" type="search" placeholder="search_knowledge, research:write…"><output id="tool-count">{len(TOOLS)} tools</output></div><div id="tool-list">'
     ]
     for tool in TOOLS:
         schema = tool.input_schema
@@ -344,8 +344,32 @@ def main() -> None:
     )
     prose = prose.replace("<!-- SCOPES -->", "| Scope | Capability |\n| --- | --- |\n" + scopes)
     renderer = MarkdownIt("commonmark", {"html": True}).enable("table")
+    embedded_paths = {(ROOT / entry["path"]).resolve() for entry in inventory}
+
+    def render_chapter(content: str) -> str:
+        # Narrative links resolve from usage-guide.html, not the template folder.
+        # Prefer the embedded copy so a downloaded guide stays self-contained.
+        tokens = renderer.parse(content)
+        for token in tokens:
+            for child in token.children or []:
+                if child.type != "link_open":
+                    continue
+                href = child.attrGet("href") or ""
+                if not href or re.match(r"[a-z]+:|#|//", href):
+                    continue
+                document, separator, fragment = href.partition("#")
+                resolved = (ROOT / "docs" / document).resolve()
+                if resolved in embedded_paths:
+                    child.attrSet(
+                        "href",
+                        "#source-"
+                        + slug(str(resolved.relative_to(ROOT)))
+                        + ("-" + fragment if separator else ""),
+                    )
+        return renderer.renderer.render(tokens, renderer.options, {})
+
     chapters = re.split(r"(?m)^## (\d{2}\. .+)\n", prose)
-    body = renderer.render(chapters[0])
+    body = render_chapter(chapters[0])
     navigation = []
     titles = [
         {"id": slug(chapters[index]), "title": chapters[index].split(". ", 1)[1]}
@@ -370,7 +394,7 @@ def main() -> None:
         navigation.append(
             f'<a href="#{identity}"><span>{esc(number)}</span>{esc(name)}<span class="nav-read" aria-label="Marked read" hidden>✓</span></a>'
         )
-        chapter = renderer.render(content)
+        chapter = render_chapter(content)
         narrative = re.sub(r"```.*?```|<!--.*?-->", "", content, flags=re.S)
         reading_minutes = max(1, round(len(re.findall(r"\w+", narrative)) / 200))
         heading_number = 0

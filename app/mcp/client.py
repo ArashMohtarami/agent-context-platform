@@ -11,6 +11,7 @@ already knows, or it cannot make a request at all.
 """
 
 from collections.abc import Mapping
+from ssl import SSLContext
 from types import TracebackType
 from typing import Any, Final, Literal, Self
 
@@ -49,6 +50,7 @@ class ContextApiClient:
         token: str | None = None,
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
         transport: httpx.AsyncBaseTransport | None = None,
+        tls_context: SSLContext | None = None,
     ) -> None:
         if not base_url:
             raise ValueError("the Context API base URL must not be empty")
@@ -63,6 +65,7 @@ class ContextApiClient:
             timeout=timeout_seconds,
             transport=transport,
             follow_redirects=False,
+            verify=tls_context if tls_context is not None else True,
             # The Context API address is explicit and self-hosted. Inheriting
             # a developer shell's proxy can route private knowledge outside
             # the host, and a SOCKS proxy also makes an unrelated optional

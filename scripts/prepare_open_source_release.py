@@ -34,6 +34,32 @@ PUBLIC_DIRECTORIES = frozenset(
         ".github",
     }
 )
+# Deliberate narrow inventory: no local reports, candidate solutions or runs.
+BENCHMARK_FILES = frozenset(
+    "benchmarks/retrieval/" + name
+    for name in (
+        "README.md",
+        "LICENSE",
+        "corpus.json",
+        "queries.json",
+        "split.json",
+        "settings.json",
+        "freeze.json",
+        "model-lock.json",
+        "report-schema.json",
+        "tasks.json",
+        "scorer.py",
+        "model.py",
+        "live.py",
+        "coding.py",
+        "tasks/reference.py",
+        "tasks/starter.py",
+        "skills/org-a/fact-retry.md",
+        "skills/org-a/fact-redact.md",
+        "skills/org-b/fact-retry.md",
+        "skills/org-b/fact-redact.md",
+    )
+)
 PUBLIC_ROOT_FILES = frozenset(
     {
         ".dockerignore",
@@ -136,6 +162,8 @@ def eligible(path: PurePosixPath) -> bool:
         return False
     if any(p.endswith(".egg-info") for p in path.parts):
         return False
+    if path.parts[0] == "benchmarks":
+        return path.as_posix() in BENCHMARK_FILES
     if len(path.parts) == 1:
         return path.name in PUBLIC_ROOT_FILES
     return path.parts[0] in PUBLIC_DIRECTORIES or path.as_posix() == ".docker-wheels/.gitkeep"

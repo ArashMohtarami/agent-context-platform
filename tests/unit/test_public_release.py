@@ -249,6 +249,8 @@ def test_export_is_deterministic_contains_regular_files_and_reaudits_after_extra
     executable.chmod(0o755)
     put(public_root, "secrets/token", mint().token.encode())
     put(public_root, ".private/design.md")
+    put(public_root, "benchmarks/retrieval/corpus.json", b'{"fictional": true}\n')
+    put(public_root, "benchmarks/retrieval/runs/report.json", b"private run\n")
     files = release.audited_files(public_root)
     first = tmp_path / "first.tar.gz"
     second = tmp_path / "second.tar.gz"
@@ -272,6 +274,30 @@ def test_export_is_deterministic_contains_regular_files_and_reaudits_after_extra
         assert archive.getmember("agent-context-platform/README.md").mode == 0o644
         archive.extractall(extracted, filter="data")
     assert release.audited_files(extracted / "agent-context-platform") == files
+
+
+def test_benchmark_inventory_excludes_runs_and_includes_licensed_inputs(public_root, monkeypatch):
+    for name in release.BENCHMARK_FILES:
+        put(public_root, name)
+    private = {
+        put(public_root, name, mint().token.encode())
+        for name in (
+            "benchmarks/retrieval/runs/report.json",
+            "benchmarks/retrieval/private-report.json",
+            "benchmarks/retrieval/tasks/candidate.py",
+            "benchmarks/retrieval/.private/identities.json",
+        )
+    }
+    forbid_reads(monkeypatch, private)
+    files = release.audited_files(public_root)
+    assert {p.as_posix() for p in files if p.parts[0] == "benchmarks"} == release.BENCHMARK_FILES
+    assert all(not release.eligible(PurePosixPath(p.relative_to(public_root))) for p in private)
+    manifest = Path("MANIFEST.in").read_text()
+    included = set()
+    for line in manifest.splitlines():
+        if line.startswith("include benchmarks/"):
+            included.update(line.split()[1:])
+    assert included == release.BENCHMARK_FILES
 
 
 def test_export_does_not_overwrite_an_existing_artifact(public_root: Path, tmp_path: Path) -> None:
@@ -366,3 +392,29 @@ def test_site_source_download_checks_unlinked_sources_for_private_text(
     with pytest.raises(subprocess.CalledProcessError):
         site.assemble(tmp_path / "staged")
     assert not (tmp_path / "staged/downloads/agent-context-platform-source.tar.gz").exists()
+
+
+def test_site_allows_only_reviewed_evaluation_and_benchmark_download_inputs(
+    public_root, monkeypatch
+):
+    from website import build as site
+
+    monkeypatch.setattr(site, "ROOT", public_root)
+    for name in (
+        "deploy/evaluation/inputs.json",
+        "benchmarks/retrieval/corpus.json",
+        "dashboard/.node-version",
+    ):
+        expected = put(public_root, name, b"{}\n")
+        assert site.safe_source(name) == expected
+    for name in (
+        "deploy/evaluation/unreviewed.json",
+        "benchmarks/retrieval/runs/report.json",
+        "benchmarks/retrieval/model.safetensors",
+    ):
+        private = put(public_root, name, b"not a reviewed public download")
+        forbid_reads(monkeypatch, {private})
+        with pytest.raises(ValueError, match="outside the reviewed public file inventory"):
+            site.safe_source(name)
+    with pytest.raises(ValueError, match="Hidden files are not public site inputs"):
+        site.safe_source("dashboard/.private/result.json")

@@ -100,6 +100,12 @@ COPY scripts/codex-mcp-server.sh scripts/create-mongot-user.js \
      scripts/create-application-user.js scripts/verify-mongot.sh \
      scripts/backup.sh scripts/restore.sh scripts/prepare_open_source_release.py ./scripts/
 COPY scripts/test-v6-deployment.sh scripts/test-v6-isolation.sh scripts/test-v6-acceptance.sh ./scripts/
+# Focused/evaluation tests inspect the distributed commands and inputs; no runtime
+# state, private evidence, CA or model cache is part of this test image.
+COPY scripts/focused*.py scripts/test-focused.py scripts/evaluation_*.py scripts/evaluate.sh ./scripts/
+COPY deploy/evaluation ./deploy/evaluation
+COPY scripts/init-mongodb.sh scripts/init-replica-set.js scripts/mongodb-entrypoint.sh \
+     scripts/mongodb-healthcheck.sh scripts/mongot-entrypoint.sh scripts/mongot-healthcheck.sh ./scripts/
 COPY tests ./tests
 RUN chown -R app:app /app
 

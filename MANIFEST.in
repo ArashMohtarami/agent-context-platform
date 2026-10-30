@@ -23,9 +23,29 @@ prune dashboard/.private
 include Dockerfile docker-compose.yml .dockerignore .gitignore .env.example
 recursive-include deploy *.yml *.conf *.template *.sh *.md *.txt *LICENSE* THIRD-PARTY-NOTICES
 recursive-include scripts *.py *.sh *.js
+# Maintained focused-test manifests and their real disposable fixture dependencies.
+recursive-include tests *.py
+include tests/focused/v7-phases.json
+recursive-include tests/infrastructure *.yml *.js
 prune dashboard/blob-report
 prune dashboard/.npm
 global-exclude *.tsbuildinfo *.key *.pem
 include requirements.lock requirements-dev.lock
 recursive-include docker *.py *.template
 include docs/backup.md docs/deployment.md docs/dashboard-*.md docs/guide/public-sources.json
+include docs/focused-tests.md
+include deploy/evaluation/inputs.json docs/evaluation.md
+# Maintained, fictional protocol demo and the exact local source it verifies.
+recursive-include examples/agent-handoff *.py *.json *.md
+recursive-include examples/starter-notes-api *.py *.md requirements.txt
+# Original MIT fictional retrieval inputs and scorer only; never raw study runs.
+include benchmarks/retrieval/README.md benchmarks/retrieval/LICENSE
+include benchmarks/retrieval/corpus.json benchmarks/retrieval/queries.json
+include benchmarks/retrieval/split.json benchmarks/retrieval/settings.json
+include benchmarks/retrieval/freeze.json benchmarks/retrieval/model-lock.json
+include benchmarks/retrieval/report-schema.json benchmarks/retrieval/tasks.json
+include benchmarks/retrieval/scorer.py benchmarks/retrieval/model.py
+include benchmarks/retrieval/live.py benchmarks/retrieval/coding.py
+include benchmarks/retrieval/tasks/reference.py benchmarks/retrieval/tasks/starter.py
+include benchmarks/retrieval/skills/org-a/fact-retry.md benchmarks/retrieval/skills/org-a/fact-redact.md
+include benchmarks/retrieval/skills/org-b/fact-retry.md benchmarks/retrieval/skills/org-b/fact-redact.md
