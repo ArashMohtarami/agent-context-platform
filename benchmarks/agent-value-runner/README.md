@@ -42,8 +42,13 @@ The currency/price basis and unit conversion need prospective approval for real
 use; `TEST` units in stubs are synthetic and are not a quote. No account/model,
 effort, price, token cap or user budget is chosen implicitly.
 
-`codex-plan` permits only the complete sealed development8 or heldout24 task set
-with all three arms and three repeats. A fixed digest ordering assigns balanced
+`codex-plan` permits the complete sealed development8 or heldout24 task set
+with all three arms and three repeats, or the exact development calibration12
+tranche. The tranche is one attempt per arm on `harbor-development-import`,
+`harbor-development-precision`, `parcel-development-pack` and
+`parcel-development-tracking`. It retains positions7–9,31–33,43–48 of the
+original development72 schedule; subsets and extra repeats fail closed.
+A fixed digest ordering assigns balanced
 arm permutations (12 of each for72 heldout blocks), seed20261030, with separate
 development seed20261031. All schedule bytes are bound to the plan. A changed
 sample needs a new reviewed prospective design. `stub-validation` permits only
@@ -143,3 +148,31 @@ private seals, reviewed CLI inventory or sandbox support still fail those
 explicit validations; public CI neither skips them after collection nor creates
 replacement labels. Portable unit success does not establish private grader,
 installed vendor CLI, OS isolation, model or provider evidence.
+
+The Phase4 additions are model-free preparation. `calibration.py` reconciles
+all12 IDs and refuses stale, duplicate and synthetic-success records; it never
+grants a final lock. `delivery.py` produces an explicit complete M/C snapshot
+using the existing API content normalization and exactly the `get_context`
+metadata fields. Actual API identities/revisions are distinct from authored
+document revisions. Controller/storage fields stay outside agent inputs. Its
+grader bridge verifies the complete protected overlay, rejects symlinks and
+reconstructs only permitted code for the unchanged sealed behavioral grader.
+It does not import a snapshot, issue a credential or certify live MCP use.
+
+`analysis.py` implements the prescribed paired family bootstrap and project
+sensitivity with a pinned SHA256 rejection stream, type7 interval quantiles,
+nearest-rank observed-success latency and all-attempt efficiency ratios.
+Missing numerators stay null; any zero-denominator bootstrap draw makes the
+ratio interval undefined. Every function leaves claim approval false. The
+`v8-p04-calibration` profile selects exactly three portable behavior nodes;
+`v8-p04-regressions` selects only the changed mapping R1 and inventory E1 nodes.
+Neither profile launches an agent/provider or reads private reference solutions.
+
+ChatGPT Plus is a supported native CLI sign-in route; a separate API key is
+not required for that route. Subscription allowance and purchased credits are
+different from API cash prices ([official pricing](https://learn.chatgpt.com/docs/pricing),
+[authentication](https://learn.chatgpt.com/docs/auth)). No active login is copied
+and no purchase is made by this driver. A Plus selection does not establish
+remaining quota, a per-session credit ceiling, complete failed-request usage
+or prevention of purchased-credit consumption. Those adapter/account controls
+must be verified before execution; the unsupported-run guard remains active.

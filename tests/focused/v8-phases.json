@@ -220,6 +220,37 @@
       "timeout": 120,
       "expected_count": 1,
       "requires": []
+    },
+    "v8-p04-calibration": {
+      "reason": "Development-only 12-session binding, equal M/C serialization and prespecified numeric examples; no provider or private grader execution",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_agent_value_runner.py::test_calibration_lock_uses_only_development_and_invalidates_changed_inputs",
+        "tests/unit/test_agent_value_runner.py::test_equal_delivery_rejects_wrong_snapshot_metadata_and_grader_tampering",
+        "tests/unit/test_agent_value_runner.py::test_primary_analysis_matches_independent_tiny_examples"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 3,
+      "requires": []
+    },
+    "v8-p04-regressions": {
+      "reason": "Only changed V8 mapping R1 and exact licensed input export/sdist E1 boundaries",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_agent_value_profiles.py::test_v8_profiles_keep_v7_selection_and_phase_identities",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_focused_runner.py::test_manifest_cannot_supply_extra_runner_options",
+        "tests/unit/test_focused_runner.py::test_stale_plan_is_refused_before_collection_or_services",
+        "tests/unit/test_focused_runner.py::test_focused_manifest_survives_source_export_without_private_runs",
+        "tests/unit/test_public_release.py::test_benchmark_inventory_excludes_runs_and_includes_licensed_inputs",
+        "tests/unit/test_public_release.py::test_site_allows_only_reviewed_evaluation_and_benchmark_download_inputs",
+        "tests/unit/test_public_release.py::test_export_is_deterministic_contains_regular_files_and_reaudits_after_extraction"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 8,
+      "requires": []
     }
   },
   "profiles": {
@@ -267,6 +298,12 @@
     ],
     "v8-p03-sandbox": [
       "v8-p03-sandbox"
+    ],
+    "v8-p04-calibration": [
+      "v8-p04-calibration"
+    ],
+    "v8-p04-regressions": [
+      "v8-p04-regressions"
     ]
   }
 }

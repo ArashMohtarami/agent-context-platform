@@ -337,6 +337,9 @@ include benchmarks/agent-value/worker.py
 include benchmarks/agent-value-runner/LICENSE
 include benchmarks/agent-value-runner/README.md
 include benchmarks/agent-value-runner/adapter.json
+include benchmarks/agent-value-runner/analysis.py
+include benchmarks/agent-value-runner/calibration.py
+include benchmarks/agent-value-runner/delivery.py
 include benchmarks/agent-value-runner/driver.py
 include benchmarks/agent-value-runner/inventory.json
 include benchmarks/agent-value-runner/sandbox.py

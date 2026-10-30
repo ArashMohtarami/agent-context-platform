@@ -10,7 +10,6 @@ import argparse
 import contextlib
 import fcntl
 import importlib
-import itertools
 import json
 import os
 import re
@@ -22,7 +21,7 @@ from pathlib import Path
 from scripts.evaluation_lifecycle import atomic
 from scripts.focused_process import FocusedError
 
-from . import sandbox
+from . import calibration, sandbox
 
 dataset = importlib.import_module("benchmarks.agent-value.dataset")
 sealing = importlib.import_module("benchmarks.agent-value.seal")
@@ -32,14 +31,14 @@ STATE = ROOT / ".private/v8-agent-value-planning/phase-2/experiments"
 INPUT_SEAL = ROOT / ".private/v8-agent-value-planning/phase-1/initial-seal.json"
 HIDDEN = INPUT_SEAL.parent / "hidden"
 BLOCKERS = [
-    "NO_AUTHORIZED_PROVIDER_MODEL_EFFORT_CURRENCY_CAP",
+    "NO_SOURCE_BOUND_SUBSCRIPTION_OR_PROVIDER_AUTHORIZATION_RECEIPT",
     "HARD_REQUEST_TOKEN_AND_SPEND_ENFORCEMENT_UNPROVEN",
     "CREDENTIAL_BROKER_AND_ALLOWLISTED_CODEX_MCP_EGRESS_UNIMPLEMENTED",
     "FULL_REQUEST_RETRY_COMPACTION_ACCOUNTING_UNPROVEN",
     "CLI_COUNTER_INCLUSION_AND_RESOLVED_MODEL_UNPROVEN",
     "INSTALLED_TOOL_CONFIG_SKILL_EQUIVALENCE_UNVERIFIED",
     "INDEPENDENT_DESIGN_LICENSE_AND_EXPOSED_TASK_REVIEW_PENDING",
-    "REAL_MCP_COMMISSIONING_AND_ACTIVATION_DEFERRED",
+    "CURRENT_RUNTIME_ACTIVATION_AND_NARROW_CREDENTIAL_SCOPE_RECEIPTS_REQUIRED",
 ]
 HEX = r"[a-f0-9]{64}"
 LABEL = r"[A-Za-z0-9][A-Za-z0-9_.-]{0,100}"
@@ -137,10 +136,14 @@ def configuration(value):
         ):
             fail("STUB_SCOPE_ONLY")
     elif value["mode"] == "codex-plan":
-        if value["study"] not in {"development", "heldout"} or value["repeats"] != 3:
-            fail("UNREVIEWED_STUDY_DESIGN")
-        if tasks != sorted(t["task_id"] for t in rows if t["split"] == value["study"]):
-            fail("SAMPLE_REVISION_REQUIRES_NEW_DESIGN")
+        if value["study"] == "calibration":
+            if tasks != list(calibration.TASKS) or value["repeats"] != 1:
+                fail("EXACT_DEVELOPMENT_CALIBRATION_TRANCHE_REQUIRED")
+        else:
+            if value["study"] not in {"development", "heldout"} or value["repeats"] != 3:
+                fail("UNREVIEWED_STUDY_DESIGN")
+            if tasks != sorted(t["task_id"] for t in rows if t["split"] == value["study"]):
+                fail("SAMPLE_REVISION_REQUIRES_NEW_DESIGN")
         if value["stub_scenario"] is not None:
             fail("STUB_SETTING_IN_CODEX_PLAN")
     else:
@@ -227,12 +230,7 @@ def make_plan(config, input_seal: Path = INPUT_SEAL, hidden: Path = HIDDEN):
     config = configuration(config)
     seal = read(input_seal)
     sealing.verify(seal, hidden)
-    permutations = list(itertools.permutations(dataset.ARMS))
-    # Fixed digest ordering avoids Python random implementation drift. Heldout72
-    # blocks receive the six permutations exactly12 times each, before shuffling.
-    blocks = [(t, r) for t in config["task_ids"] for r in range(1, config["repeats"] + 1)]
-    seed = 20261030 if config["study"] == "heldout" else 20261031
-    blocks.sort(key=lambda row: digest([seed, *row]))
+    seed, schedule = calibration.schedule(config["study"], config["task_ids"], config["repeats"])
     attempts = []
     by_id = {t["task_id"]: t for t in dataset.load()["tasks"]}
     input_cache = {
@@ -245,22 +243,20 @@ def make_plan(config, input_seal: Path = INPUT_SEAL, hidden: Path = HIDDEN):
         ]
         for t in config["task_ids"]
     }
-    for i, (task_id, repeat) in enumerate(blocks):
-        for arm in permutations[i % 6]:
-            attempts.append(
-                {
-                    "id": digest([task_id, repeat, arm])[:32],
-                    "task_id": task_id,
-                    "family_id": task_id,
-                    "repeat": repeat,
-                    "arm": arm,
-                    "input_hashes": {
-                        k: dataset.sha(v) for k, v in input_cache[task_id, arm].items()
-                    },
-                    "knowledge": knowledge_cache[task_id] if arm != "repository" else [],
-                    "prompt_sha256": dataset.sha(input_cache[task_id, arm]["TASK.md"]),
-                }
-            )
+    for task_id, repeat, arm, parent_position in schedule:
+        attempt = {
+            "id": digest([task_id, repeat, arm])[:32],
+            "task_id": task_id,
+            "family_id": task_id,
+            "repeat": repeat,
+            "arm": arm,
+            "input_hashes": {k: dataset.sha(v) for k, v in input_cache[task_id, arm].items()},
+            "knowledge": knowledge_cache[task_id] if arm != "repository" else [],
+            "prompt_sha256": dataset.sha(input_cache[task_id, arm]["TASK.md"]),
+        }
+        if config["study"] == "calibration":
+            attempt["parent_development_position"] = parent_position
+        attempts.append(attempt)
     value = {
         "version": 1,
         "configuration": config,
