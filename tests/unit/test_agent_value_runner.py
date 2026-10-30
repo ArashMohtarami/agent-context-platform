@@ -1,5 +1,6 @@
 """Portable control contracts; installed-CLI/OS proofs live in integration tests."""
 
+import ast
 import copy
 import importlib
 import json
@@ -172,6 +173,39 @@ def test_calibration_lock_uses_only_development_and_invalidates_changed_inputs(
 
 def test_equal_delivery_rejects_wrong_snapshot_metadata_and_grader_tampering(tmp_path, monkeypatch):
     delivery = importlib.import_module("benchmarks.agent-value-runner.delivery")
+    schema = ast.parse((driver.ROOT / "app/mcp/tools/context.py").read_text())
+    fields = next(
+        n.value
+        for n in schema.body
+        if isinstance(n, ast.Assign)
+        and any(isinstance(t, ast.Name) and t.id == "_RECORD_FIELDS" for t in n.targets)
+    )
+    assert ast.literal_eval(fields) == delivery.FIELDS
+    sources = driver.source_fingerprint()
+    assert all(
+        path in sources
+        for path in (
+            "app/models/common.py",
+            "app/mcp/tools/context.py",
+            "app/mcp/formatting.py",
+            "requirements.lock",
+        )
+    )
+    original_read = driver.dataset.read
+
+    def changed_validator(root, name):
+        content = original_read(root, name)
+        return (
+            content + b"\n# prospective normalization change\n"
+            if (root == driver.ROOT and name == "app/models/common.py")
+            else content
+        )
+
+    with monkeypatch.context() as patch:
+        patch.setattr(driver.dataset, "read", changed_validator)
+        changed_sources = driver.source_fingerprint()
+    assert changed_sources != sources
+    assert changed_sources["app/models/common.py"] != sources["app/models/common.py"]
     task = "harbor-development-precision"
     # Fictional authorized-export-shaped rows test serialization, not a live API.
     rows = [

@@ -170,6 +170,10 @@ def source_fingerprint():
     for n in (
         "scripts/focused_process.py",
         "scripts/evaluation_lifecycle.py",
+        "app/models/common.py",
+        "app/mcp/tools/context.py",
+        "app/mcp/formatting.py",
+        "requirements.lock",
         "skills/python/testing.md",
         "skills/engineering/debugging.md",
     ):
