@@ -1,0 +1,3 @@
+Repair move commands so failed transfers preserve the original reservation and successful transfers record one event. Commands provide booking_id, room, start and end. Apply the room-transfer record and capacity checks.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

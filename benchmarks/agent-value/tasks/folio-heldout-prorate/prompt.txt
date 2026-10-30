@@ -1,0 +1,3 @@
+Update prorate quotes to the current daily-plan decision. Commands name monthly_cents, year, month, start_day and end_day (exclusive, allowing the day after month end). Return cents and leave invoices unchanged.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

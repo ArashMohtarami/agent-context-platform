@@ -1,0 +1,3 @@
+Repair reserve commands for multi-line orders. Keep inventory and the reservation ledger consistent under duplicate lines, shortages, invalid quantities and retries. Follow the reservation ledger record.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

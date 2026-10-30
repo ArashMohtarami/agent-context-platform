@@ -1,0 +1,53 @@
+{
+  "input": {
+    "state": {
+      "invoices": {
+        "i": 100
+      },
+      "reversals": {},
+      "ledger": []
+    },
+    "commands": [
+      {
+        "action": "reverse",
+        "invoice_id": "i",
+        "reversal_id": "r",
+        "cents": 20
+      },
+      {
+        "action": "reverse",
+        "invoice_id": "i",
+        "reversal_id": "r",
+        "cents": 20
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "reversal_id": "r"
+      },
+      {
+        "reversal_id": "r"
+      }
+    ],
+    "state": {
+      "invoices": {
+        "i": 100
+      },
+      "reversals": {
+        "r": {
+          "invoice_id": "i",
+          "cents": 20
+        }
+      },
+      "ledger": [
+        {
+          "id": "r",
+          "invoice_id": "i",
+          "cents": -20
+        }
+      ]
+    }
+  }
+}

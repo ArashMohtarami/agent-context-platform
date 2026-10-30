@@ -1,0 +1,61 @@
+{
+  "input": {
+    "state": {
+      "inventory": {
+        "x": 3
+      },
+      "reservations": {
+        "r": {
+          "status": "ready"
+        }
+      },
+      "shipments": [],
+      "events": []
+    },
+    "commands": [
+      {
+        "action": "dispatch",
+        "reservation_id": "r",
+        "courier_available": true
+      },
+      {
+        "action": "dispatch",
+        "reservation_id": "r",
+        "courier_available": true
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "shipment_id": "ship-r"
+      },
+      {
+        "shipment_id": "ship-r"
+      }
+    ],
+    "state": {
+      "inventory": {
+        "x": 3
+      },
+      "reservations": {
+        "r": {
+          "status": "dispatched",
+          "shipment_id": "ship-r"
+        }
+      },
+      "shipments": [
+        {
+          "id": "ship-r",
+          "reservation_id": "r"
+        }
+      ],
+      "events": [
+        {
+          "type": "dispatched",
+          "shipment_id": "ship-r"
+        }
+      ]
+    }
+  }
+}

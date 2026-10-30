@@ -1,0 +1,25 @@
+{
+  "input": {
+    "state": {},
+    "commands": [
+      {
+        "action": "redact",
+        "payload": {
+          "password": "x",
+          "name": "n"
+        }
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "payload": {
+          "password": "[REDACTED]",
+          "name": "n"
+        }
+      }
+    ],
+    "state": {}
+  }
+}

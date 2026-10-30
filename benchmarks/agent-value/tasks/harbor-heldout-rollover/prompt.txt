@@ -1,0 +1,3 @@
+Repair consumption across wrapped meter counters and explicitly reset samples. consumption commands carry modulus and samples. Report amount and unknown_gaps following the mechanical-counter record; preserve raw data.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

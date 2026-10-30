@@ -1,0 +1,62 @@
+{
+  "input": {
+    "state": {
+      "manifests": [
+        {
+          "id": "b",
+          "created_at": 1,
+          "depot": "d"
+        },
+        {
+          "id": "a",
+          "created_at": 1,
+          "depot": "d"
+        },
+        {
+          "id": "z",
+          "created_at": 0,
+          "depot": "foreign"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "action": "page",
+        "depot": "d",
+        "limit": 1
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "ids": [
+          "a"
+        ],
+        "next_cursor": [
+          1,
+          "a"
+        ]
+      }
+    ],
+    "state": {
+      "manifests": [
+        {
+          "id": "b",
+          "created_at": 1,
+          "depot": "d"
+        },
+        {
+          "id": "a",
+          "created_at": 1,
+          "depot": "d"
+        },
+        {
+          "id": "z",
+          "created_at": 0,
+          "depot": "foreign"
+        }
+      ]
+    }
+  }
+}

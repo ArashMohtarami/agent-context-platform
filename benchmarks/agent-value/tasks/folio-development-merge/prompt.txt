@@ -1,0 +1,3 @@
+Merge the duplicate billing accounts in this fixture and reconcile their credits. Review the available records and make only a supported change. If required decisions are missing, ask specifically for them.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

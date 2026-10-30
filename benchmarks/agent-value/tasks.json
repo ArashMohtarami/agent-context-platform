@@ -1,0 +1,1333 @@
+{
+  "version": 1,
+  "license": "MIT",
+  "status": "fixtures only; no agent outcomes",
+  "attempts_per_task_arm": 3,
+  "arms": [
+    "repository",
+    "markdown",
+    "mcp"
+  ],
+  "categories": [
+    "bug",
+    "feature",
+    "updated",
+    "boundary",
+    "repository",
+    "safe"
+  ],
+  "tasks": [
+    {
+      "task_id": "folio-development-lookup",
+      "family_id": "folio-development-lookup",
+      "project_id": "folio",
+      "split": "development",
+      "category": "repository",
+      "outcome": "coding",
+      "title": "Invoice lookup",
+      "prompt": "tasks/folio-development-lookup/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/folio-development-lookup/api.py",
+        "domain.py": "tasks/folio-development-lookup/domain.py",
+        "repository.py": "tasks/folio-development-lookup/repository.py",
+        "test_visible.py": "tasks/folio-development-lookup/test_visible.py",
+        "visible.json": "tasks/folio-development-lookup/visible.json",
+        "README.md": "tasks/folio-development-lookup/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "folio-development",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 4,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "folio-development-merge",
+      "family_id": "folio-development-merge",
+      "project_id": "folio",
+      "split": "development",
+      "category": "safe",
+      "outcome": "safe_action",
+      "title": "Account reconciliation",
+      "prompt": "tasks/folio-development-merge/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/folio-development-merge/api.py",
+        "domain.py": "tasks/folio-development-merge/domain.py",
+        "repository.py": "tasks/folio-development-merge/repository.py",
+        "test_visible.py": "tasks/folio-development-merge/test_visible.py",
+        "visible.json": "tasks/folio-development-merge/visible.json",
+        "README.md": "tasks/folio-development-merge/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "folio-development",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 1,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "folio-heldout-allocate",
+      "family_id": "folio-heldout-allocate",
+      "project_id": "folio",
+      "split": "heldout",
+      "category": "feature",
+      "outcome": "coding",
+      "title": "Credit allocation",
+      "prompt": "tasks/folio-heldout-allocate/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/folio-heldout-allocate/api.py",
+        "domain.py": "tasks/folio-heldout-allocate/domain.py",
+        "repository.py": "tasks/folio-heldout-allocate/repository.py",
+        "test_visible.py": "tasks/folio-heldout-allocate/test_visible.py",
+        "visible.json": "tasks/folio-heldout-allocate/visible.json",
+        "README.md": "tasks/folio-heldout-allocate/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "folio-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 6,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "folio-heldout-close",
+      "family_id": "folio-heldout-close",
+      "project_id": "folio",
+      "split": "heldout",
+      "category": "boundary",
+      "outcome": "coding",
+      "title": "Period close transaction",
+      "prompt": "tasks/folio-heldout-close/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/folio-heldout-close/api.py",
+        "domain.py": "tasks/folio-heldout-close/domain.py",
+        "repository.py": "tasks/folio-heldout-close/repository.py",
+        "test_visible.py": "tasks/folio-heldout-close/test_visible.py",
+        "visible.json": "tasks/folio-heldout-close/visible.json",
+        "README.md": "tasks/folio-heldout-close/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "folio-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "folio-heldout-migration",
+      "family_id": "folio-heldout-migration",
+      "project_id": "folio",
+      "split": "heldout",
+      "category": "safe",
+      "outcome": "safe_action",
+      "title": "Regional migration",
+      "prompt": "tasks/folio-heldout-migration/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/folio-heldout-migration/api.py",
+        "domain.py": "tasks/folio-heldout-migration/domain.py",
+        "repository.py": "tasks/folio-heldout-migration/repository.py",
+        "test_visible.py": "tasks/folio-heldout-migration/test_visible.py",
+        "visible.json": "tasks/folio-heldout-migration/visible.json",
+        "README.md": "tasks/folio-heldout-migration/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "folio-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 1,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "folio-heldout-prorate",
+      "family_id": "folio-heldout-prorate",
+      "project_id": "folio",
+      "split": "heldout",
+      "category": "updated",
+      "outcome": "coding",
+      "title": "Actual-day subscription quote",
+      "prompt": "tasks/folio-heldout-prorate/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/folio-heldout-prorate/api.py",
+        "domain.py": "tasks/folio-heldout-prorate/domain.py",
+        "repository.py": "tasks/folio-heldout-prorate/repository.py",
+        "test_visible.py": "tasks/folio-heldout-prorate/test_visible.py",
+        "visible.json": "tasks/folio-heldout-prorate/visible.json",
+        "README.md": "tasks/folio-heldout-prorate/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "folio-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "folio-heldout-redact",
+      "family_id": "folio-heldout-redact",
+      "project_id": "folio",
+      "split": "heldout",
+      "category": "repository",
+      "outcome": "coding",
+      "title": "Diagnostic payload redaction",
+      "prompt": "tasks/folio-heldout-redact/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/folio-heldout-redact/api.py",
+        "domain.py": "tasks/folio-heldout-redact/domain.py",
+        "repository.py": "tasks/folio-heldout-redact/repository.py",
+        "test_visible.py": "tasks/folio-heldout-redact/test_visible.py",
+        "visible.json": "tasks/folio-heldout-redact/visible.json",
+        "README.md": "tasks/folio-heldout-redact/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "folio-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "folio-heldout-reverse",
+      "family_id": "folio-heldout-reverse",
+      "project_id": "folio",
+      "split": "heldout",
+      "category": "bug",
+      "outcome": "coding",
+      "title": "Invoice reversals",
+      "prompt": "tasks/folio-heldout-reverse/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/folio-heldout-reverse/api.py",
+        "domain.py": "tasks/folio-heldout-reverse/domain.py",
+        "repository.py": "tasks/folio-heldout-reverse/repository.py",
+        "test_visible.py": "tasks/folio-heldout-reverse/test_visible.py",
+        "visible.json": "tasks/folio-heldout-reverse/visible.json",
+        "README.md": "tasks/folio-heldout-reverse/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "folio-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "harbor-development-import",
+      "family_id": "harbor-development-import",
+      "project_id": "harbor",
+      "split": "development",
+      "category": "boundary",
+      "outcome": "coding",
+      "title": "Observation import",
+      "prompt": "tasks/harbor-development-import/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/harbor-development-import/api.py",
+        "domain.py": "tasks/harbor-development-import/domain.py",
+        "repository.py": "tasks/harbor-development-import/repository.py",
+        "test_visible.py": "tasks/harbor-development-import/test_visible.py",
+        "visible.json": "tasks/harbor-development-import/visible.json",
+        "README.md": "tasks/harbor-development-import/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "harbor-development",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 6,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "harbor-development-precision",
+      "family_id": "harbor-development-precision",
+      "project_id": "harbor",
+      "split": "development",
+      "category": "updated",
+      "outcome": "coding",
+      "title": "Measurement display",
+      "prompt": "tasks/harbor-development-precision/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/harbor-development-precision/api.py",
+        "domain.py": "tasks/harbor-development-precision/domain.py",
+        "repository.py": "tasks/harbor-development-precision/repository.py",
+        "test_visible.py": "tasks/harbor-development-precision/test_visible.py",
+        "visible.json": "tasks/harbor-development-precision/visible.json",
+        "README.md": "tasks/harbor-development-precision/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "harbor-development",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "harbor-heldout-alert",
+      "family_id": "harbor-heldout-alert",
+      "project_id": "harbor",
+      "split": "heldout",
+      "category": "updated",
+      "outcome": "coding",
+      "title": "Overflow alert revision",
+      "prompt": "tasks/harbor-heldout-alert/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/harbor-heldout-alert/api.py",
+        "domain.py": "tasks/harbor-heldout-alert/domain.py",
+        "repository.py": "tasks/harbor-heldout-alert/repository.py",
+        "test_visible.py": "tasks/harbor-heldout-alert/test_visible.py",
+        "visible.json": "tasks/harbor-heldout-alert/visible.json",
+        "README.md": "tasks/harbor-heldout-alert/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "harbor-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 6,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "harbor-heldout-calibration",
+      "family_id": "harbor-heldout-calibration",
+      "project_id": "harbor",
+      "split": "heldout",
+      "category": "safe",
+      "outcome": "safe_action",
+      "title": "Field calibration",
+      "prompt": "tasks/harbor-heldout-calibration/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/harbor-heldout-calibration/api.py",
+        "domain.py": "tasks/harbor-heldout-calibration/domain.py",
+        "repository.py": "tasks/harbor-heldout-calibration/repository.py",
+        "test_visible.py": "tasks/harbor-heldout-calibration/test_visible.py",
+        "visible.json": "tasks/harbor-heldout-calibration/visible.json",
+        "README.md": "tasks/harbor-heldout-calibration/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "harbor-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 1,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "harbor-heldout-interpolate",
+      "family_id": "harbor-heldout-interpolate",
+      "project_id": "harbor",
+      "split": "heldout",
+      "category": "feature",
+      "outcome": "coding",
+      "title": "Missing telemetry samples",
+      "prompt": "tasks/harbor-heldout-interpolate/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/harbor-heldout-interpolate/api.py",
+        "domain.py": "tasks/harbor-heldout-interpolate/domain.py",
+        "repository.py": "tasks/harbor-heldout-interpolate/repository.py",
+        "test_visible.py": "tasks/harbor-heldout-interpolate/test_visible.py",
+        "visible.json": "tasks/harbor-heldout-interpolate/visible.json",
+        "README.md": "tasks/harbor-heldout-interpolate/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "harbor-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "harbor-heldout-rollover",
+      "family_id": "harbor-heldout-rollover",
+      "project_id": "harbor",
+      "split": "heldout",
+      "category": "bug",
+      "outcome": "coding",
+      "title": "Counter consumption",
+      "prompt": "tasks/harbor-heldout-rollover/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/harbor-heldout-rollover/api.py",
+        "domain.py": "tasks/harbor-heldout-rollover/domain.py",
+        "repository.py": "tasks/harbor-heldout-rollover/repository.py",
+        "test_visible.py": "tasks/harbor-heldout-rollover/test_visible.py",
+        "visible.json": "tasks/harbor-heldout-rollover/visible.json",
+        "README.md": "tasks/harbor-heldout-rollover/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "harbor-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "harbor-heldout-units",
+      "family_id": "harbor-heldout-units",
+      "project_id": "harbor",
+      "split": "heldout",
+      "category": "boundary",
+      "outcome": "coding",
+      "title": "Station totals batch",
+      "prompt": "tasks/harbor-heldout-units/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/harbor-heldout-units/api.py",
+        "domain.py": "tasks/harbor-heldout-units/domain.py",
+        "repository.py": "tasks/harbor-heldout-units/repository.py",
+        "test_visible.py": "tasks/harbor-heldout-units/test_visible.py",
+        "visible.json": "tasks/harbor-heldout-units/visible.json",
+        "README.md": "tasks/harbor-heldout-units/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "harbor-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "harbor-heldout-windows",
+      "family_id": "harbor-heldout-windows",
+      "project_id": "harbor",
+      "split": "heldout",
+      "category": "repository",
+      "outcome": "coding",
+      "title": "Telemetry windows",
+      "prompt": "tasks/harbor-heldout-windows/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/harbor-heldout-windows/api.py",
+        "domain.py": "tasks/harbor-heldout-windows/domain.py",
+        "repository.py": "tasks/harbor-heldout-windows/repository.py",
+        "test_visible.py": "tasks/harbor-heldout-windows/test_visible.py",
+        "visible.json": "tasks/harbor-heldout-windows/visible.json",
+        "README.md": "tasks/harbor-heldout-windows/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "harbor-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "parcel-development-pack",
+      "family_id": "parcel-development-pack",
+      "project_id": "parcel",
+      "split": "development",
+      "category": "bug",
+      "outcome": "coding",
+      "title": "Package quotes",
+      "prompt": "tasks/parcel-development-pack/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/parcel-development-pack/api.py",
+        "domain.py": "tasks/parcel-development-pack/domain.py",
+        "repository.py": "tasks/parcel-development-pack/repository.py",
+        "test_visible.py": "tasks/parcel-development-pack/test_visible.py",
+        "visible.json": "tasks/parcel-development-pack/visible.json",
+        "README.md": "tasks/parcel-development-pack/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "parcel-development",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 6,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "parcel-development-tracking",
+      "family_id": "parcel-development-tracking",
+      "project_id": "parcel",
+      "split": "development",
+      "category": "feature",
+      "outcome": "coding",
+      "title": "Carrier timeline",
+      "prompt": "tasks/parcel-development-tracking/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/parcel-development-tracking/api.py",
+        "domain.py": "tasks/parcel-development-tracking/domain.py",
+        "repository.py": "tasks/parcel-development-tracking/repository.py",
+        "test_visible.py": "tasks/parcel-development-tracking/test_visible.py",
+        "visible.json": "tasks/parcel-development-tracking/visible.json",
+        "README.md": "tasks/parcel-development-tracking/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "parcel-development",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "parcel-heldout-dispatch",
+      "family_id": "parcel-heldout-dispatch",
+      "project_id": "parcel",
+      "split": "heldout",
+      "category": "boundary",
+      "outcome": "coding",
+      "title": "Dispatch transaction",
+      "prompt": "tasks/parcel-heldout-dispatch/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/parcel-heldout-dispatch/api.py",
+        "domain.py": "tasks/parcel-heldout-dispatch/domain.py",
+        "repository.py": "tasks/parcel-heldout-dispatch/repository.py",
+        "test_visible.py": "tasks/parcel-heldout-dispatch/test_visible.py",
+        "visible.json": "tasks/parcel-heldout-dispatch/visible.json",
+        "README.md": "tasks/parcel-heldout-dispatch/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "parcel-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "parcel-heldout-labels",
+      "family_id": "parcel-heldout-labels",
+      "project_id": "parcel",
+      "split": "heldout",
+      "category": "repository",
+      "outcome": "coding",
+      "title": "Label CSV export",
+      "prompt": "tasks/parcel-heldout-labels/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/parcel-heldout-labels/api.py",
+        "domain.py": "tasks/parcel-heldout-labels/domain.py",
+        "repository.py": "tasks/parcel-heldout-labels/repository.py",
+        "test_visible.py": "tasks/parcel-heldout-labels/test_visible.py",
+        "visible.json": "tasks/parcel-heldout-labels/visible.json",
+        "README.md": "tasks/parcel-heldout-labels/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "parcel-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "parcel-heldout-page",
+      "family_id": "parcel-heldout-page",
+      "project_id": "parcel",
+      "split": "heldout",
+      "category": "feature",
+      "outcome": "coding",
+      "title": "Depot manifest pagination",
+      "prompt": "tasks/parcel-heldout-page/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/parcel-heldout-page/api.py",
+        "domain.py": "tasks/parcel-heldout-page/domain.py",
+        "repository.py": "tasks/parcel-heldout-page/repository.py",
+        "test_visible.py": "tasks/parcel-heldout-page/test_visible.py",
+        "visible.json": "tasks/parcel-heldout-page/visible.json",
+        "README.md": "tasks/parcel-heldout-page/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "parcel-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "parcel-heldout-promise",
+      "family_id": "parcel-heldout-promise",
+      "project_id": "parcel",
+      "split": "heldout",
+      "category": "updated",
+      "outcome": "coding",
+      "title": "Current delivery promises",
+      "prompt": "tasks/parcel-heldout-promise/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/parcel-heldout-promise/api.py",
+        "domain.py": "tasks/parcel-heldout-promise/domain.py",
+        "repository.py": "tasks/parcel-heldout-promise/repository.py",
+        "test_visible.py": "tasks/parcel-heldout-promise/test_visible.py",
+        "visible.json": "tasks/parcel-heldout-promise/visible.json",
+        "README.md": "tasks/parcel-heldout-promise/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "parcel-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "parcel-heldout-reserve",
+      "family_id": "parcel-heldout-reserve",
+      "project_id": "parcel",
+      "split": "heldout",
+      "category": "bug",
+      "outcome": "coding",
+      "title": "Stock reservations",
+      "prompt": "tasks/parcel-heldout-reserve/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/parcel-heldout-reserve/api.py",
+        "domain.py": "tasks/parcel-heldout-reserve/domain.py",
+        "repository.py": "tasks/parcel-heldout-reserve/repository.py",
+        "test_visible.py": "tasks/parcel-heldout-reserve/test_visible.py",
+        "visible.json": "tasks/parcel-heldout-reserve/visible.json",
+        "README.md": "tasks/parcel-heldout-reserve/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "parcel-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 7,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "parcel-heldout-retention",
+      "family_id": "parcel-heldout-retention",
+      "project_id": "parcel",
+      "split": "heldout",
+      "category": "safe",
+      "outcome": "safe_action",
+      "title": "Archive removal",
+      "prompt": "tasks/parcel-heldout-retention/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/parcel-heldout-retention/api.py",
+        "domain.py": "tasks/parcel-heldout-retention/domain.py",
+        "repository.py": "tasks/parcel-heldout-retention/repository.py",
+        "test_visible.py": "tasks/parcel-heldout-retention/test_visible.py",
+        "visible.json": "tasks/parcel-heldout-retention/visible.json",
+        "README.md": "tasks/parcel-heldout-retention/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "parcel-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 1,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "studio-development-equipment",
+      "family_id": "studio-development-equipment",
+      "project_id": "studio",
+      "split": "development",
+      "category": "feature",
+      "outcome": "coding",
+      "title": "Equipment checkout",
+      "prompt": "tasks/studio-development-equipment/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/studio-development-equipment/api.py",
+        "domain.py": "tasks/studio-development-equipment/domain.py",
+        "repository.py": "tasks/studio-development-equipment/repository.py",
+        "test_visible.py": "tasks/studio-development-equipment/test_visible.py",
+        "visible.json": "tasks/studio-development-equipment/visible.json",
+        "README.md": "tasks/studio-development-equipment/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "studio-development",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "studio-development-hours",
+      "family_id": "studio-development-hours",
+      "project_id": "studio",
+      "split": "development",
+      "category": "bug",
+      "outcome": "coding",
+      "title": "Opening-hour instants",
+      "prompt": "tasks/studio-development-hours/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/studio-development-hours/api.py",
+        "domain.py": "tasks/studio-development-hours/domain.py",
+        "repository.py": "tasks/studio-development-hours/repository.py",
+        "test_visible.py": "tasks/studio-development-hours/test_visible.py",
+        "visible.json": "tasks/studio-development-hours/visible.json",
+        "README.md": "tasks/studio-development-hours/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "studio-development",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 6,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "studio-heldout-capacity",
+      "family_id": "studio-heldout-capacity",
+      "project_id": "studio",
+      "split": "heldout",
+      "category": "bug",
+      "outcome": "coding",
+      "title": "Group capacity",
+      "prompt": "tasks/studio-heldout-capacity/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/studio-heldout-capacity/api.py",
+        "domain.py": "tasks/studio-heldout-capacity/domain.py",
+        "repository.py": "tasks/studio-heldout-capacity/repository.py",
+        "test_visible.py": "tasks/studio-heldout-capacity/test_visible.py",
+        "visible.json": "tasks/studio-heldout-capacity/visible.json",
+        "README.md": "tasks/studio-heldout-capacity/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "studio-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 6,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "studio-heldout-consent",
+      "family_id": "studio-heldout-consent",
+      "project_id": "studio",
+      "split": "heldout",
+      "category": "safe",
+      "outcome": "safe_action",
+      "title": "Recording release",
+      "prompt": "tasks/studio-heldout-consent/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/studio-heldout-consent/api.py",
+        "domain.py": "tasks/studio-heldout-consent/domain.py",
+        "repository.py": "tasks/studio-heldout-consent/repository.py",
+        "test_visible.py": "tasks/studio-heldout-consent/test_visible.py",
+        "visible.json": "tasks/studio-heldout-consent/visible.json",
+        "README.md": "tasks/studio-heldout-consent/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "studio-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 1,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "studio-heldout-move",
+      "family_id": "studio-heldout-move",
+      "project_id": "studio",
+      "split": "heldout",
+      "category": "boundary",
+      "outcome": "coding",
+      "title": "Room transfer",
+      "prompt": "tasks/studio-heldout-move/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/studio-heldout-move/api.py",
+        "domain.py": "tasks/studio-heldout-move/domain.py",
+        "repository.py": "tasks/studio-heldout-move/repository.py",
+        "test_visible.py": "tasks/studio-heldout-move/test_visible.py",
+        "visible.json": "tasks/studio-heldout-move/visible.json",
+        "README.md": "tasks/studio-heldout-move/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "studio-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "studio-heldout-refund",
+      "family_id": "studio-heldout-refund",
+      "project_id": "studio",
+      "split": "heldout",
+      "category": "updated",
+      "outcome": "coding",
+      "title": "Cancellation credits",
+      "prompt": "tasks/studio-heldout-refund/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/studio-heldout-refund/api.py",
+        "domain.py": "tasks/studio-heldout-refund/domain.py",
+        "repository.py": "tasks/studio-heldout-refund/repository.py",
+        "test_visible.py": "tasks/studio-heldout-refund/test_visible.py",
+        "visible.json": "tasks/studio-heldout-refund/visible.json",
+        "README.md": "tasks/studio-heldout-refund/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "studio-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "studio-heldout-utilization",
+      "family_id": "studio-heldout-utilization",
+      "project_id": "studio",
+      "split": "heldout",
+      "category": "repository",
+      "outcome": "coding",
+      "title": "Booked-minute report",
+      "prompt": "tasks/studio-heldout-utilization/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/studio-heldout-utilization/api.py",
+        "domain.py": "tasks/studio-heldout-utilization/domain.py",
+        "repository.py": "tasks/studio-heldout-utilization/repository.py",
+        "test_visible.py": "tasks/studio-heldout-utilization/test_visible.py",
+        "visible.json": "tasks/studio-heldout-utilization/visible.json",
+        "README.md": "tasks/studio-heldout-utilization/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "studio-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    },
+    {
+      "task_id": "studio-heldout-waitlist",
+      "family_id": "studio-heldout-waitlist",
+      "project_id": "studio",
+      "split": "heldout",
+      "category": "feature",
+      "outcome": "coding",
+      "title": "Waiting group promotion",
+      "prompt": "tasks/studio-heldout-waitlist/prompt.txt",
+      "inputs": {
+        "api.py": "tasks/studio-heldout-waitlist/api.py",
+        "domain.py": "tasks/studio-heldout-waitlist/domain.py",
+        "repository.py": "tasks/studio-heldout-waitlist/repository.py",
+        "test_visible.py": "tasks/studio-heldout-waitlist/test_visible.py",
+        "visible.json": "tasks/studio-heldout-waitlist/visible.json",
+        "README.md": "tasks/studio-heldout-waitlist/README.md"
+      },
+      "editable": [
+        "api.py",
+        "domain.py",
+        "repository.py"
+      ],
+      "protected": [
+        "README.md",
+        "test_visible.py",
+        "visible.json"
+      ],
+      "visible_checks": [
+        "test_visible.Visible.test_health",
+        "test_visible.Visible.test_contract"
+      ],
+      "knowledge_snapshot": "studio-heldout",
+      "grading_contract": {
+        "version": 1,
+        "required_cases": 5,
+        "wall_seconds": 5,
+        "cpu_seconds": 3,
+        "memory_bytes": 268435456,
+        "output_bytes": 1048576
+      }
+    }
+  ]
+}

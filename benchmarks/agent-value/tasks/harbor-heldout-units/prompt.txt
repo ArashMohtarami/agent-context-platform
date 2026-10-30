@@ -1,0 +1,3 @@
+Repair totals ingestion so conversion, station validation and replay agree across the API and storage. totals commands carry batch_id, station_id, day and quantities with unit,value. Apply the station-exchange policy.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

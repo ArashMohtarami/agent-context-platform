@@ -1,0 +1,19 @@
+{
+  "input": {
+    "state": {},
+    "commands": [
+      {
+        "action": "open",
+        "at": "2026-10-26T09:00:00+00:00"
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "open": true
+      }
+    ],
+    "state": {}
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "input": {
+    "state": {},
+    "commands": [
+      {
+        "action": "prorate",
+        "monthly_cents": 3000,
+        "year": 2026,
+        "month": 4,
+        "start_day": 1,
+        "end_day": 16
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "cents": 1500
+      }
+    ],
+    "state": {}
+  }
+}

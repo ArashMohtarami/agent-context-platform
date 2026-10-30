@@ -1,0 +1,35 @@
+{
+  "input": {
+    "state": {
+      "events": []
+    },
+    "commands": [
+      {
+        "action": "track",
+        "event_id": "a",
+        "observed_at": 3,
+        "status": "moving"
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "status": "moving",
+        "event_ids": [
+          "a"
+        ]
+      }
+    ],
+    "state": {
+      "events": [
+        {
+          "event_id": "a",
+          "observed_at": 3,
+          "status": "moving"
+        }
+      ],
+      "status": "moving"
+    }
+  }
+}

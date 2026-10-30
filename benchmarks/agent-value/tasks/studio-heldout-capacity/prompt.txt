@@ -1,0 +1,3 @@
+Repair book commands so a group fits at every point in its interval, including boundaries and bookings that overlap different parts of a long visit. Commands carry booking_id, room, start, end and seats. Rejected groups must leave no row.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

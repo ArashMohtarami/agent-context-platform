@@ -1,0 +1,3 @@
+Repair reverse commands so partial invoice reversals and replay cannot overdraw the invoice or duplicate ledger effects. Commands carry invoice_id, reversal_id and cents. Follow the reversal record.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

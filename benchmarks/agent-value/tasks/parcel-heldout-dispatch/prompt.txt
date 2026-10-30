@@ -1,0 +1,3 @@
+Repair dispatch across reservation storage, shipment output and warehouse events. dispatch commands name reservation_id and courier_available. Preserve a retryable reservation when its courier fails; repeated dispatch must reconcile the same shipment.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

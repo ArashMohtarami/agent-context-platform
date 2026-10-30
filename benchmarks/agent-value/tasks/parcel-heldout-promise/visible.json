@@ -1,0 +1,20 @@
+{
+  "input": {
+    "state": {},
+    "commands": [
+      {
+        "action": "promise",
+        "ordered_at": "2026-10-26T10:00:00Z"
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "departure": "2026-10-26",
+        "delivery": "2026-10-28"
+      }
+    ],
+    "state": {}
+  }
+}

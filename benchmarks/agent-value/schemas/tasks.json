@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Agent value tasks",
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "license": {
+      "const": "MIT"
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attempts_per_task_arm": {
+      "const": 3
+    },
+    "arms": {
+      "const": [
+        "repository",
+        "markdown",
+        "mcp"
+      ]
+    },
+    "categories": {
+      "const": [
+        "bug",
+        "feature",
+        "updated",
+        "boundary",
+        "repository",
+        "safe"
+      ]
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^(parcel|studio|harbor|folio)-(development|heldout)-[a-z]+$"
+          },
+          "family_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "project_id": {
+            "enum": [
+              "parcel",
+              "studio",
+              "harbor",
+              "folio"
+            ]
+          },
+          "split": {
+            "enum": [
+              "development",
+              "heldout"
+            ]
+          },
+          "category": {
+            "enum": [
+              "bug",
+              "feature",
+              "updated",
+              "boundary",
+              "repository",
+              "safe"
+            ]
+          },
+          "outcome": {
+            "enum": [
+              "coding",
+              "safe_action"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "api.py": {
+                "type": "string",
+                "minLength": 1
+              },
+              "domain.py": {
+                "type": "string",
+                "minLength": 1
+              },
+              "repository.py": {
+                "type": "string",
+                "minLength": 1
+              },
+              "README.md": {
+                "type": "string",
+                "minLength": 1
+              },
+              "test_visible.py": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible.json": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "api.py",
+              "domain.py",
+              "repository.py",
+              "README.md",
+              "test_visible.py",
+              "visible.json"
+            ],
+            "additionalProperties": false
+          },
+          "editable": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 3,
+            "maxItems": 3,
+            "uniqueItems": true
+          },
+          "protected": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 3,
+            "maxItems": 3,
+            "uniqueItems": true
+          },
+          "visible_checks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "uniqueItems": true
+          },
+          "knowledge_snapshot": {
+            "type": "string",
+            "minLength": 1
+          },
+          "grading_contract": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "const": 1
+              },
+              "required_cases": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "wall_seconds": {
+                "const": 5
+              },
+              "cpu_seconds": {
+                "const": 3
+              },
+              "memory_bytes": {
+                "const": 268435456
+              },
+              "output_bytes": {
+                "const": 1048576
+              }
+            },
+            "required": [
+              "version",
+              "required_cases",
+              "wall_seconds",
+              "cpu_seconds",
+              "memory_bytes",
+              "output_bytes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "task_id",
+          "family_id",
+          "project_id",
+          "split",
+          "category",
+          "outcome",
+          "title",
+          "prompt",
+          "inputs",
+          "editable",
+          "protected",
+          "visible_checks",
+          "knowledge_snapshot",
+          "grading_contract"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 32,
+      "maxItems": 32
+    }
+  },
+  "required": [
+    "version",
+    "license",
+    "status",
+    "attempts_per_task_arm",
+    "arms",
+    "categories",
+    "tasks"
+  ],
+  "additionalProperties": false
+}

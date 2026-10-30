@@ -1,0 +1,40 @@
+{
+  "input": {
+    "state": {
+      "rooms": {
+        "r": 3
+      },
+      "bookings": {}
+    },
+    "commands": [
+      {
+        "action": "book",
+        "booking_id": "a",
+        "room": "r",
+        "start": 0,
+        "end": 10,
+        "seats": 2
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "booking_id": "a"
+      }
+    ],
+    "state": {
+      "rooms": {
+        "r": 3
+      },
+      "bookings": {
+        "a": {
+          "room": "r",
+          "start": 0,
+          "end": 10,
+          "seats": 2
+        }
+      }
+    }
+  }
+}

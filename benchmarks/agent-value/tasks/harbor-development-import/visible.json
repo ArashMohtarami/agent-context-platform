@@ -1,0 +1,71 @@
+{
+  "input": {
+    "state": {
+      "stations": [
+        "s"
+      ],
+      "samples": [],
+      "batches": {},
+      "audit": []
+    },
+    "commands": [
+      {
+        "action": "import",
+        "station_id": "s",
+        "batch_id": "b",
+        "samples": [
+          {
+            "at": 2,
+            "reading": 4
+          },
+          {
+            "at": 1,
+            "reading": 3
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "count": 2
+      }
+    ],
+    "state": {
+      "stations": [
+        "s"
+      ],
+      "samples": [
+        {
+          "at": 1,
+          "reading": 3,
+          "station_id": "s"
+        },
+        {
+          "at": 2,
+          "reading": 4,
+          "station_id": "s"
+        }
+      ],
+      "batches": {
+        "b": {
+          "station_id": "s",
+          "samples": [
+            {
+              "at": 2,
+              "reading": 4
+            },
+            {
+              "at": 1,
+              "reading": 3
+            }
+          ]
+        }
+      },
+      "audit": [
+        "b"
+      ]
+    }
+  }
+}

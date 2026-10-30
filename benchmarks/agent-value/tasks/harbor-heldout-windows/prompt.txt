@@ -1,0 +1,3 @@
+Repair windows reports using the repository window contract. Commands supply start,end,width and samples with at,value. Return all buckets, including empty buckets, and preserve state.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

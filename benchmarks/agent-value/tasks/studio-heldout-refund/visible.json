@@ -1,0 +1,38 @@
+{
+  "input": {
+    "state": {
+      "bookings": {
+        "b": {
+          "paid": 100,
+          "status": "active"
+        }
+      },
+      "credits": {}
+    },
+    "commands": [
+      {
+        "action": "cancel",
+        "booking_id": "b",
+        "minutes_before_start": 1500
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "credit": 100
+      }
+    ],
+    "state": {
+      "bookings": {
+        "b": {
+          "paid": 100,
+          "status": "cancelled"
+        }
+      },
+      "credits": {
+        "b": 100
+      }
+    }
+  }
+}

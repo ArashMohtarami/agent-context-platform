@@ -1,0 +1,3 @@
+Update cancel to follow the current cancellation-credit revision. Commands name booking_id and integer minutes_before_start; response is credit cents. Preserve prior credits on replay and do not rewrite unrelated bookings.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

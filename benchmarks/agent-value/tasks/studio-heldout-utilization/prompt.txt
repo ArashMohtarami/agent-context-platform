@@ -1,0 +1,3 @@
+Repair report so booked minutes follow this repository reporting contract. Commands specify room, start and end minutes. Return the union length of occupied time inside that window, without changing bookings.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

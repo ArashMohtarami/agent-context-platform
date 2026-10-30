@@ -1,0 +1,32 @@
+{
+  "input": {
+    "state": {
+      "balances": {
+        "a": 100,
+        "b": 100
+      }
+    },
+    "commands": [
+      {
+        "action": "allocate",
+        "cents": 2
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "allocations": {
+          "a": 1,
+          "b": 1
+        }
+      }
+    ],
+    "state": {
+      "balances": {
+        "a": 99,
+        "b": 99
+      }
+    }
+  }
+}

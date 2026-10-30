@@ -1,0 +1,3 @@
+Repair batch observation import so validation, persistence and its audit row agree. Follow the observation-exchange record, including replay and invalid batches. Import commands carry station_id, batch_id and samples.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

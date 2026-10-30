@@ -1,0 +1,48 @@
+{
+  "input": {
+    "state": {},
+    "commands": [
+      {
+        "action": "fill",
+        "samples": [
+          {
+            "at": 0,
+            "value": "0"
+          },
+          {
+            "at": 5,
+            "value": null
+          },
+          {
+            "at": 10,
+            "value": "2"
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "samples": [
+          {
+            "at": 0,
+            "value": "0.000",
+            "quality": "measured"
+          },
+          {
+            "at": 5,
+            "value": "1.000",
+            "quality": "estimated"
+          },
+          {
+            "at": 10,
+            "value": "2.000",
+            "quality": "measured"
+          }
+        ]
+      }
+    ],
+    "state": {}
+  }
+}

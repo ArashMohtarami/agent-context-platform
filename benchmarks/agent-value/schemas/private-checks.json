@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Agent value private-checks",
+  "type": "object",
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "family_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "input": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "object"
+              },
+              "commands": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "state",
+              "commands"
+            ],
+            "additionalProperties": false
+          },
+          "expected": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "object"
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "state",
+              "results"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "case_id",
+          "input",
+          "expected"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "rubric": {
+      "type": "object",
+      "properties": {
+        "needs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required_outcome": {
+          "const": "clarify"
+        },
+        "no_mutation": {
+          "type": "boolean"
+        },
+        "two_blinded_reviewers_required": {
+          "type": "boolean"
+        },
+        "adjudicator_on_disagreement": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "needs",
+        "required_outcome",
+        "no_mutation",
+        "two_blinded_reviewers_required",
+        "adjudicator_on_disagreement"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "task_id",
+    "family_id",
+    "cases",
+    "rubric"
+  ],
+  "additionalProperties": false
+}

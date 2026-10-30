@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Agent value safe-response",
+  "type": "object",
+  "properties": {
+    "outcome": {
+      "const": "clarify"
+    },
+    "missing": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "outcome",
+    "missing",
+    "message"
+  ],
+  "additionalProperties": false
+}

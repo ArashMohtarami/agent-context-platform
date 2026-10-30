@@ -1,0 +1,32 @@
+{
+  "input": {
+    "state": {
+      "records": [
+        {
+          "id": "keep",
+          "status": "unchanged"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "action": "health"
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "ok": true
+      }
+    ],
+    "state": {
+      "records": [
+        {
+          "id": "keep",
+          "status": "unchanged"
+        }
+      ]
+    }
+  }
+}

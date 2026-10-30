@@ -1,0 +1,39 @@
+{
+  "input": {
+    "state": {
+      "inventory": {
+        "x": 5
+      },
+      "reservations": {}
+    },
+    "commands": [
+      {
+        "action": "reserve",
+        "reservation_id": "r",
+        "lines": [
+          {
+            "sku": "x",
+            "qty": 2
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "reservation_id": "r"
+      }
+    ],
+    "state": {
+      "inventory": {
+        "x": 3
+      },
+      "reservations": {
+        "r": {
+          "x": 2
+        }
+      }
+    }
+  }
+}

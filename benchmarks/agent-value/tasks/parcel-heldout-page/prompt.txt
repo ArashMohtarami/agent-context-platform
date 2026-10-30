@@ -1,0 +1,3 @@
+Add stable depot manifest pagination. page commands specify depot, limit and optional cursor [created_at,manifest_id]. Return IDs and next_cursor using the manifest-directory contract, without changing records.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

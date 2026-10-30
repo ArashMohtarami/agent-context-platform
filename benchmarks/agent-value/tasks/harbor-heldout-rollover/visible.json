@@ -1,0 +1,30 @@
+{
+  "input": {
+    "state": {},
+    "commands": [
+      {
+        "action": "consumption",
+        "modulus": 100,
+        "samples": [
+          {
+            "at": 1,
+            "reading": 10
+          },
+          {
+            "at": 2,
+            "reading": 15
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "amount": 5,
+        "unknown_gaps": 0
+      }
+    ],
+    "state": {}
+  }
+}

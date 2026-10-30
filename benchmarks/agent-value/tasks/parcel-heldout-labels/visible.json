@@ -1,0 +1,24 @@
+{
+  "input": {
+    "state": {},
+    "commands": [
+      {
+        "action": "labels",
+        "rows": [
+          {
+            "recipient": "A",
+            "address": "B"
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "csv": "recipient,address\nA,B\n"
+      }
+    ],
+    "state": {}
+  }
+}

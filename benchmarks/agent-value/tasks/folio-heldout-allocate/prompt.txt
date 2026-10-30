@@ -1,0 +1,3 @@
+Add allocate across invoice balances. Commands carry cents and balances keyed by invoice ID. Return allocations and reduce balances exactly once per command, applying the credit-allocation record. Refuse an excessive credit without changes.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

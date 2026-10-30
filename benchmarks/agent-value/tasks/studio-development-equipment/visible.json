@@ -1,0 +1,56 @@
+{
+  "input": {
+    "state": {
+      "members": {
+        "m": {
+          "active": true
+        }
+      },
+      "items": {
+        "i": {
+          "deposit": 500,
+          "status": "available"
+        }
+      },
+      "loans": {},
+      "held_deposit": 0
+    },
+    "commands": [
+      {
+        "action": "loan",
+        "loan_id": "l",
+        "member_id": "m",
+        "item_id": "i"
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "loan_id": "l",
+        "deposit": 500
+      }
+    ],
+    "state": {
+      "members": {
+        "m": {
+          "active": true
+        }
+      },
+      "items": {
+        "i": {
+          "deposit": 500,
+          "status": "checked_out"
+        }
+      },
+      "loans": {
+        "l": {
+          "member_id": "m",
+          "item_id": "i",
+          "deposit": 500
+        }
+      },
+      "held_deposit": 500
+    }
+  }
+}

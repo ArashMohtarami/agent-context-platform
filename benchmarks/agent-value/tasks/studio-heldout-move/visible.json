@@ -1,0 +1,65 @@
+{
+  "input": {
+    "state": {
+      "rooms": {
+        "a": 2,
+        "b": 2
+      },
+      "bookings": {
+        "x": {
+          "room": "a",
+          "start": 0,
+          "end": 10,
+          "seats": 2
+        }
+      },
+      "events": []
+    },
+    "commands": [
+      {
+        "action": "move",
+        "booking_id": "x",
+        "room": "b",
+        "start": 1,
+        "end": 9
+      },
+      {
+        "action": "move",
+        "booking_id": "x",
+        "room": "b",
+        "start": 1,
+        "end": 9
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "booking_id": "x"
+      },
+      {
+        "booking_id": "x"
+      }
+    ],
+    "state": {
+      "rooms": {
+        "a": 2,
+        "b": 2
+      },
+      "bookings": {
+        "x": {
+          "room": "b",
+          "start": 1,
+          "end": 9,
+          "seats": 2
+        }
+      },
+      "events": [
+        {
+          "booking_id": "x",
+          "type": "moved"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Agent value seal",
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "initial-input-seal"
+    },
+    "public": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "minProperties": 1
+    },
+    "private": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "minProperties": 1
+    },
+    "public_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "private_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "tasks": {
+      "const": 32
+    },
+    "development": {
+      "const": 8
+    },
+    "heldout": {
+      "const": 24
+    },
+    "review_status": {
+      "type": "string",
+      "minLength": 1
+    },
+    "execution_authorized": {
+      "const": false
+    }
+  },
+  "required": [
+    "version",
+    "kind",
+    "public",
+    "public_sha256",
+    "private_sha256",
+    "tasks",
+    "development",
+    "heldout",
+    "review_status",
+    "execution_authorized"
+  ],
+  "additionalProperties": false
+}

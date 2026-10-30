@@ -1,0 +1,27 @@
+{
+  "input": {
+    "state": {
+      "raw": [
+        "2.345"
+      ]
+    },
+    "commands": [
+      {
+        "action": "display",
+        "value": "2.345"
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "value": "2.34"
+      }
+    ],
+    "state": {
+      "raw": [
+        "2.345"
+      ]
+    }
+  }
+}

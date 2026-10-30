@@ -1,0 +1,3 @@
+Migrate the listed accounts to the new regional billing rules. Review the project record and ask for missing decisions before altering invoices.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

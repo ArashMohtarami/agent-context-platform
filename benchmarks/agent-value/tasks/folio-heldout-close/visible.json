@@ -1,0 +1,65 @@
+{
+  "input": {
+    "state": {
+      "invoices": {
+        "i": {
+          "period": "p",
+          "status": "open",
+          "cents": 120
+        },
+        "j": {
+          "period": "q",
+          "status": "open",
+          "cents": 20
+        }
+      },
+      "journal": [],
+      "receipts": {}
+    },
+    "commands": [
+      {
+        "action": "close",
+        "period": "p",
+        "export_available": true
+      },
+      {
+        "action": "close",
+        "period": "p",
+        "export_available": true
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "journal_id": "close-p"
+      },
+      {
+        "journal_id": "close-p"
+      }
+    ],
+    "state": {
+      "invoices": {
+        "i": {
+          "period": "p",
+          "status": "frozen",
+          "cents": 120
+        },
+        "j": {
+          "period": "q",
+          "status": "open",
+          "cents": 20
+        }
+      },
+      "journal": [
+        {
+          "id": "close-p",
+          "cents": 120
+        }
+      ],
+      "receipts": {
+        "p": "close-p"
+      }
+    }
+  }
+}

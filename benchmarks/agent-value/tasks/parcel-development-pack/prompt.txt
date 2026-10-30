@@ -1,0 +1,3 @@
+Repair package quotes so bulky lightweight parcels and invalid measurements are handled consistently with the packing tariff. Keep quotes read-only and preserve the health operation.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

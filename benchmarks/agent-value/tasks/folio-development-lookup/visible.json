@@ -1,0 +1,52 @@
+{
+  "input": {
+    "state": {
+      "invoices": [
+        {
+          "id": "b",
+          "description": "Stra\u00dfe repair",
+          "tags": [
+            "work"
+          ]
+        },
+        {
+          "id": "a",
+          "description": "Book",
+          "tags": []
+        }
+      ]
+    },
+    "commands": [
+      {
+        "action": "lookup",
+        "query": "STRASSE",
+        "tag": "work"
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "ids": [
+          "b"
+        ]
+      }
+    ],
+    "state": {
+      "invoices": [
+        {
+          "id": "b",
+          "description": "Stra\u00dfe repair",
+          "tags": [
+            "work"
+          ]
+        },
+        {
+          "id": "a",
+          "description": "Book",
+          "tags": []
+        }
+      ]
+    }
+  }
+}

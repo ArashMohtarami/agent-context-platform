@@ -1,0 +1,23 @@
+{
+  "input": {
+    "state": {},
+    "commands": [
+      {
+        "action": "quote",
+        "weight_g": 200,
+        "length_mm": 100,
+        "width_mm": 100,
+        "height_mm": 100
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "charged_g": 200,
+        "cents": 175
+      }
+    ],
+    "state": {}
+  }
+}

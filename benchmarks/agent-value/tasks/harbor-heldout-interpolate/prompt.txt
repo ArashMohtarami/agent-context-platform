@@ -1,0 +1,3 @@
+Add fill for short interior gaps. Commands carry timestamp-ordered samples with value decimal strings or null; return samples with decimal-string values and quality. Apply the short-gap estimate policy and preserve observations.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

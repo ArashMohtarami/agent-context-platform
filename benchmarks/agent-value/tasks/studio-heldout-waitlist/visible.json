@@ -1,0 +1,48 @@
+{
+  "input": {
+    "state": {
+      "waitlist": [
+        {
+          "id": "a",
+          "room": "r",
+          "joined_at": 1,
+          "seats": 2
+        }
+      ],
+      "bookings": {}
+    },
+    "commands": [
+      {
+        "action": "promote",
+        "room": "r",
+        "free": 3
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "promoted": [
+          "a"
+        ],
+        "remaining": 1
+      }
+    ],
+    "state": {
+      "waitlist": [
+        {
+          "id": "a",
+          "room": "r",
+          "joined_at": 1,
+          "seats": 2
+        }
+      ],
+      "bookings": {
+        "a": {
+          "room": "r",
+          "seats": 2
+        }
+      }
+    }
+  }
+}

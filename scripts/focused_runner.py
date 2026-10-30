@@ -15,12 +15,18 @@ from scripts.focused_stack import OwnedStack
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "tests/focused/v7-phases.json"
+V8_MANIFEST = ROOT / "tests/focused/v8-phases.json"
+V8_PHASES = frozenset(
+    {"v8-p01-fixtures", "v8-p01-graders", "v8-p01-mutants", "v8-p01-runner", "v8-p01-export"}
+)
 EVIDENCE = ROOT / ".private/v7-competitive-planning/phase-1/runs"
 PYTHON = str(ROOT / ".venv/bin/python")
 BROWSER_HARNESS = "tests/integration/test_v6_dashboard_browser.py::test_real_dashboard_browser"
 
 
 def evidence_folder(phase):
+    if phase in V8_PHASES:
+        return ROOT / ".private/v8-agent-value-planning/phase-1/runs" / phase
     if phase == "p07" or phase.startswith("p07-"):
         return EVIDENCE.parents[1] / "phase-7" / "runs" / phase
     if phase == "p06" or phase.startswith("p06-"):
@@ -89,7 +95,9 @@ def validate_selector(selector, root=ROOT):
     return selector
 
 
-def load_profile(phase, manifest=MANIFEST):
+def load_profile(phase, manifest=None):
+    if manifest is None:
+        manifest = V8_MANIFEST if phase in V8_PHASES else MANIFEST
     value = json.loads(manifest.read_text())
     if set(value) != {"version", "jobs", "profiles"} or value["version"] != 1:
         raise FocusedError("unknown manifest contract")
@@ -209,6 +217,14 @@ def identity():
     for path in sorted(set(paths)):
         digest.update(str(path.relative_to(ROOT)).encode() + b"\0" + path.read_bytes())
     return digest.hexdigest()
+
+
+def phase_identity(phase):
+    """Retain the V7 identity algorithm; bind only reviewed V8 manifest routes."""
+    previous = identity()
+    if phase not in V8_PHASES:
+        return previous
+    return hashlib.sha256(previous.encode() + b"\0" + V8_MANIFEST.read_bytes()).hexdigest()
 
 
 def pytest_argv(selectors, report, *, collect=False, expected=None):
@@ -412,6 +428,39 @@ def prepare_job(job, nodes, run_id, env, folder, node):
         if job["kind"] == "pytest"
         else browser_argv(job, node),
     }
+    if job["id"] in {"v8-p01-fixtures", "v8-p01-graders", "v8-p01-mutants"}:
+        from importlib import import_module
+
+        sealing = import_module("benchmarks.agent-value.seal")
+        grading = import_module("benchmarks.agent-value.grading")
+        source = ROOT / ".private/v8-agent-value-planning/phase-1"
+        receipt = source / "candidate-seal.json"
+        value = json.loads(receipt.read_text())
+        sealing.verify(value, source / "hidden")
+        prepared["fixture_inputs"] = {
+            "private_seal_sha256": hashlib.sha256(receipt.read_bytes()).hexdigest(),
+            "public_sha256": value["public_sha256"],
+            "private_sha256": value["private_sha256"],
+            "sandbox": "bubblewrap0.9.0+libseccomp; wall5s/CPU3s/256MiB/output1MiB",
+            "children": "one fixed isolated Python worker per coding variant; "
+            "no test/provider child",
+            "bwrap_sha256": hashlib.sha256(Path("/usr/bin/bwrap").read_bytes()).hexdigest(),
+            "python_sha256": hashlib.sha256(Path("/usr/bin/python3").read_bytes()).hexdigest(),
+        }
+        prepared["fixture_children"] = [
+            {
+                "source": "benchmarks/agent-value/grading.py::sandbox",
+                "argv": grading.sandbox_argv(
+                    Path("<fresh copied implementation only>"),
+                    ROOT / "benchmarks/agent-value/worker.py",
+                    "<native seccomp filter fd>",
+                ),
+                "limits": "wall5s/CPU3s/256MiB/output1MiB/64fds/core0; job180s",
+                "selection": "private seal-bound case IDs for only the selected task; "
+                "no labels/reference in child; no provider or nested test runner",
+                "maximum_children": 30 if job["id"] == "v8-p01-mutants" else 150,
+            }
+        ]
     if job["id"] == "p06-real":
         from benchmarks.retrieval.model import model_identity
 
@@ -640,7 +689,7 @@ def make_plan(phase, values):
     folder = evidence_folder(phase)
     folder.mkdir(parents=True, exist_ok=True, mode=0o700)
     node, chrome = tools_for(jobs, values, env, folder)
-    before = identity()
+    before = phase_identity(phase)
     import uuid
 
     run_id = uuid.uuid4().hex
@@ -665,7 +714,7 @@ def make_plan(phase, values):
             if collect(harness, env, folder, node) != prepared["harness_nodes"]:
                 raise FocusedError("browser harness selection changed")
         plan["jobs"].append(prepared)
-    if before != identity():
+    if before != phase_identity(phase):
         raise FocusedError("source changed during planning")
     write(folder / "plan.json", plan)
     return plan
@@ -755,7 +804,7 @@ def execute(phase, values):
     plan = json.loads(path.read_text())
     if not re.fullmatch(r"[a-f0-9]{32}", plan["run_id"]):
         raise FocusedError("invalid saved plan identity")
-    if plan["phase"] != phase or plan["source_sha256"] != identity():
+    if plan["phase"] != phase or plan["source_sha256"] != phase_identity(phase):
         raise FocusedError("plan source changed; inspect a new --plan")
     node, chrome = tools_for(jobs, values, env, folder)
     if node != plan["node"] or chrome != plan["chromium"]:
@@ -870,7 +919,7 @@ def execute(phase, values):
             print(json.dumps(outcome), flush=True)
             if outcome["status"] != "passed":
                 raise FocusedError("selected check did not pass")
-        if identity() != plan["source_sha256"]:
+        if phase_identity(phase) != plan["source_sha256"]:
             raise FocusedError("source changed during execution; evidence invalid")
         write(run_folder / "summary.json", {"status": "passed", "jobs": outcomes})
     except BaseException as error:

@@ -1,0 +1,3 @@
+Repair close so invoice freezing, journal and export receipt commit together. Commands carry period and export_available. Reconcile repeated successful close and keep failed exports retryable without journal residue.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

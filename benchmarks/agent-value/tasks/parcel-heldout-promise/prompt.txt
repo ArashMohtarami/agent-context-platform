@@ -1,0 +1,3 @@
+Update promise responses to follow the current dispatch-promise decision rather than the retired rule. promise commands take ordered_at; return departure and delivery ISO dates. No stored shipment should change.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

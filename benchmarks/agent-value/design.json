@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "primary_endpoint": "paired same-model MCP minus Markdown coding completion",
+  "development_tasks": 8,
+  "heldout_tasks": 24,
+  "heldout_coding_families": 20,
+  "heldout_safe_action_families": 4,
+  "attempts_per_task_arm": 3,
+  "primary_sessions": 216,
+  "development_sessions": 72,
+  "bootstrap": {
+    "resamples": 10000,
+    "seed": 20261030,
+    "cluster": "decision_family",
+    "paired_arms_repeats": true,
+    "interval": "two-sided percentile 95",
+    "quantile": "Hyndman-Fan 7"
+  },
+  "missingness": "scheduled missing/error/timeout/budget-exhaustion is non-success; usage/time null if unobserved",
+  "superiority_gate": "primary 95 percent CI lower > 0 plus all evidence/safety/equivalence gates",
+  "efficiency_quality_margin": -0.05,
+  "power_guarantee": false,
+  "provider_model_effort_currency_cap": null,
+  "independent_review": "pending",
+  "execution_authorized": false
+}

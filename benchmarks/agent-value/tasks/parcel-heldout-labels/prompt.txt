@@ -1,0 +1,3 @@
+Fix label export using the format documented in this repository. labels commands carry rows. Values may contain quotes, delimiters, newlines and non-ASCII characters. Return csv text and preserve data.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

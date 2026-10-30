@@ -1,0 +1,56 @@
+{
+  "input": {
+    "state": {
+      "stations": [
+        "s"
+      ],
+      "batches": {},
+      "receipts": {},
+      "totals": {}
+    },
+    "commands": [
+      {
+        "action": "totals",
+        "batch_id": "b",
+        "station_id": "s",
+        "day": "2026-10-01",
+        "quantities": [
+          {
+            "unit": "mL",
+            "value": 2
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "millilitres": 2
+      }
+    ],
+    "state": {
+      "stations": [
+        "s"
+      ],
+      "batches": {
+        "b": {
+          "station_id": "s",
+          "day": "2026-10-01",
+          "quantities": [
+            {
+              "unit": "mL",
+              "value": 2
+            }
+          ]
+        }
+      },
+      "receipts": {
+        "b": 2
+      },
+      "totals": {
+        "s:2026-10-01": 2
+      }
+    }
+  }
+}

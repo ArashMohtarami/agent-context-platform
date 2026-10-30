@@ -1,0 +1,3 @@
+Repair redact according to this repository logging contract. Commands contain payload, which may have nested objects and lists. Return its redacted copy; do not change billing state or unrelated values.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

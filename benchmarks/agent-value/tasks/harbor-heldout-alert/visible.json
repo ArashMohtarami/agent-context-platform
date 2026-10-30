@@ -1,0 +1,26 @@
+{
+  "input": {
+    "state": {},
+    "commands": [
+      {
+        "action": "alerts",
+        "threshold": 10,
+        "samples": [
+          {
+            "at": 1,
+            "value": 9,
+            "confident": true
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "results": [
+      {
+        "times": []
+      }
+    ],
+    "state": {}
+  }
+}

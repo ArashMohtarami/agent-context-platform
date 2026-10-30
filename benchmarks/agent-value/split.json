@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "unit": "decision-family",
+  "development": [
+    "folio-development-lookup",
+    "folio-development-merge",
+    "harbor-development-import",
+    "harbor-development-precision",
+    "parcel-development-pack",
+    "parcel-development-tracking",
+    "studio-development-equipment",
+    "studio-development-hours"
+  ],
+  "heldout": [
+    "folio-heldout-allocate",
+    "folio-heldout-close",
+    "folio-heldout-migration",
+    "folio-heldout-prorate",
+    "folio-heldout-redact",
+    "folio-heldout-reverse",
+    "harbor-heldout-alert",
+    "harbor-heldout-calibration",
+    "harbor-heldout-interpolate",
+    "harbor-heldout-rollover",
+    "harbor-heldout-units",
+    "harbor-heldout-windows",
+    "parcel-heldout-dispatch",
+    "parcel-heldout-labels",
+    "parcel-heldout-page",
+    "parcel-heldout-promise",
+    "parcel-heldout-reserve",
+    "parcel-heldout-retention",
+    "studio-heldout-capacity",
+    "studio-heldout-consent",
+    "studio-heldout-move",
+    "studio-heldout-refund",
+    "studio-heldout-utilization",
+    "studio-heldout-waitlist"
+  ],
+  "project_clusters": {
+    "parcel": [
+      "parcel-heldout-dispatch",
+      "parcel-heldout-labels",
+      "parcel-heldout-page",
+      "parcel-heldout-promise",
+      "parcel-heldout-reserve",
+      "parcel-heldout-retention"
+    ],
+    "studio": [
+      "studio-heldout-capacity",
+      "studio-heldout-consent",
+      "studio-heldout-move",
+      "studio-heldout-refund",
+      "studio-heldout-utilization",
+      "studio-heldout-waitlist"
+    ],
+    "harbor": [
+      "harbor-heldout-alert",
+      "harbor-heldout-calibration",
+      "harbor-heldout-interpolate",
+      "harbor-heldout-rollover",
+      "harbor-heldout-units",
+      "harbor-heldout-windows"
+    ],
+    "folio": [
+      "folio-heldout-allocate",
+      "folio-heldout-close",
+      "folio-heldout-migration",
+      "folio-heldout-prorate",
+      "folio-heldout-redact",
+      "folio-heldout-reverse"
+    ]
+  },
+  "development_seed": 20261031,
+  "heldout_seed": 20261030,
+  "review_status": "author checks only; independent task/design/license review pending"
+}

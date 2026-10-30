@@ -286,6 +286,10 @@ def test_benchmark_inventory_excludes_runs_and_includes_licensed_inputs(public_r
             "benchmarks/retrieval/private-report.json",
             "benchmarks/retrieval/tasks/candidate.py",
             "benchmarks/retrieval/.private/identities.json",
+            "benchmarks/agent-value/hidden/folio-heldout-close/checks.json",
+            "benchmarks/agent-value/references/answer.py",
+            "benchmarks/agent-value/runs/report.json",
+            "benchmarks/agent-value/initial-seal.json",
         )
     }
     forbid_reads(monkeypatch, private)
@@ -403,6 +407,7 @@ def test_site_allows_only_reviewed_evaluation_and_benchmark_download_inputs(
     for name in (
         "deploy/evaluation/inputs.json",
         "benchmarks/retrieval/corpus.json",
+        "benchmarks/agent-value/tasks.json",
         "dashboard/.node-version",
     ):
         expected = put(public_root, name, b"{}\n")
@@ -411,6 +416,7 @@ def test_site_allows_only_reviewed_evaluation_and_benchmark_download_inputs(
         "deploy/evaluation/unreviewed.json",
         "benchmarks/retrieval/runs/report.json",
         "benchmarks/retrieval/model.safetensors",
+        "benchmarks/agent-value/hidden/checks.json",
     ):
         private = put(public_root, name, b"not a reviewed public download")
         forbid_reads(monkeypatch, {private})

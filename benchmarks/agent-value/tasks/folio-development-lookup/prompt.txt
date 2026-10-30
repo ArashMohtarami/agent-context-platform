@@ -1,0 +1,3 @@
+Implement the repository invoice-directory search contract through lookup commands. Keep source records intact and retain ordinary health behavior.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

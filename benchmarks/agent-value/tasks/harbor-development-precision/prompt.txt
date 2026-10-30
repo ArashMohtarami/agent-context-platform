@@ -1,0 +1,3 @@
+Bring the display command into line with the current precision decision, while preserving raw telemetry. The command takes value as a decimal string.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

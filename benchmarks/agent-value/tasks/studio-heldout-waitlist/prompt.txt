@@ -1,0 +1,3 @@
+Implement promote for the studio waitlist. A command names the room and its currently free seats. Produce promoted request IDs and persist bookings using the waitlist handbook, including oversized groups and repeated promotion.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

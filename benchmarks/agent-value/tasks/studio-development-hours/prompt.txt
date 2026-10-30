@@ -1,0 +1,3 @@
+Fix opening-hours queries from offset-aware callers. The open command takes at in ISO 8601 format and returns whether the studio is welcoming visitors. Follow the opening-hours record and preserve state.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

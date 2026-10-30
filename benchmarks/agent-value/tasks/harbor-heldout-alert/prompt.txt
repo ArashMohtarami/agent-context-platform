@@ -1,0 +1,3 @@
+Update alerts to the current overflow decision. alerts commands supply threshold and samples with at, value and confident. Return alert times and retain existing raw state. Retired behavior must not trigger premature alerts.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

@@ -1,0 +1,3 @@
+Recalibrate this station to match the reference reading. Use only the supplied project records; ask for missing physical calibration instructions rather than choosing values.
+
+Work only in this fictional project slice. Preserve the documented interface and protected checks. Explain any unsupported requirement rather than guessing.

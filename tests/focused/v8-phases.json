@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "jobs": {
+    "v8-p01-fixtures": {
+      "reason": "Original family split/seal/allowlist and actual sandboxed reference/alternative/mutant graders; no agent/provider",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_agent_value_tasks.py::test_family_split_and_seal_reject_leakage_or_tampering",
+        "tests/unit/test_agent_value_tasks.py::test_allowed_inputs_exclude_oracle_history_and_sibling_workspaces",
+        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 34,
+      "requires": []
+    },
+    "v8-p01-runner": {
+      "reason": "Only explicit V8 mapping and four existing R1 saved-identity/selection/export regressions",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_agent_value_profiles.py::test_v8_profiles_keep_v7_selection_and_phase_identities",
+        "tests/unit/test_focused_runner.py::test_saved_plan_cannot_change_argv_or_selection",
+        "tests/unit/test_focused_runner.py::test_manifest_cannot_supply_extra_runner_options",
+        "tests/unit/test_focused_runner.py::test_stale_plan_is_refused_before_collection_or_services",
+        "tests/unit/test_focused_runner.py::test_focused_manifest_survives_source_export_without_private_runs"
+      ],
+      "fixture": "none",
+      "timeout": 60,
+      "expected_count": 5,
+      "requires": []
+    },
+    "v8-p01-export": {
+      "reason": "Exact new MIT input allowlist, hidden-file exclusion, sdist equality and narrow archive round trip",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_public_release.py::test_benchmark_inventory_excludes_runs_and_includes_licensed_inputs",
+        "tests/unit/test_public_release.py::test_site_allows_only_reviewed_evaluation_and_benchmark_download_inputs",
+        "tests/unit/test_public_release.py::test_export_is_deterministic_contains_regular_files_and_reaudits_after_extraction"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 3,
+      "requires": []
+    },
+    "v8-p01-graders": {
+      "reason": "Only affected sandbox isolation and 32 grader variants after explicit user-namespace startup correction; retained split check is not replayed",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_agent_value_tasks.py::test_allowed_inputs_exclude_oracle_history_and_sibling_workspaces",
+        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 33,
+      "requires": []
+    },
+    "v8-p01-mutants": {
+      "reason": "Only six changed near-correct feature mutants; retain other current fixture evidence",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[folio-heldout-allocate]",
+        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[harbor-heldout-interpolate]",
+        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[parcel-development-tracking]",
+        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[parcel-heldout-page]",
+        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[studio-development-equipment]",
+        "tests/unit/test_agent_value_tasks.py::test_behavioral_graders_accept_reference_and_reject_meaningful_mutants[studio-heldout-waitlist]"
+      ],
+      "fixture": "none",
+      "timeout": 90,
+      "expected_count": 6,
+      "requires": []
+    }
+  },
+  "profiles": {
+    "v8-p01-fixtures": [
+      "v8-p01-fixtures"
+    ],
+    "v8-p01-runner": [
+      "v8-p01-runner"
+    ],
+    "v8-p01-export": [
+      "v8-p01-export"
+    ],
+    "v8-p01-graders": [
+      "v8-p01-graders"
+    ],
+    "v8-p01-mutants": [
+      "v8-p01-mutants"
+    ]
+  }
+}
