@@ -179,3 +179,51 @@ and no purchase is made by this driver. A Plus selection does not establish
 remaining quota, a per-session credit ceiling, complete failed-request usage
 or prevention of purchased-credit consumption. Those adapter/account controls
 must be verified before execution; the unsupported-run guard remains active.
+
+The separate `native-preflight` command now checks the installed CLI with a fresh
+home, model/effort resolution and exact common skill discovery. It runs no model
+turn. Its owned temporary route rejects every `/responses` request, including
+when `--with-benchmark-login` explicitly provisions the purpose-created benchmark
+cache. It never reads the user's active login. Missing credentials fail before
+child startup. Account identities, raw config, tokens and protocol text are not
+retained. Plus credit/quota state must be positively known; missing, nonzero or
+unlimited purchased-credit state is refused, rather than treated as zero.
+
+```sh
+.venv/bin/python -m benchmarks.agent-value-runner.driver native-preflight
+# Only after the separately provisioned benchmark device login:
+.venv/bin/python -m benchmarks.agent-value-runner.driver native-preflight --with-benchmark-login
+```
+
+`native.py`, `runtime.py` and `relay.py` provide the bounded native process graph:
+a user cgroup (2 GiB, no swap,128 processes, one CPU), new filesystem/PID/network
+namespaces and a private Unix route socket. Agent tools receive a root-deny
+native profile with protected task checks and knowledge read-only; the controller,
+CLI home, credential caches, grading files, host and sibling workspaces stay
+outside its grants. The outer namespace has no external network interface.
+Temporary MCP bearer configuration stays in the parent-only fresh CLI home;
+no bearer value enters argv or process environment. This matters because a
+native helper's private `/proc` environment can be readable. No global trust,
+installation or active configuration is modified. Owned process stopping reuses
+`Child.stop`; cleanup refuses foreign entries and retains failure metadata.
+
+`gateway.py` is transport plumbing, not a provider-success or spending approval.
+It rejects undeclared hosts/routes, API-key/purchase/compaction endpoints, changed
+catalogs and concurrent/unreconciled requests. A reviewed tool-catalog hash is
+required even to construct an opt-in model-request policy; the experiment driver's
+existing launch refusal remains in force. Request receipts are committed before
+side effects and completion is released only after upstream EOF. Aggregate wire
+bytes and request counts are bounded. Temporary TLS is local to this process.
+No secret headers, prompts, response/reasoning text or opaque account identifiers
+are written to receipts. Numeric request totals remain separate from cumulative
+native turn/session views. Unknown fields, missing/failed responses, resolved
+models or service tiers remain explicit. Synthetic SSE tests establish arithmetic
+and filtering, not real Plus usage coverage. Ordinary API token-limit fields are
+not inserted into the installed CLI's different Responses Lite wire format.
+Provider-side token ceilings and subscription-credit liability are still unproven.
+
+`v8-p04-native` selects four exact portable synthetic behavior nodes, including
+real local TLS against a synthetic upstream, without a login or provider. Native
+model-free process/config/sandbox probes run separately from pytest. A successful
+preflight does not authorize or execute the twelve calibration sessions, establish
+actual vendor MCP use, close accounting coverage or grant the final lock.

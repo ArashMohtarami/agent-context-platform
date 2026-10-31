@@ -251,6 +251,20 @@
       "timeout": 180,
       "expected_count": 8,
       "requires": []
+    },
+    "v8-p04-native": {
+      "reason": "Synthetic Plus-credit refusal, real local TLS numeric receipt redaction, native config and owned preflight cleanup; no login/model/provider",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_agent_value_runner.py::test_native_plus_guard_refuses_unknown_credit_routes_and_configuration",
+        "tests/unit/test_agent_value_runner.py::test_native_gateway_rejects_undeclared_routes_and_redacts_numeric_receipts",
+        "tests/unit/test_agent_value_runner.py::test_native_preflight_refuses_foreign_cleanup_and_missing_login",
+        "tests/unit/test_agent_value_usage.py::test_native_usage_reconciles_request_receipts_and_model_resolution"
+      ],
+      "fixture": "none",
+      "timeout": 120,
+      "expected_count": 4,
+      "requires": []
     }
   },
   "profiles": {
@@ -304,6 +318,9 @@
     ],
     "v8-p04-regressions": [
       "v8-p04-regressions"
+    ],
+    "v8-p04-native": [
+      "v8-p04-native"
     ]
   }
 }

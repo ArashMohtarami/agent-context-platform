@@ -14,6 +14,85 @@ RAW = {
 }
 
 
+def test_native_usage_reconciles_request_receipts_and_model_resolution():
+    raw = {
+        "input_tokens": 100,
+        "input_tokens_details": {"cached_tokens": 40, "cache_write_tokens": 10},
+        "output_tokens": 20,
+        "output_tokens_details": {"reasoning_tokens": 5},
+        "total_tokens": 120,
+    }
+    value = usage.response_usage(raw)
+    assert [
+        value[k]
+        for k in (
+            "uncached_input",
+            "cached_read",
+            "cache_write",
+            "nonreasoning_output",
+            "reasoning_output",
+        )
+    ] == [50, 40, 10, 15, 5]
+    assert (
+        sum(
+            value[k]
+            for k in (
+                "uncached_input",
+                "cached_read",
+                "cache_write",
+                "nonreasoning_output",
+                "reasoning_output",
+            )
+        )
+        == 120
+    )
+    for bad in (
+        {**raw, "total_tokens": 121},
+        {**raw, "extra": 1},
+        {**raw, "input_tokens_details": {"cached_tokens": True}},
+        {**raw, "output_tokens_details": {}},
+        {**raw, "input_tokens_details": {"cached_tokens": 40, "cache_write_tokens": 61}},
+    ):
+        with pytest.raises(ValueError):
+            usage.response_usage(bad)
+    tracker = usage.Responses("gpt-6.1-sol")
+
+    def start():
+        return tracker.start(
+            prompt_sha256="a" * 64, tools_sha256="b" * 64, effort="high", tier="default"
+        )
+
+    first = start()
+    assert tracker.report()["normalized_total"] is None
+    response = {
+        "id": "resp_synthetic",
+        "model": "gpt-6.1-sol",
+        "status": "completed",
+        "service_tier": "default",
+        "usage": raw,
+    }
+    tracker.finish(first, 200, response)
+    assert tracker.report()["normalized_total"] == 120
+    assert not tracker.report()["native_session_totals_added"]
+    with pytest.raises(ValueError, match="DUPLICATE"):
+        tracker.finish(first, 200, response)
+    second = start()
+    tracker.finish(
+        second,
+        200,
+        {**response, "id": "resp_synthetic_other", "model": "fallback", "service_tier": {}},
+    )
+    report = tracker.report()
+    assert report["normalized_total"] is None and report["resolved_model"] is None
+    assert report["requests"][1]["resolved_model"] == "fallback"
+    assert {"MODEL_RESOLUTION_CHANGED_OR_UNKNOWN", "SERVICE_TIER_CHANGED_OR_UNKNOWN"} <= set(
+        report["flags"]
+    )
+    tracker.finish(start(), 503, None)
+    assert "FAILED_REQUEST_USAGE_UNKNOWN" in tracker.report()["flags"]
+    assert tracker.report()["billed_spend"] is None
+
+
 def test_selected_adapter_normalizes_turn_cache_and_reasoning_without_double_count():
     # Proven synthetic inclusion illustrates arithmetic; CLI inclusion remains unproven.
     result = usage.normalize(RAW, cache_in_input=True, reasoning_in_output=True)

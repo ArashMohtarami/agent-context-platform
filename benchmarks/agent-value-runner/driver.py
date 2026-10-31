@@ -1,7 +1,7 @@
 """Small sealed experiment control surface. Paid Codex execution fails closed.
 
-Only the separately labeled synthetic stub path can launch in this phase.
-No credentials, active client configuration, model lookup or service startup.
+Only the separately labeled synthetic stub path can launch agent attempts.
+Native preflight is separately explicit and denies every model request.
 """
 
 from __future__ import annotations
@@ -671,6 +671,8 @@ def cleanup(run_id, base: Path = STATE):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
+    native_preflight = sub.add_parser("native-preflight")
+    native_preflight.add_argument("--with-benchmark-login", action="store_true")
     plan = sub.add_parser("plan")
     plan.add_argument("--config", type=Path, required=True)
     for name in ("run", "status", "resume", "owned-cleanup"):
@@ -682,7 +684,11 @@ def main():
             command.add_argument("--reconciliation", type=Path, required=True)
     args = parser.parse_args()
     try:
-        if args.command == "plan":
+        if args.command == "native-preflight":
+            from . import preflight
+
+            result = preflight.run(with_benchmark_login=args.with_benchmark_login)
+        elif args.command == "plan":
             value = make_plan(read(args.config))
             run_id = create(value)
             result = {"run_id": run_id, "plan_sha256": value["sha256"], "plan": value}

@@ -342,6 +342,11 @@ include benchmarks/agent-value-runner/calibration.py
 include benchmarks/agent-value-runner/delivery.py
 include benchmarks/agent-value-runner/driver.py
 include benchmarks/agent-value-runner/inventory.json
+include benchmarks/agent-value-runner/gateway.py
+include benchmarks/agent-value-runner/native.py
+include benchmarks/agent-value-runner/preflight.py
+include benchmarks/agent-value-runner/relay.py
+include benchmarks/agent-value-runner/runtime.py
 include benchmarks/agent-value-runner/sandbox.py
 include benchmarks/agent-value-runner/skills/python-testing/SKILL.md
 include benchmarks/agent-value-runner/skills/systematic-debugging/SKILL.md

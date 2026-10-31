@@ -99,6 +99,149 @@ def resolution(requested: str, observed: str | None) -> dict:
     }
 
 
+def response_usage(raw):
+    """Documented Responses wire usage; native JSONL/session views stay separate.
+
+    This requires the actual per-response object, including both detail views.
+    Matching arithmetic alone is not evidence of the upstream billing route.
+    Cache writes remain an optional subset of input, never an extra token total.
+    """
+    if not isinstance(raw, dict) or set(raw) != {
+        "input_tokens",
+        "input_tokens_details",
+        "output_tokens",
+        "output_tokens_details",
+        "total_tokens",
+    }:
+        raise ValueError("UNREVIEWED_RESPONSE_USAGE_FIELDS")
+    incoming, outgoing = raw["input_tokens_details"], raw["output_tokens_details"]
+    if (
+        not isinstance(incoming, dict)
+        or not {"cached_tokens"} <= set(incoming) <= {"cached_tokens", "cache_write_tokens"}
+        or not isinstance(outgoing, dict)
+        or set(outgoing) != {"reasoning_tokens"}
+    ):
+        raise ValueError("UNREVIEWED_RESPONSE_DETAIL_FIELDS")
+    value = normalize(
+        {
+            "input_tokens": raw["input_tokens"],
+            "cached_input_tokens": incoming["cached_tokens"],
+            "output_tokens": raw["output_tokens"],
+            "reasoning_output_tokens": outgoing["reasoning_tokens"],
+        },
+        cache_in_input=True,
+        reasoning_in_output=True,
+    )
+    if number(raw["total_tokens"]) != value["total_tokens"]:
+        raise ValueError("INCONSISTENT_RESPONSE_TOTAL")
+    cache_write = incoming.get("cache_write_tokens")
+    if cache_write is not None:
+        if number(cache_write) > value["uncached_input"]:
+            raise ValueError("OVERLAPPING_CACHE_WRITE_SUBCOUNT")
+        value["cache_write"] = cache_write
+        value["uncached_input"] -= cache_write
+    value["uncached_input_includes_unreported_writes"] = cache_write is None
+    return value
+
+
+class Responses:
+    """One receipt for every bounded HTTP request, including failures/missingness."""
+
+    def __init__(self, model):
+        self.model = model
+        self.rows = []
+        self.identities = set()
+        self.flags = set()
+
+    def start(self, *, prompt_sha256, tools_sha256, effort, tier):
+        if any(
+            not isinstance(s, str) or not re.fullmatch(r"[a-f0-9]{64}", s)
+            for s in (prompt_sha256, tools_sha256)
+        ):
+            raise ValueError("EXPLICIT_WIRE_INPUT_HASHES_REQUIRED")
+        if effort != "high" or tier != "default":
+            raise ValueError("UNREVIEWED_WIRE_SETTINGS")
+        self.rows.append(
+            {
+                "request": len(self.rows) + 1,
+                "prompt_sha256": prompt_sha256,
+                "tools_sha256": tools_sha256,
+                "effort": effort,
+                "requested_tier": tier,
+                "response_sha256": None,
+                "http_status": None,
+                "resolved_model": None,
+                "resolved_tier": None,
+                "usage": None,
+                "terminal": False,
+            }
+        )
+        return len(self.rows)
+
+    def finish(self, number_, status, response):
+        if type(number_) is not int or not 1 <= number_ <= len(self.rows):
+            raise ValueError("UNKNOWN_PROVIDER_REQUEST")
+        row = self.rows[number_ - 1]
+        if row["terminal"]:
+            raise ValueError("DUPLICATE_PROVIDER_REQUEST_COMPLETION")
+        row["terminal"] = True
+        row["http_status"] = number(status)
+        if status != 200 or not isinstance(response, dict):
+            self.flags.add("FAILED_REQUEST_USAGE_UNKNOWN")
+            return
+        identity = response.get("id")
+        if not isinstance(identity, str) or not re.fullmatch(
+            r"resp_[A-Za-z0-9_-]{1,180}", identity
+        ):
+            self.flags.add("MISSING_PROVIDER_RESPONSE_ID")
+            return
+        # Hash opaque identity, never retain the response text/reasoning or auth.
+        import hashlib
+
+        fingerprint = hashlib.sha256(identity.encode()).hexdigest()
+        if fingerprint in self.identities:
+            self.flags.add("DUPLICATE_PROVIDER_RESPONSE_ID")
+            return
+        self.identities.add(fingerprint)
+        row["response_sha256"] = fingerprint
+        observed = response.get("model")
+        if isinstance(observed, str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,101}", observed):
+            row["resolved_model"] = observed
+        if observed != self.model:
+            self.flags.add("MODEL_RESOLUTION_CHANGED_OR_UNKNOWN")
+        tier = response.get("service_tier")
+        if isinstance(tier, str) and tier in {"default", "priority", "flex", "auto", "scale"}:
+            row["resolved_tier"] = tier
+        if tier != "default":
+            self.flags.add("SERVICE_TIER_CHANGED_OR_UNKNOWN")
+        if response.get("status") != "completed":
+            self.flags.add("PROVIDER_RESPONSE_NOT_COMPLETED")
+        try:
+            row["usage"] = response_usage(response.get("usage"))
+        except (TypeError, ValueError):
+            self.flags.add("RESPONSE_USAGE_UNKNOWN")
+
+    def report(self):
+        flags = set(self.flags)
+        if not self.rows or any(not r["terminal"] or r["usage"] is None for r in self.rows):
+            flags.add("MISSING_REQUEST_RECEIPT")
+        complete = not flags
+        return {
+            "adapter": "codex-0.166.0-responses-https-v1",
+            "scope": "request",
+            "requests": self.rows,
+            "coverage": "complete-observed-route" if complete else "incomplete",
+            "flags": sorted(flags),
+            "normalized_total": sum(r["usage"]["total_tokens"] for r in self.rows)
+            if complete
+            else None,
+            "resolved_model": self.model if complete else None,
+            "billed_spend": None,
+            "cash_savings_claim_supported": False,
+            "native_session_totals_added": False,
+        }
+
+
 class Stream:
     """Stateful stream parser. Everything not explicitly numeric is discarded."""
 

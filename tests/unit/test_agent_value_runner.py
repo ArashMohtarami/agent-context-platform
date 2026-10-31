@@ -13,6 +13,238 @@ from scripts.focused_process import FocusedError
 driver = importlib.import_module("benchmarks.agent-value-runner.driver")
 
 
+def test_native_plus_guard_refuses_unknown_credit_routes_and_configuration(tmp_path):
+    native = importlib.import_module("benchmarks.agent-value-runner.native")
+    account = {"account": {"type": "chatgpt", "planType": "plus", "email": "fictional-identity"}}
+    limits = {
+        "rateLimitsByLimitId": {
+            "codex": {
+                "credits": {"hasCredits": False, "unlimited": False, "balance": "0"},
+                "primary": {"usedPercent": 10},
+                "secondary": {"usedPercent": 20},
+                "rateLimitReachedType": None,
+            }
+        }
+    }
+    result = native.account_gate(account, limits)
+    assert result["additional_cash_authorized"] == "0.00"
+    assert result["quota_upper_bound"] is None and not result["purchased_credits_authorized"]
+    assert "fictional-identity" not in json.dumps(result)
+    for change in (
+        {"hasCredits": True},
+        {"balance": "1"},
+        {"balance": None},
+        {"balance": "NaN"},
+        {"unlimited": True},
+    ):
+        bad = copy.deepcopy(limits)
+        bad["rateLimitsByLimitId"]["codex"]["credits"].update(change)
+        with pytest.raises(FocusedError):
+            native.account_gate(account, bad)
+    for bad in ({}, {"rateLimitsByLimitId": {}}, {"rateLimitsByLimitId": {"codex": {}}}):
+        with pytest.raises(FocusedError):
+            native.account_gate(account, bad)
+    with pytest.raises(FocusedError):
+        native.account_gate({"account": {"type": "apiKey"}}, limits)
+    bad = copy.deepcopy(limits)
+    bad["rateLimitsByLimitId"]["codex"]["primary"]["usedPercent"] = 80
+    with pytest.raises(FocusedError):
+        native.account_gate(account, bad)
+    config = native.configuration(tmp_path / "codex", tmp_path / "work", tmp_path / "home")
+    assert config["features.multi_agent_v2"]["disable_native_tools"] is True
+    assert config["permissions.pilot.network.enabled"] is False
+    assert config["permissions.pilot.filesystem"][str(tmp_path / "work/test_visible.py")] == "read"
+    assert config["model_providers.benchmark-plus"]["request_max_retries"] == 0
+    assert config["shell_environment_policy.inherit"] == "none"
+    assert "OPENAI_API_KEY" not in str(config)
+
+
+def test_native_preflight_refuses_foreign_cleanup_and_missing_login(tmp_path, monkeypatch):
+    native = importlib.import_module("benchmarks.agent-value-runner.native")
+    preflight = importlib.import_module("benchmarks.agent-value-runner.preflight")
+    runtime = importlib.import_module("benchmarks.agent-value-runner.runtime")
+    import os
+
+    credentials = tmp_path / "purpose-cache"
+    credentials.mkdir(mode=0o700)
+    monkeypatch.setattr(native, "CREDENTIAL_HOME", credentials)
+    binary = tmp_path / "unit-binary"
+    binary.write_bytes(b"fictional non-executable unit input")
+    monkeypatch.setattr(native, "BINARY", binary)
+    adapter = driver.read(driver.SOURCE / "adapter.json")
+    monkeypatch.setattr(
+        driver,
+        "read",
+        lambda path: {**adapter, "binary_sha256": driver.dataset.sha(binary.read_bytes())},
+    )
+    monkeypatch.setattr(
+        subprocess, "Popen", lambda *a, **k: pytest.fail("missing login launched a child")
+    )
+    with pytest.raises(FileNotFoundError):
+        preflight.prepare(with_benchmark_login=True)
+    home = tmp_path / "fresh"
+    home.mkdir(mode=0o700)
+    (credentials / "auth.json").write_bytes(b"fictional-test-cache")
+    (credentials / "auth.json").chmod(0o600)
+    native.stage_credentials(home)
+    assert (home / "auth.json").read_bytes() == b"fictional-test-cache"
+    with pytest.raises(FocusedError, match="FRESH_NATIVE_HOME"):
+        native.stage_credentials(home)
+    identity = "a" * 32
+    folder = tmp_path / ("acp-v8-native-" + identity)
+    folder.mkdir(mode=0o700)
+    owner = {"uid": os.getuid(), "identity": identity, "path": str(folder)}
+    (folder / "owner.json").write_text(json.dumps(owner))
+    (folder / "owner.json").chmod(0o600)
+    foreign = folder / "foreign"
+    foreign.mkdir()
+    with pytest.raises(FocusedError, match="FOREIGN_NATIVE_CLEANUP_ENTRY"):
+        preflight.cleanup(folder, owner)
+    assert foreign.is_dir()
+    foreign.rmdir()
+    with pytest.raises(FocusedError, match="FOREIGN_NATIVE_CLEANUP_REFUSED"):
+        preflight.cleanup(folder, {**owner, "uid": -1})
+    preflight.cleanup(folder, owner)
+    assert not folder.exists()
+    argv = runtime.argv(
+        binary, tmp_path / "inputs", tmp_path / "control", tmp_path / "skills", identity=identity
+    )
+    assert "--unshare-all" in argv and "--share-net" not in argv
+    assert "--property=MemoryMax=2147483648" in argv
+    assert "--property=TasksMax=128" in argv
+    assert not any("docker.sock" in v or "OPENAI_API_KEY" in v for v in argv)
+    with pytest.raises(FocusedError):
+        runtime.argv(binary, home, home, home, identity="../foreign")
+
+
+def test_native_gateway_rejects_undeclared_routes_and_redacts_numeric_receipts(
+    tmp_path, monkeypatch
+):
+    """Synthetic numbers through real owned local TLS; no external provider."""
+    import http.client
+    import ssl
+    from urllib.parse import urlsplit
+
+    gateway = importlib.import_module("benchmarks.agent-value-runner.gateway")
+    tools = [{"type": "namespace", "name": "fictional-unit-tools", "tools": []}]
+    body = {
+        "client_metadata": {},
+        "include": [],
+        "input": [{"type": "additional_tools", "tools": tools}],
+        "model": "gpt-6.1-sol",
+        "parallel_tool_calls": False,
+        "prompt_cache_key": "synthetic",
+        "reasoning": {"effort": "high", "context": "all_turns"},
+        "store": False,
+        "stream": True,
+        "text": {},
+        "tool_choice": "auto",
+    }
+    encoded = json.dumps(body).encode()
+    path = "/backend-api/codex/responses"
+    with pytest.raises(FocusedError, match="MODEL_FREE_PREFLIGHT_ONLY"):
+        gateway.Policy().request("chatgpt.com", "POST", path, encoded)
+    persisted = []
+    policy = gateway.Policy(
+        model_requests=True, tools_sha256=gateway.digest(tools), persist=persisted.append
+    )
+    for host, method, url in (
+        ("api.openai.com", "POST", path),
+        ("chatgpt.com", "POST", "/purchase"),
+        ("auth.openai.com", "GET", "/arbitrary"),
+        ("chatgpt.com", "POST", "https://other.invalid"),
+    ):
+        with pytest.raises(FocusedError):
+            policy.request(host, method, url, encoded)
+    with pytest.raises(FocusedError, match="CATALOG_CHANGED"):
+        policy.request("chatgpt.com", "POST", path, json.dumps({**body, "input": []}).encode())
+    secret = "fictional-secret-never-retained"
+    response = {
+        "id": "resp_synthetic_unit",
+        "model": "gpt-6.1-sol",
+        "status": "completed",
+        "service_tier": "default",
+        "usage": {
+            "input_tokens": 100,
+            "input_tokens_details": {"cached_tokens": 40},
+            "output_tokens": 20,
+            "output_tokens_details": {"reasoning_tokens": 5},
+            "total_tokens": 120,
+        },
+        "output": [{"reasoning": secret}],
+    }
+    wire = (
+        "data: " + json.dumps({"type": "response.completed", "response": response}) + "\n\n"
+    ).encode()
+
+    class Reply:
+        status = 200
+
+        def __init__(self):
+            self.pending = wire
+
+        def getheaders(self):
+            return [("Content-Type", "text/event-stream")]
+
+        def read1(self, size):
+            data, self.pending = self.pending[:size], self.pending[size:]
+            return data
+
+    class Upstream:
+        sock = None
+
+        def __init__(self, host, **kwargs):
+            assert host == "chatgpt.com"
+
+        def connect(self):
+            pass
+
+        def request(self, method, url, data, headers):
+            assert headers["Authorization"] == "Bearer " + secret
+            assert json.loads(data) == body  # no guessed API token-limit fields
+
+        def getresponse(self):
+            return Reply()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(gateway.http.client, "HTTPSConnection", Upstream)
+    tmp_path.chmod(0o700)
+    route = gateway.Route(tmp_path, policy)
+    route.start()
+    try:
+        port = urlsplit(route.url).port
+        client = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+        client.set_tunnel("chatgpt.com", 443)
+        client.connect()
+        context = ssl.create_default_context(cafile=str(tmp_path / "ca.pem"))
+        client.sock = context.wrap_socket(client.sock, server_hostname="chatgpt.com")
+        client.request("POST", path, encoded, {"Authorization": "Bearer " + secret})
+        result = client.getresponse()
+        assert result.status == 200 and result.read() == wire
+        client.close()
+    finally:
+        route.close()
+    receipt = policy.receipts.report()
+    assert receipt["normalized_total"] == 120
+    assert receipt["native_session_totals_added"] is False
+    assert secret not in json.dumps([receipt, persisted])
+    assert persisted[0]["coverage"] == "incomplete"
+    assert persisted[-1]["coverage"] == "complete-observed-route"
+    assert receipt["billed_spend"] is None and not receipt["cash_savings_claim_supported"]
+    partial = gateway.Events()
+    partial.consume(b'data: {"type":"response.completed"')
+    with pytest.raises(FocusedError, match="TRUNCATED_PROVIDER_EVENT"):
+        partial.end()
+    number = policy.request("chatgpt.com", "POST", path, encoded)[1]
+    with pytest.raises(FocusedError, match="UNRECONCILED"):
+        policy.request("chatgpt.com", "POST", path, encoded)
+    policy.finish(number, 502, None)
+    with pytest.raises(FocusedError, match="UNRECONCILED"):
+        policy.request("chatgpt.com", "POST", path, encoded)
+
+
 def synthetic_configuration(cli):
     """A rejected synthetic unit input, never an installed vendor identity."""
     return {
