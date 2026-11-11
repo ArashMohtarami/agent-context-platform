@@ -294,8 +294,13 @@ def account_gate(account, limits):
             or credits.get("unlimited") is not False
         ):
             raise FocusedError("PURCHASED_OR_UNKNOWN_CREDITS_REFUSED")
+        # The native protocol represents balance as a decimal string. Decimal
+        # also accepts False and numeric zero; neither is verified credit state.
+        raw_balance = credits.get("balance")
+        if not isinstance(raw_balance, str):
+            raise FocusedError("UNKNOWN_PLUS_CREDIT_BALANCE")
         try:
-            balance = Decimal(credits["balance"])
+            balance = Decimal(raw_balance)
         except (KeyError, TypeError, InvalidOperation):
             raise FocusedError("UNKNOWN_PLUS_CREDIT_BALANCE") from None
         if not balance.is_finite() or balance != 0:

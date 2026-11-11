@@ -34,6 +34,10 @@ def test_native_plus_guard_refuses_unknown_credit_routes_and_configuration(tmp_p
         {"hasCredits": True},
         {"balance": "1"},
         {"balance": None},
+        {"balance": False},
+        {"balance": 0},
+        {"balance": 0.0},
+        {"balance": ""},
         {"balance": "NaN"},
         {"unlimited": True},
     ):
