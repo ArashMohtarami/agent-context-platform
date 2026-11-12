@@ -4,6 +4,7 @@ import importlib
 import json
 import os
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -70,6 +71,8 @@ def synthetic_inputs(tmp_path, monkeypatch):
         "protocols_verified": True,
         "instance": "c" * 32,
         "expires_at": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
+        "activation": str(tmp_path / "synthetic-activation"),
+        "activation_hashes": {},
     }
     return bundle, approval, {a: "d" * 64 for a in driver.dataset.ARMS}
 
@@ -154,6 +157,62 @@ def test_plus_pilot_unknown_attempt_is_never_retried_or_zero_filled(tmp_path, mo
             },
         )
     assert pilot.status(run_id)["unknown_liability"] == 1
+    # A source revision cannot erase an interrupted row or obtain another tranche.
+    with pytest.raises(FocusedError, match="SETTLED_UNFINISHED"):
+        pilot.rebind(run_id, bundle, catalogs)
+    folder, _, ledger = pilot.owned(run_id)
+    first_id = ledger["attempts"][0]["id"]
+    atomic(
+        folder / first_id / "session.json",
+        {
+            "kind": "native-Plus-attempt",
+            "runtime_removed": True,
+            "account_after": {"synthetic": True},
+            "cash_liability": "zero-credit-state-rechecked",
+            "numeric_receipts": {"requests": [{"terminal": True, "http_status": 200}]},
+        },
+    )
+    pilot.resume(
+        run_id,
+        {
+            "plan_sha256": record["plan"]["sha256"],
+            "reviewer": "synthetic-reviewer",
+            "attempt_ids": [first_id],
+        },
+    )
+    original_sources = pilot.sources
+    changed_sources = original_sources()
+    for i, name in enumerate(sorted(pilot.ADAPTER_REVISION_FILES)):
+        changed_sources[name] = str(i) * 64
+    monkeypatch.setattr(pilot, "sources", lambda: changed_sources)
+    monkeypatch.setattr(commission, "activation_evidence", lambda path: (Path(path), {}))
+    revised_bundle = {
+        **bundle,
+        "source_sha256": driver.digest(changed_sources),
+        "adapter_revision": {
+            "name": pilot.ADAPTER_REVISION,
+            "previous_commission_sha256": driver.digest(bundle),
+        },
+    }
+    with pytest.raises(FocusedError, match="SCOPE_WIDENED"):
+        pilot.rebind(
+            run_id,
+            {**revised_bundle, "expires_at": (datetime.now(UTC) + timedelta(hours=2)).isoformat()},
+            catalogs,
+        )
+    before = driver.read(folder / first_id / "session.json")
+    state = pilot.rebind(run_id, revised_bundle, catalogs)
+    assert state["launched"] == 1 and state["states"] == {"failed": 1, "scheduled": 11}
+    _, revised, new_ledger = pilot.owned(run_id)
+    assert [r["id"] for r in revised["attempts"]] == [r["id"] for r in record["plan"]["attempts"]]
+    assert new_ledger["attempts"][0]["plan_sha256_at_launch"] == record["plan"]["sha256"]
+    assert driver.read(folder / first_id / "session.json") == before
+    assert len(calls) == 1
+    with pytest.raises(FocusedError, match="SETTLED_UNFINISHED"):
+        pilot.rebind(run_id, revised_bundle, catalogs)
+    with pytest.raises(FocusedError):
+        pilot.adapter_delta(changed_sources, {**changed_sources, "foreign.py": "a" * 64})
+    monkeypatch.setattr(pilot, "sources", original_sources)
     # A separate synthetic authority exercises terminal all12 reconciliation;
     # none of these authored receipt objects is vendor-success evidence.
     monkeypatch.setattr(pilot, "BASE", tmp_path / "completed-pilots")
@@ -233,6 +292,25 @@ def test_native_session_redacts_tools_and_refuses_foreign_cleanup(tmp_path, monk
     )
     assert observations.report()["mcp_used"]
     assert secret not in json.dumps(observations.report())
+    discovery = {
+        "type": "mcpToolCall",
+        "id": "ordinary-discovery",
+        "server": "codex",
+        "tool": "list_mcp_resources",
+        "arguments": {},
+        "status": "inProgress",
+    }
+    ordinary = session.Observations(False)
+    ordinary.consume({"method": "item/started", "params": {"item": discovery}})
+    assert not ordinary.report()["mcp_used"]
+    assert ordinary.report()["tools"][0]["tool"] == "list_mcp_resources"
+    with pytest.raises(FocusedError, match="UNDECLARED_NATIVE_MCP"):
+        session.Observations(False).consume(
+            {
+                "method": "item/started",
+                "params": {"item": {**discovery, "tool": "search_knowledge"}},
+            }
+        )
     output = {
         "type": "functionCallOutput",
         "id": "ordinary-output",

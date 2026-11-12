@@ -34,6 +34,23 @@ ACCOUNTING = {
     "primary216_authorized": False,
     "external_account_credit_additions": "must remain absent; not an account-wide spending lock",
 }
+ADAPTER_REVISION = "native-resource-discovery-event-v1"
+ADAPTER_REVISION_FILES = {
+    "benchmarks/agent-value-runner/session.py",
+    "benchmarks/agent-value-runner/pilot.py",
+    "benchmarks/agent-value-runner/commission.py",
+}
+
+
+def adapter_delta(previous, current):
+    changed = {name for name in previous if previous[name] != current.get(name)}
+    if (
+        set(previous) != set(current)
+        or "benchmarks/agent-value-runner/session.py" not in changed
+        or not changed <= ADAPTER_REVISION_FILES
+    ):
+        raise FocusedError("ONLY_RECORDED_NATIVE_EVENT_REVISION_ALLOWED")
+    return {name: {"before": previous[name], "after": current[name]} for name in sorted(changed)}
 
 
 def sources():
@@ -342,6 +359,117 @@ def check_current(folder, plan):
     return bundle
 
 
+def rebind(run_id, bundle, catalogs):
+    """One scoped development fix; preserve the same tranche and every old row.
+
+    A fresh genuine activation and real revalidation of the unchanged platform
+    precede this operation. No started ID is rescheduled, repeated or deleted.
+    """
+    from . import commission
+
+    with driver.locked(BASE):
+        folder, previous, ledger = owned(run_id)
+        if (
+            ledger.get("source_revisions")
+            or ledger.get("halted_attempt")
+            or any(r["state"] in {"launched", "unknown"} for r in ledger["attempts"])
+            or not any(r["state"] == "scheduled" for r in ledger["attempts"])
+        ):
+            raise FocusedError("SETTLED_UNFINISHED_ORIGINAL_TRANCHE_REQUIRED")
+        changed = adapter_delta(previous["source_hashes"], sources())
+        approval = driver.read(folder / "approval.json")
+        original = driver.read(folder / "commission.json")
+        allowed = {
+            "source_sha256",
+            "activation",
+            "activation_hashes",
+            "adapter_revision",
+            "stage",
+            "protocols_verified",
+        }
+        if (
+            {k: v for k, v in bundle.items() if k not in allowed}
+            != {k: v for k, v in original.items() if k not in allowed}
+            or bundle.get("adapter_revision", {}).get("name") != ADAPTER_REVISION
+            or bundle["adapter_revision"].get("previous_commission_sha256")
+            != driver.digest(original)
+        ):
+            raise FocusedError("PILOT_REVISION_SCOPE_WIDENED")
+        activation, hashes = commission.activation_evidence(bundle["activation"])
+        if str(activation) != bundle["activation"] or hashes != bundle["activation_hashes"]:
+            raise FocusedError("CURRENT_ADAPTER_ACTIVATION_REQUIRED")
+        current = make_plan(bundle, approval, catalogs)
+        mutable = {"source_hashes", "commission_sha256", "sha256"}
+        if {k: v for k, v in previous.items() if k not in mutable} != {
+            k: v for k, v in current.items() if k not in mutable
+        }:
+            raise FocusedError("EXACT12_INPUTS_SETTINGS_AND_BOUNDS_MUST_STAY_FIXED")
+        verify_artifacts(bundle, catalogs)
+        registry = BASE / "authorization-bindings.json"
+        bindings = driver.read(registry)
+        key = driver.digest(approval)
+        if bindings.get(key) != {"run_id": run_id, "plan_sha256": previous["sha256"]}:
+            raise FocusedError("PILOT_AUTHORIZATION_REPLAY_REFUSED")
+        authorization = driver.read(folder / "authorization.json")
+        if (
+            authorization.get("plan_sha256") != previous["sha256"]
+            or authorization.get("approval_sha256") != key
+            or datetime.fromisoformat(authorization["expires_at"]) <= datetime.now(UTC)
+        ):
+            raise FocusedError("PILOT_AUTHORIZATION_MISMATCH")
+        history = folder / "source-revisions"
+        history.mkdir(mode=0o700)
+        target = history / ADAPTER_REVISION
+        target.mkdir(mode=0o700)
+        for name in ("plan", "commission", "ledger", "authorization", "owner"):
+            atomic(target / (name + ".json"), driver.read(folder / (name + ".json")))
+        revision = {
+            "name": ADAPTER_REVISION,
+            "previous_plan_sha256": previous["sha256"],
+            "plan_sha256": current["sha256"],
+            "changed_sources": changed,
+            "authority": (
+                "original chat-user exact12 approval includes development implementation fixes; "
+                "no extra tranche"
+            ),
+            "old_rows_preserved": True,
+            "retries_authorized": False,
+        }
+        atomic(target / "revision.json", revision)
+        for row in ledger["attempts"]:
+            if row["state"] != "scheduled":
+                row["plan_sha256_at_launch"] = previous["sha256"]
+                row["adapter_revision_invalidated"] = ADAPTER_REVISION
+        ledger.update(plan_sha256=current["sha256"], source_revisions=[revision])
+        authorization.update(
+            version=2,
+            plan_sha256=current["sha256"],
+            source_sha256=driver.digest(sources()),
+            adapter_revision=ADAPTER_REVISION,
+            previous_plan_sha256=previous["sha256"],
+        )
+        for name, value in (
+            ("plan", current),
+            ("commission", bundle),
+            ("ledger", ledger),
+            ("authorization", authorization),
+        ):
+            atomic(folder / (name + ".json"), value)
+        bindings[key] = {"run_id": run_id, "plan_sha256": current["sha256"]}
+        atomic(registry, bindings)
+        atomic(
+            folder / "owner.json",
+            {
+                "uid": os.getuid(),
+                "path": str(folder),
+                "run_id": run_id,
+                "plan_sha256": current["sha256"],
+            },
+        )
+        check_current(folder, current)
+    return status(run_id)
+
+
 def run(run_id):
     from . import commission
 
@@ -365,7 +493,9 @@ def run(run_id):
             )
             if {n: driver.dataset.sha(b) for n, b in inputs.items()} != attempt["inputs"]:
                 raise FocusedError("PILOT_INPUT_HASH_MISMATCH")
-            row.update(state="launched", cash_liability="unknown")
+            row.update(
+                state="launched", cash_liability="unknown", plan_sha256_at_launch=plan["sha256"]
+            )
             atomic(folder / "ledger.json", ledger)  # before every possible provider side effect
             try:
                 settings = commission.connection(bundle, attempt["task_id"], attempt["arm"])
@@ -446,6 +576,11 @@ def finalize(folder, plan, ledger):
             "primary_execution_lock": False,
             "primary216_authorized": False,
             "source_sha256": driver.digest(plan["source_hashes"]),
+            "source_revisions": ledger.get("source_revisions", []),
+            "row_plan_sha256_at_launch": [r.get("plan_sha256_at_launch") for r in rows],
+            "invalidated_earlier_adapter_rows": [
+                r["id"] for r in rows if r.get("adapter_revision_invalidated")
+            ],
             "claim_approved": False,
         },
     )
@@ -554,11 +689,14 @@ def main():
     plan.add_argument("--commission", type=Path, required=True)
     plan.add_argument("--approval", type=Path, required=True)
     plan.add_argument("--catalogs", type=Path, required=True)
-    for name in ("run", "status", "resume", "owned-cleanup"):
+    for name in ("run", "status", "resume", "owned-cleanup", "rebind"):
         item = commands.add_parser(name)
         item.add_argument("--run-id", required=True)
         if name == "resume":
             item.add_argument("--reconciliation", type=Path, required=True)
+        if name == "rebind":
+            item.add_argument("--commission", type=Path, required=True)
+            item.add_argument("--catalogs", type=Path, required=True)
     args = parser.parse_args()
     os.umask(0o077)
 
@@ -577,6 +715,8 @@ def main():
             result = status(args.run_id)
         elif args.command == "resume":
             result = resume(args.run_id, driver.read(args.reconciliation))
+        elif args.command == "rebind":
+            result = rebind(args.run_id, driver.read(args.commission), driver.read(args.catalogs))
         else:
             result = cleanup(args.run_id)
         print(json.dumps(result, indent=2))

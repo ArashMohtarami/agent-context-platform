@@ -426,6 +426,82 @@ def capture_catalogs(bundle, evidence):
     return results
 
 
+def refresh_adapter(bundle, activation, previous_sources):
+    """Revalidate the same actual cohort after the one native event-parser fix.
+
+    App, operator policy, deployment, credentials, snapshots and model bytes must
+    remain identical. This records a new controller source receipt, not a new
+    platform bootstrap or a replay of old activation results.
+    """
+    from scripts.evaluation_lifecycle import locked, source_identity
+
+    from . import pilot
+
+    changed = pilot.adapter_delta(previous_sources, pilot.sources())
+    folder = BASE / bundle["instance"]
+    if driver.read(folder / "commission.json") != bundle:
+        raise FocusedError("ORIGINAL_ACTUAL_COMMISSION_REQUIRED")
+    activation, hashes = activation_evidence(str(activation))
+    history = folder / "adapter-revisions"
+    history.mkdir(mode=0o700)
+    target = history / pilot.ADAPTER_REVISION
+    target.mkdir(mode=0o700)
+    atomic(target / "previous-commission.json", bundle)
+    evaluation = Evaluation(bundle["instance"])
+    with locked(evaluation):
+        evaluation.load()  # unchanged files/ownership precede explicit source adoption
+        evaluation.owned()
+        if set(hashes) != set(bundle["activation_hashes"]):
+            raise FocusedError("ORDERED_ACTIVATION_GRAPH_CHANGED")
+        revision = {
+            "name": pilot.ADAPTER_REVISION,
+            "previous_commission_sha256": driver.digest(bundle),
+            "changed_sources": changed,
+            "previous_controller_source": evaluation.data["source"],
+            "controller_source": source_identity(),
+            "unchanged_app_policy_deployment_and_knowledge": True,
+            "new_genuine_activation": str(activation),
+            "activation_hashes": hashes,
+            "previous_activation_hashes": bundle["activation_hashes"],
+            "original_protocol_proof_retained": True,
+        }
+        atomic(target / "source-adoption.json", revision)
+        shutil.copytree(evaluation.state / "evidence", target / "previous-owned-activation")
+        for relative, expected in hashes.items():
+            source = activation / relative
+            if driver.dataset.sha(source.read_bytes()) != expected:
+                raise FocusedError("NEW_GENUINE_ACTIVATION_CHANGED")
+            destination = evaluation.state / "evidence" / relative
+            shutil.copyfile(source, destination)
+            destination.chmod(0o600)
+            evaluation.data["files"]["evidence/" + relative] = expected
+        evaluation.data["source"] = source_identity()
+        evaluation.checkpoint("native-adapter-source-adopted")
+    current = {
+        **bundle,
+        "source_sha256": driver.digest(pilot.sources()),
+        "activation": str(activation),
+        "activation_hashes": hashes,
+        "adapter_revision": revision,
+        "protocols_verified": False,
+        "stage": "native-adapter-revalidation",
+    }
+    atomic(folder / "commission.json", current)
+    for task in calibration.TASKS:
+        verify_live(current, task, protocols=True)
+    distributed(evaluation, "stop")
+    distributed(evaluation, "start")
+    for task in calibration.TASKS:
+        verify_live(current, task, protocols=True)
+    current.update(stage="ready", protocols_verified=True)
+    atomic(folder / "commission.json", current)
+    # Preserve every model-free setup receipt before fresh current-source captures.
+    for arm in driver.dataset.ARMS:
+        (folder / ("catalog-" + arm)).rename(target / ("catalog-" + arm))
+    (folder / "catalogs.json").rename(target / "catalogs.json")
+    return current
+
+
 def validate_credentials(credentials, owner, *, failed=False):
     driver.identity(credentials.name)
     if credentials.parent != CREDENTIALS or credentials.resolve() != credentials:

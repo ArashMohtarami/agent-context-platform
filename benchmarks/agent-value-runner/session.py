@@ -81,14 +81,23 @@ class Observations:
             tool = "commandExecution"
             if kind == "mcpToolCall":
                 tool = item.get("tool")
-                if (
+                discovery = item.get("server") == "codex" and tool in {
+                    "list_mcp_resources",
+                    "list_mcp_resource_templates",
+                    "read_mcp_resource",
+                }
+                if not discovery and (
                     not self.mcp
                     or item.get("server") != "agent_context_platform"
                     or tool not in native.TOOLS
                 ):
                     raise FocusedError("UNDECLARED_NATIVE_MCP_TOOL")
                 arguments = item.get("arguments", {})
-                if tool == "search_knowledge" and arguments.get("sources") != ["project_context"]:
+                if (
+                    not discovery
+                    and tool == "search_knowledge"
+                    and arguments.get("sources") != ["project_context"]
+                ):
                     raise FocusedError("EXPLICIT_PROJECT_CONTEXT_SOURCE_REQUIRED")
             elif kind == "fileChange":
                 tool = "apply_patch"
