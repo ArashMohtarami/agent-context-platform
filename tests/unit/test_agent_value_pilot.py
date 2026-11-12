@@ -212,7 +212,7 @@ def test_plus_pilot_unknown_attempt_is_never_retried_or_zero_filled(tmp_path, mo
     assert state["launched"] == 12 and state["states"] == {"failed": 1, "completed": 11}
 
 
-def test_native_session_redacts_tools_and_refuses_foreign_cleanup(tmp_path):
+def test_native_session_redacts_tools_and_refuses_foreign_cleanup(tmp_path, monkeypatch):
     session = pilot.session
     observations = session.Observations(True)
     secret = "synthetic-reasoning-and-credential-shaped-text"
@@ -233,6 +233,28 @@ def test_native_session_redacts_tools_and_refuses_foreign_cleanup(tmp_path):
     )
     assert observations.report()["mcp_used"]
     assert secret not in json.dumps(observations.report())
+    output = {
+        "type": "functionCallOutput",
+        "id": "ordinary-output",
+        "namespace": "functions",
+        "name": "exec",
+        "output": secret,
+    }
+    observations.consume({"method": "item/completed", "params": {"item": output}})
+    assert secret not in json.dumps(observations.report())
+    with pytest.raises(FocusedError, match="UNDECLARED_NATIVE_FUNCTION"):
+        observations.consume(
+            {"method": "item/completed", "params": {"item": {**output, "namespace": "foreign"}}}
+        )
+    bounded = session.Observations(False)
+    for i in range(64):
+        bounded.consume(
+            {"method": "item/started", "params": {"item": {"id": str(i), "type": "fileChange"}}}
+        )
+    with pytest.raises(FocusedError, match="TOOL_COUNT"):
+        bounded.consume(
+            {"method": "item/started", "params": {"item": {"id": "65", "type": "fileChange"}}}
+        )
     with pytest.raises(FocusedError, match="SOURCE_REQUIRED"):
         session.Observations(True).consume(
             {
@@ -284,6 +306,49 @@ def test_native_session_redacts_tools_and_refuses_foreign_cleanup(tmp_path):
             "chatgpt.com", "POST", "/backend-api/codex/responses", json.dumps(body).encode()
         )
     assert policy.catalog["allowed"] and policy.receipts.rows == []
+    ordinary_names = ["functions." + n for n in gateway.ORDINARY]
+    complete_catalog = {"allowed": True, "tool_names": ordinary_names}
+    gateway.verify_catalog(complete_catalog, mcp=False)
+    with pytest.raises(FocusedError, match="EXACT_NATIVE_CATALOG"):
+        gateway.verify_catalog(complete_catalog, mcp=True)
+    mcp_names = ["mcp__agent_context_platform." + n for n in session.native.TOOLS]
+    gateway.verify_catalog({**complete_catalog, "tool_names": ordinary_names + mcp_names}, mcp=True)
+    with pytest.raises(FocusedError, match="EXACT_NATIVE_CATALOG"):
+        gateway.verify_catalog(
+            {**complete_catalog, "tool_names": [*ordinary_names, "foreign.tool"]}, mcp=False
+        )
+    server = {
+        "name": "agent_context_platform",
+        "runtimeStatus": "connected",
+        "authStatus": "bearerToken",
+        "tools": dict.fromkeys(session.native.TOOLS),
+    }
+    session.require_mcp({"data": [server]})
+    for change in ({"runtimeStatus": "failed"}, {"authStatus": "unknown"}, {"tools": {}}):
+        with pytest.raises(FocusedError, match="EXACT_CONNECTED_NATIVE_MCP"):
+            session.require_mcp({"data": [{**server, **change}]})
+    recheck_path = tmp_path / "synthetic-account-recheck" / "result.json"
+    recheck_path.parent.mkdir(mode=0o700)
+    value = {
+        "kind": "actual-installed-cli-model-free-preflight",
+        "status": "model-free-preflight-passed",
+        "source_sha256": driver.digest(driver.source_fingerprint()),
+        "account": {"synthetic": True},
+        "model_requests_allowed": False,
+        "provider_agent_attempts": 0,
+        "numeric_receipts": {"requests": []},
+        "runtime_removed": True,
+    }
+    atomic(recheck_path, value)
+    monkeypatch.setattr(
+        session.preflight, "run", lambda **kwargs: {"evidence": str(recheck_path.parent)}
+    )
+    assert pilot.account_recheck(tmp_path)["sha256"] == driver.dataset.sha(
+        recheck_path.read_bytes()
+    )
+    atomic(recheck_path, {**value, "provider_agent_attempts": 1})
+    with pytest.raises(FocusedError, match="MODEL_FREE_CASH_RECHECK"):
+        pilot.account_recheck(tmp_path)
     assert session.receipt_summary(policy, capture=True)["model_requests_forwarded"] == 0
     wire = gateway.Policy(model_requests=True, tools_sha256="a" * 64, descriptive=True)
     number = wire.receipts.start(

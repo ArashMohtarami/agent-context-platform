@@ -131,7 +131,10 @@ def configuration(binary: Path, workspace: Path, home: Path):
             "disable_direct_message": True,
             "wait_agent_enabled": False,
         },
-        "features.code_mode": {"enabled": False, "direct_only_tool_namespaces": ["functions"]},
+        "features.code_mode": {
+            "enabled": False,
+            "direct_only_tool_namespaces": ["functions", "mcp__agent_context_platform"],
+        },
         "features.skip_host_skill_discovery": True,
         "model_providers.benchmark-plus": {
             "name": "OpenAI Plus benchmark route",

@@ -286,10 +286,14 @@ def verify_artifacts(bundle, catalogs):
         path = folder / ("catalog-" + arm) / "session.json"
         native.private(path)
         report = driver.read(path)
+        session.gateway.verify_catalog(report.get("catalog"), mcp=arm == "mcp")
         if (
             report.get("kind") != "catalog-only-no-provider"
             or report.get("model_requests_forwarded") != 0
             or report.get("account_before") is None
+            or report.get("account_after") is None
+            or report.get("code") != "CATALOG_CAPTURED"
+            or report.get("runtime_removed") is not True
             or report.get("catalog", {}).get("allowed") is not True
             or report["catalog"]["tools_sha256"] != expected
             or report.get("source_sha256") != driver.digest(driver.source_fingerprint())
@@ -470,21 +474,25 @@ def resume(run_id, receipt):
             or receipt["attempt_ids"] != required
         ):
             raise FocusedError("COMPLETE_PILOT_RECONCILIATION_REQUIRED")
+        late_recheck = None
         for row in ledger["attempts"]:
             if row["id"] not in required:
                 continue
             path = folder / row["id"] / "session.json"
             native.private(path)
             result = driver.read(path)
-            if (
-                result.get("cash_liability") != "zero-credit-state-rechecked"
-                or result.get("account_after") is None
-                or not result.get("runtime_removed")
-                or any(
-                    not r["terminal"] or not r["http_status"]
-                    for r in result["numeric_receipts"]["requests"]
-                )
+            if not result.get("runtime_removed") or any(
+                not r["terminal"] or not r["http_status"]
+                for r in result["numeric_receipts"]["requests"]
             ):
+                raise FocusedError("UNKNOWN_PROVIDER_LIABILITY_REMAINS_RESERVED")
+            if result.get("routing_mismatch"):
+                raise FocusedError("ROUTING_CHANGE_REQUIRES_NEW_REVIEWED_PLAN")
+            if result.get("account_after") is None:
+                if late_recheck is None:
+                    late_recheck = account_recheck(folder)
+                row["late_account_recheck"] = late_recheck
+            elif result.get("cash_liability") != "zero-credit-state-rechecked":
                 raise FocusedError("UNKNOWN_PROVIDER_LIABILITY_REMAINS_RESERVED")
         for row in unknown:
             row.update(
@@ -497,7 +505,34 @@ def resume(run_id, receipt):
             ledger.pop("halted_attempt")
             ledger["failure_reconciliation_sha256"] = driver.digest(receipt)
         atomic(folder / "ledger.json", ledger)
+        finalize(folder, plan, ledger)
     return status(run_id)
+
+
+def account_recheck(folder):
+    """An explicit resume may obtain a late model-free credit receipt.
+
+    The original session's missing account-after measurement stays missing.
+    This never settles an unterminated wire request or retries a vendor attempt.
+    """
+    result = session.preflight.run(with_benchmark_login=True)
+    path = Path(result["evidence"]) / "result.json"
+    native.private(path)
+    value = driver.read(path)
+    if (
+        value.get("kind") != "actual-installed-cli-model-free-preflight"
+        or value.get("status") != "model-free-preflight-passed"
+        or value.get("source_sha256") != driver.digest(driver.source_fingerprint())
+        or value.get("account") is None
+        or value.get("model_requests_allowed") is not False
+        or value.get("provider_agent_attempts") != 0
+        or value.get("numeric_receipts", {}).get("requests") != []
+        or value.get("runtime_removed") is not True
+    ):
+        raise FocusedError("ACTUAL_MODEL_FREE_CASH_RECHECK_REQUIRED")
+    receipt = {"evidence": str(path), "sha256": driver.dataset.sha(path.read_bytes())}
+    atomic(folder / ("account-recheck-" + path.parent.name + ".json"), receipt)
+    return receipt
 
 
 def cleanup(run_id):

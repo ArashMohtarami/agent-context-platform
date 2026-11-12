@@ -415,9 +415,12 @@ def capture_catalogs(bundle, evidence):
         if (
             report["model_requests_forwarded"] != 0
             or not report["catalog"]
-            or not report["catalog"]["allowed"]
+            or report["code"] != "CATALOG_CAPTURED"
+            or report["account_after"] is None
+            or not report["runtime_removed"]
         ):
             raise FocusedError("ACTUAL_MODEL_FREE_CATALOG_CAPTURE_REQUIRED")
+        session.gateway.verify_catalog(report["catalog"], mcp=arm == "mcp")
         results[arm] = report["catalog"]["tools_sha256"]
     atomic(evidence / "catalogs.json", results)
     return results

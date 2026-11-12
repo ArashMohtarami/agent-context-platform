@@ -34,7 +34,25 @@ from .usage import Responses
 
 HOSTS = {"chatgpt.com", "auth.openai.com"}
 POSTS = {("chatgpt.com", "/backend-api/codex/responses"), ("auth.openai.com", "/oauth/token")}
-GETS = {("chatgpt.com", "/backend-api/codex/models"), ("chatgpt.com", "/backend-api/wham/usage")}
+GETS = {
+    ("chatgpt.com", "/backend-api/codex/models"),
+    ("chatgpt.com", "/backend-api/wham/usage"),
+    ("chatgpt.com", "/backend-api/wham/accounts/check"),
+}
+ORDINARY = frozenset(
+    {
+        "exec",
+        "wait",
+        "exec_command",
+        "write_stdin",
+        "list_mcp_resources",
+        "list_mcp_resource_templates",
+        "read_mcp_resource",
+        "request_user_input",
+        "request_user_input_async",
+        "apply_patch",
+    }
+)
 HOP = {
     "connection",
     "proxy-connection",
@@ -50,6 +68,21 @@ def digest(value):
     return hashlib.sha256(
         json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
+
+
+def verify_catalog(catalog, *, mcp):
+    expected = {"functions." + name for name in ORDINARY}
+    if mcp:
+        expected |= {"mcp__agent_context_platform." + name for name in native.TOOLS}
+    names = catalog.get("tool_names") if isinstance(catalog, dict) else None
+    if (
+        not isinstance(names, list)
+        or not all(isinstance(name, str) for name in names)
+        or len(names) != len(expected)
+        or set(names) != expected
+        or catalog.get("allowed") is not True
+    ):
+        raise FocusedError("EXACT_NATIVE_CATALOG_REQUIRED")
 
 
 class Policy:
@@ -82,6 +115,7 @@ class Policy:
         self.rejections = 0
         self.lock = threading.Lock()
         self.model_requests = model_requests
+        self.model_attempts = 0
         self.tools_sha256 = tools_sha256
         self.persist = persist
         self.received = 0
@@ -139,6 +173,8 @@ class Policy:
                 raise FocusedError("NATIVE_ROUTE_COUNT_BOUND")
         if parsed.path != "/backend-api/codex/responses":
             return data, None
+        with self.lock:
+            self.model_attempts += 1
         if not self.model_requests and not self.capture_catalog:
             raise FocusedError("MODEL_FREE_PREFLIGHT_ONLY")
         body = json.loads(data)
@@ -199,20 +235,8 @@ class Policy:
                         names.append(namespace + "." + str(item.get("name", "")))
 
             inspect(tools[0])
-            ordinary = {
-                "exec",
-                "wait",
-                "exec_command",
-                "write_stdin",
-                "list_mcp_resources",
-                "list_mcp_resource_templates",
-                "read_mcp_resource",
-                "request_user_input",
-                "request_user_input_async",
-                "apply_patch",
-            }
             allowed = all(
-                (n.startswith("functions.") and n.split(".", 1)[1] in ordinary)
+                (n.startswith("functions.") and n.split(".", 1)[1] in ORDINARY)
                 or (
                     n.startswith("mcp__agent_context_platform.")
                     and n.rsplit(".", 1)[1] in native.TOOLS

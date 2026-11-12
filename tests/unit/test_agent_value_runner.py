@@ -56,6 +56,10 @@ def test_native_plus_guard_refuses_unknown_credit_routes_and_configuration(tmp_p
         native.account_gate(account, bad)
     config = native.configuration(tmp_path / "codex", tmp_path / "work", tmp_path / "home")
     assert config["features.multi_agent_v2"]["disable_native_tools"] is True
+    assert config["features.code_mode"]["direct_only_tool_namespaces"] == [
+        "functions",
+        "mcp__agent_context_platform",
+    ]
     assert config["permissions.pilot.network.enabled"] is False
     assert config["permissions.pilot.filesystem"][str(tmp_path / "work/test_visible.py")] == "read"
     assert config["model_providers.benchmark-plus"]["request_max_retries"] == 0
@@ -130,6 +134,11 @@ def test_native_gateway_rejects_undeclared_routes_and_redacts_numeric_receipts(
     from urllib.parse import urlsplit
 
     gateway = importlib.import_module("benchmarks.agent-value-runner.gateway")
+    assert gateway.Policy().request(
+        "chatgpt.com", "GET", "/backend-api/wham/accounts/check", b""
+    ) == (b"", None)
+    with pytest.raises(FocusedError):
+        gateway.Policy().request("chatgpt.com", "POST", "/backend-api/wham/accounts/check", b"")
     tools = [{"type": "namespace", "name": "fictional-unit-tools", "tools": []}]
     body = {
         "client_metadata": {},

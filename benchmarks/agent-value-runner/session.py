@@ -47,14 +47,34 @@ class Observations:
             "fileChange",
             "commandExecution",
             "mcpToolCall",
+            "functionCallOutput",
         }:
             raise FocusedError("UNDECLARED_NATIVE_ITEM")
-        if kind not in {"commandExecution", "mcpToolCall"}:
+        if kind not in {"commandExecution", "mcpToolCall", "fileChange", "functionCallOutput"}:
             return
         identifier = item.get("id")
         if not isinstance(identifier, str) or len(identifier) > 256:
             raise FocusedError("INVALID_NATIVE_TOOL_ID")
         key = driver.digest(identifier)
+        if kind == "functionCallOutput":
+            namespace, tool = item.get("namespace") or "functions", item.get("name")
+            if namespace == "functions" and isinstance(tool, str) and tool.startswith("functions."):
+                tool = tool.removeprefix("functions.")
+            if not (
+                (namespace == "functions" and tool in gateway.ORDINARY)
+                or (
+                    self.mcp and namespace == "mcp__agent_context_platform" and tool in native.TOOLS
+                )
+            ):
+                raise FocusedError("UNDECLARED_NATIVE_FUNCTION_OUTPUT")
+            if key not in self.tools:
+                if len(self.tools) >= 64:
+                    raise FocusedError("NATIVE_TOOL_COUNT_OR_ID_BOUND")
+                self.tools[key] = {"tool": tool, "status": "started", "returned_bytes": None}
+            if method == "item/completed":
+                self.tools[key]["status"] = "completed"
+                self.tools[key]["returned_bytes"] = len(json.dumps(item.get("output")).encode())
+            return
         if method == "item/started":
             if key in self.tools or len(self.tools) >= 64:
                 raise FocusedError("NATIVE_TOOL_COUNT_OR_ID_BOUND")
@@ -70,6 +90,8 @@ class Observations:
                 arguments = item.get("arguments", {})
                 if tool == "search_knowledge" and arguments.get("sources") != ["project_context"]:
                     raise FocusedError("EXPLICIT_PROJECT_CONTEXT_SOURCE_REQUIRED")
+            elif kind == "fileChange":
+                tool = "apply_patch"
             else:
                 self.commands += 1
                 self.read_search_actions += sum(
@@ -83,7 +105,13 @@ class Observations:
             self.tools[key]["status"] = (
                 status if status in {"completed", "failed", "declined", "inProgress"} else "unknown"
             )
-            result = item.get("result") if kind == "mcpToolCall" else item.get("aggregatedOutput")
+            result = (
+                item.get("result")
+                if kind == "mcpToolCall"
+                else item.get("changes")
+                if kind == "fileChange"
+                else item.get("aggregatedOutput")
+            )
             if result is not None:
                 self.tools[key]["returned_bytes"] = len(json.dumps(result).encode())
 
@@ -154,6 +182,20 @@ def receipt_summary(policy, *, capture):
     }
 
 
+def require_mcp(status):
+    rows = status.get("data", [])
+    if (
+        status.get("nextCursor") is not None
+        or len(rows) != 1
+        or rows[0].get("name") != "agent_context_platform"
+        or rows[0].get("runtimeStatus") != "connected"
+        or rows[0].get("authStatus") != "bearerToken"
+        or rows[0].get("toolsError") is not None
+        or set(rows[0].get("tools", {})) != set(native.TOOLS)
+    ):
+        raise FocusedError("EXACT_CONNECTED_NATIVE_MCP_REQUIRED")
+
+
 def execute(
     inputs, evidence, *, mcp=False, token_file=None, ca=None, tools_sha256=None, capture=False
 ):
@@ -191,6 +233,7 @@ def execute(
         tools_sha256=tools_sha256,
         persist=lambda value: atomic(evidence / "wire-receipts.json", value),
     )
+    policy.model_requests = False  # no warmup/inference before the actual task turn
     route = child = connection = None
     metrics = Observations(bool(mcp))
     report = {
@@ -287,7 +330,24 @@ def execute(
         )
         if thread.get("serviceTier") not in {None, "default"}:
             raise FocusedError("NATIVE_THREAD_TIER_CHANGED")
+        if mcp:
+            require_mcp(
+                rpc(
+                    connection,
+                    metrics,
+                    "mcpServerStatus/list",
+                    {
+                        "threadId": thread["thread"]["id"],
+                        "serverName": "agent_context_platform",
+                        "detail": "toolsAndAuthOnly",
+                        "limit": 10,
+                    },
+                )
+            )
+        if policy.model_attempts:
+            raise FocusedError("PRE_TURN_MODEL_WARMUP_REFUSED")
         atomic(evidence / "session.json", report)
+        policy.model_requests = not capture
         rpc(
             connection,
             metrics,
@@ -349,6 +409,9 @@ def execute(
                 duration_seconds=time.monotonic() - started,
                 metrics=metrics.report(),
                 catalog=policy.catalog,
+                http_routes_seen=policy.routes,
+                route_rejections=policy.rejections,
+                model_requests_local_attempts=policy.model_attempts,
                 **receipts,
                 cash_liability="unknown"
                 if report["account_after"] is None or not receipts["transport_settled"]
