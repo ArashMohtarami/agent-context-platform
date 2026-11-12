@@ -29,6 +29,17 @@ activation is required before commissioning. Provider credentials never enter
 the focused runner. New `v8-p04-pilot` selects five synthetic control cases;
 synthetic schema-shaped values are never live platform evidence.
 
+After a quota pause, `commission.renew_authority` can renew the same owned
+cohort through the existing four-hour operator review and separate owner/worker
+APIs. It revokes the two old keys and delivers fresh keys once, retaining the
+same client IDs, projects and four read tuples. It rechecks complete snapshots,
+both protocols and persistence using genuine current activation. `pilot renew`
+binds that evidence and fresh model-denied catalogs to the original exact12
+run with a recorded user continuation review. Every launched row and its source
+remain recorded; unknown cash still requires `resume`. Renewal cannot widen
+inputs, model, cash, quota threshold, tools or limits, retry a row, create a
+tranche, or merely extend an expired JSON receipt. One renewal is supported.
+
 This is a small separate driver around the selected installed Codex CLI0.166.0,
 not a replacement agent runtime. It prepares a literal Codex invocation and a
 sealed three-arm schedule without starting processes, services, models or paid

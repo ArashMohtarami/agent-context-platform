@@ -17,6 +17,7 @@ import shutil
 import signal
 import tempfile
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -499,6 +500,196 @@ def refresh_adapter(bundle, activation, previous_sources):
     for arm in driver.dataset.ARMS:
         (folder / ("catalog-" + arm)).rename(target / ("catalog-" + arm))
     (folder / "catalogs.json").rename(target / "catalogs.json")
+    return current
+
+
+def renew_authority(bundle, activation, previous_sources):
+    """Real four-hour renewal on the existing cohort after a quota pause.
+
+    Operator review and distinct enrolled owner/worker APIs replace expired
+    authority. No data import, permission widening, model call or task retry.
+    Failures retain the exact owned state for inspection, never replay issuance.
+    """
+    from scripts.evaluation_lifecycle import locked, source_identity
+    from tests.integration.test_agent_value_mcp import parent_policy
+    from tests.integration.test_evaluation_bootstrap import login
+
+    from . import pilot
+
+    changed = pilot.renewal_delta(previous_sources, pilot.sources())
+    folder = BASE / bundle["instance"]
+    if driver.read(folder / "commission.json") != bundle or bundle.get("authority_renewal"):
+        raise FocusedError("ORIGINAL_UNRENEWED_COMMISSION_REQUIRED")
+    activation, hashes = activation_evidence(str(activation))
+    credentials = CREDENTIALS / bundle["instance"]
+    validate_credentials(credentials, driver.read(credentials / "owner.json"))
+    evaluation = Evaluation(bundle["instance"])
+    history = folder / "authority-renewals"
+    history.mkdir(mode=0o700)
+    target = history / pilot.AUTHORITY_RENEWAL
+    target.mkdir(mode=0o700)
+    atomic(target / "previous-commission.json", bundle)
+    started = datetime.now(UTC).isoformat()
+    with locked(evaluation):
+        evaluation.load()
+        evaluation.owned()
+        if set(hashes) != set(bundle["activation_hashes"]):
+            raise FocusedError("ORDERED_ACTIVATION_GRAPH_CHANGED")
+        adoption = {
+            "name": pilot.AUTHORITY_RENEWAL,
+            "changed_sources": changed,
+            "previous_controller_source": evaluation.data["source"],
+            "controller_source": source_identity(),
+            "app_and_knowledge_unchanged": True,
+            "new_genuine_activation": str(activation),
+            "activation_hashes": hashes,
+        }
+        atomic(target / "source-adoption.json", adoption)
+        shutil.copytree(evaluation.state / "evidence", target / "previous-owned-activation")
+        for relative, expected in hashes.items():
+            source = activation / relative
+            if driver.dataset.sha(source.read_bytes()) != expected:
+                raise FocusedError("NEW_GENUINE_ACTIVATION_CHANGED")
+            destination = evaluation.state / "evidence" / relative
+            shutil.copyfile(source, destination)
+            destination.chmod(0o600)
+            evaluation.data["files"]["evidence/" + relative] = expected
+        evaluation.data["source"] = source_identity()
+        evaluation.checkpoint("authority-renewal-source-adopted")
+    distributed(evaluation, "start")
+    old_policy = driver.read(evaluation.state / "intent/agent-value-root.json")
+    # Same exact version2 policy validator and four-hour operator ceiling.
+    operator = helpers.root_review(
+        evaluation, old_policy, "fictional-v8-agent-value-quota-renewal-v1", pilot=True
+    )
+    actors = driver.read(credentials / "recipients.json")
+    owner = login(evaluation, "owner", actors["owner"]["password"], actors["owner"]["seed"])
+    org = "eval-" + bundle["instance"]
+    base = "/api/v6/organizations/" + org
+    parent = parent_policy(owner, base, evaluation.data["members"]["owner"]["user_id"])
+    worker_id = evaluation.data["members"]["worker"]["user_id"]
+    # Worker delegation contains only the union of the final two read grants,
+    # plus their existing own-credential issuance/revocation permissions.
+    union = (
+        [
+            {"action": a, "resource_kind": k, "selector": "include", "ids": list(PROJECTS.values())}
+            for a, k in (
+                ("projects:read", "project_directory"),
+                ("context:read", "project"),
+                ("search:read", "project"),
+            )
+        ]
+        + [helpers.grant("agent:self", "organization_knowledge", org)]
+        + helpers.own(worker_id)
+    )
+    owner.request(
+        "POST",
+        base + "/assignments",
+        {
+            "subject_id": worker_id,
+            "parent_id": parent["_id"],
+            "expected_parent_generation": parent["generation"],
+            "role": "contributor",
+            "tuples": union,
+            "expires_at": parent["expires_at"],
+        },
+    )
+    worker = login(evaluation, "worker", actors["worker"]["password"], actors["worker"]["seed"])
+    values = helpers.retained_control_values(evaluation.state)
+    values += [v for actor in actors.values() for v in actor.values()]
+    clients = {}
+    for source, old in bundle["clients"].items():
+        root = base + "/managed-clients/" + old["client_id"]
+        inspected = owner.request("GET", root)["client"]
+        expected = readonly(org, old["project_id"])
+        normalized = [
+            {k: v for k, v in r.items() if k != "conditions"} for r in inspected["tuples"]
+        ]
+        if normalized != expected or any(r.get("conditions") for r in inspected["tuples"]):
+            raise FocusedError("EXACT_EXISTING_READONLY_CLIENT_REQUIRED")
+        path = credentials / old["token_file"]
+        values.append(path.read_text().strip())
+        worker.request(
+            "POST",
+            root + "/credentials/" + old["key_id"] + "/revoke",
+            {
+                "expected_revision": old["revision"],
+            },
+        )
+        owner.request(
+            "POST",
+            base + "/managed-clients",
+            {
+                "client_id": old["client_id"],
+                "name": "Read-only isolated development snapshot",
+                "subject_id": worker_id,
+                "parent_id": parent["_id"],
+                "expected_parent_generation": parent["generation"],
+                "expected_revision": inspected["revision"],
+                "tuples": expected,
+                "expires_at": parent["expires_at"],
+            },
+        )
+        current = worker.request("GET", root)["client"]
+        issued = worker.request(
+            "POST",
+            root + "/credentials",
+            {
+                "issuance_id": "v8-pilot-quota-renewal-" + old["client_id"],
+                "expected_client_revision": current["revision"],
+                "tuples": expected,
+                "expires_at": current["expires_at"],
+            },
+        )
+        token = issued.pop("token", None)
+        if not issued.get("delivered") or not token:
+            raise FocusedError("ONE_TIME_RENEWAL_DELIVERY_UNCERTAIN_NO_REPLAY")
+        # The old credential was explicitly revoked; only this purpose file is replaced.
+        path.write_text(token + "\n")
+        path.chmod(0o600)
+        values.append(token)
+        clients[source] = {**old, "key_id": issued["key_id"], "revision": issued["revision"]}
+    receipt = {
+        "name": pilot.AUTHORITY_RENEWAL,
+        "previous_commission_sha256": driver.digest(bundle),
+        "changed_sources": changed,
+        "operation_started_at": started,
+        "verified_at": datetime.now(UTC).isoformat(),
+        "previous_expires_at": bundle["expires_at"],
+        "renewed_expires_at": parent["expires_at"],
+        "actual_operator_and_owner_renewal": True,
+        "operator": operator,
+        "unchanged_snapshot_ids_revisions_and_content": True,
+        "unchanged_client_ids_projects_and_four_read_tuples": True,
+        "old_keys_revoked": True,
+        "fresh_keys_delivered_once": True,
+    }
+    current = {
+        **bundle,
+        "source_sha256": driver.digest(pilot.sources()),
+        "activation": str(activation),
+        "activation_hashes": hashes,
+        "expires_at": parent["expires_at"],
+        "clients": clients,
+        "authority_renewal": receipt,
+        "stage": "authority-renewal-revalidation",
+        "protocols_verified": False,
+    }
+    atomic(folder / "commission.json", current)
+    for task in calibration.TASKS:
+        verify_live(current, task, protocols=True)
+    distributed(evaluation, "stop")
+    distributed(evaluation, "start")
+    for task in calibration.TASKS:
+        verify_live(current, task, protocols=True)
+    current.update(stage="ready", protocols_verified=True)
+    atomic(folder / "commission.json", current)
+    for arm in driver.dataset.ARMS:
+        (folder / ("catalog-" + arm)).rename(target / ("catalog-" + arm))
+    (folder / "catalogs.json").rename(target / "catalogs.json")
+    audit = helpers.audit_artifacts([p for p in folder.rglob("*") if p.is_file()], values)
+    audit["reasoning_text"] = "model-free authority renewal; prior numeric metadata retained"
+    atomic(target / "retention.json", audit)
     return current
 
 

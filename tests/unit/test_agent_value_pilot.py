@@ -73,6 +73,23 @@ def synthetic_inputs(tmp_path, monkeypatch):
         "expires_at": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
         "activation": str(tmp_path / "synthetic-activation"),
         "activation_hashes": {},
+        "clients": {
+            name: {
+                "client_id": client,
+                "key_id": str(i) * 16,
+                "revision": 1,
+                "saved_once": True,
+                "token_file": "pilot-" + suffix,
+                "project_id": project,
+            }
+            for i, (name, client, suffix, project) in enumerate(
+                (
+                    ("harbor", helper.CLIENTS[0], "a", helper.OTHER),
+                    ("parcel", helper.CLIENTS[1], "b", helper.PILOT_OTHER),
+                ),
+                1,
+            )
+        },
     }
     return bundle, approval, {a: "d" * 64 for a in driver.dataset.ARMS}
 
@@ -212,6 +229,88 @@ def test_plus_pilot_unknown_attempt_is_never_retried_or_zero_filled(tmp_path, mo
         pilot.rebind(run_id, revised_bundle, catalogs)
     with pytest.raises(FocusedError):
         pilot.adapter_delta(changed_sources, {**changed_sources, "foreign.py": "a" * 64})
+    # Expired authority renewal keeps the same tranche and every old row. The
+    # real APIs/proofs are exercised separately in the owned calibration; these
+    # objects only exercise immutable binding and refusal boundaries.
+    fresh_sources = dict(changed_sources)
+    for name in pilot.AUTHORITY_RENEWAL_FILES:
+        fresh_sources[name] = "f" * 64
+    monkeypatch.setattr(pilot, "sources", lambda: fresh_sources)
+    expires = (datetime.now(UTC) + timedelta(hours=2)).isoformat()
+    renewal = {
+        "name": pilot.AUTHORITY_RENEWAL,
+        "previous_commission_sha256": driver.digest(revised_bundle),
+        "changed_sources": pilot.renewal_delta(changed_sources, fresh_sources),
+        "verified_at": datetime.now(UTC).isoformat(),
+        "renewed_expires_at": expires,
+        "actual_operator_and_owner_renewal": True,
+    }
+    renewed_bundle = {
+        **revised_bundle,
+        "source_sha256": driver.digest(fresh_sources),
+        "expires_at": expires,
+        "authority_renewal": renewal,
+        "clients": {
+            name: {**row, "key_id": "f" + row["key_id"][1:]}
+            for name, row in revised_bundle["clients"].items()
+        },
+    }
+    review = {
+        "kind": "actual chat-user continuation after quota pause",
+        "approved_by": "chat-user",
+        "plan_sha256": revised["sha256"],
+        "remaining_attempt_ids": [r["id"] for r in new_ledger["attempts"][1:]],
+        "additional_USD_cap": "0.00",
+        "retries_authorized": False,
+    }
+    old_auth = driver.read(folder / "authorization.json")
+    atomic(
+        folder / "authorization.json",
+        {**old_auth, "expires_at": (datetime.now(UTC) - timedelta(seconds=1)).isoformat()},
+    )
+    with pytest.raises(FocusedError, match="CONTINUATION_REVIEW"):
+        pilot.renew(run_id, renewed_bundle, catalogs, {**review, "retries_authorized": True})
+    with pytest.raises(FocusedError, match="SCOPE_OR_EXPIRY"):
+        pilot.renew(run_id, {**renewed_bundle, "origin": "https://foreign.test"}, catalogs, review)
+    too_late = (datetime.now(UTC) + timedelta(hours=5)).isoformat()
+    with pytest.raises(FocusedError, match="SCOPE_OR_EXPIRY"):
+        pilot.renew(
+            run_id,
+            {
+                **renewed_bundle,
+                "expires_at": too_late,
+                "authority_renewal": {**renewal, "renewed_expires_at": too_late},
+            },
+            catalogs,
+            review,
+        )
+    with pytest.raises(FocusedError, match="FRESH_REVOKABLE_KEYS"):
+        pilot.renew(
+            run_id, {**renewed_bundle, "clients": revised_bundle["clients"]}, catalogs, review
+        )
+    with pytest.raises(FocusedError, match="RENEWAL_SOURCES"):
+        pilot.renewal_delta(changed_sources, {**fresh_sources, "foreign.py": "f" * 64})
+    new_ledger["attempts"][0].update(state="unknown", cash_liability="unknown")
+    atomic(folder / "ledger.json", new_ledger)
+    atomic(
+        folder / first_id / "session.json",
+        {**before, "numeric_receipts": {"requests": [{"terminal": False, "http_status": 200}]}},
+    )
+    with pytest.raises(FocusedError, match="UNSETTLED_TRANSPORT"):
+        pilot.renew(run_id, renewed_bundle, catalogs, review)
+    atomic(folder / first_id / "session.json", before)
+    renewed = pilot.renew(run_id, renewed_bundle, catalogs, review)
+    assert renewed["launched"] == 1 and renewed["states"] == {"unknown": 1, "scheduled": 11}
+    assert renewed["unknown_liability"] == 1
+    with pytest.raises(FocusedError, match="RECONCILE_UNKNOWN"):
+        pilot.run(run_id)
+    assert driver.read(folder / first_id / "session.json") == before
+    assert driver.read(folder / "ledger.json")["attempts"] == new_ledger["attempts"]
+    assert pilot.owned(run_id)[1]["attempts"] == revised["attempts"]
+    with pytest.raises(FocusedError, match="ONE_UNFINISHED"):
+        pilot.renew(run_id, renewed_bundle, catalogs, review)
+    with pytest.raises(FocusedError, match="ALREADY_BOUND"):
+        pilot.create(renewed_bundle, approval, catalogs)
     monkeypatch.setattr(pilot, "sources", original_sources)
     # A separate synthetic authority exercises terminal all12 reconciliation;
     # none of these authored receipt objects is vendor-success evidence.

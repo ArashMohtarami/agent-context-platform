@@ -12,7 +12,7 @@ import os
 import re
 import secrets
 import signal
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from scripts.evaluation_lifecycle import atomic
@@ -40,6 +40,19 @@ ADAPTER_REVISION_FILES = {
     "benchmarks/agent-value-runner/pilot.py",
     "benchmarks/agent-value-runner/commission.py",
 }
+AUTHORITY_RENEWAL = "quota-pause-authority-renewal-v1"
+AUTHORITY_RENEWAL_FILES = {
+    "benchmarks/agent-value-runner/pilot.py",
+    "benchmarks/agent-value-runner/commission.py",
+    "benchmarks/agent-value-runner/README.md",
+}
+
+
+def renewal_delta(previous, current):
+    changed = {name for name in previous if previous[name] != current.get(name)}
+    if set(previous) != set(current) or not changed <= AUTHORITY_RENEWAL_FILES:
+        raise FocusedError("ONLY_RECORDED_AUTHORITY_RENEWAL_SOURCES_ALLOWED")
+    return {name: {"before": previous[name], "after": current[name]} for name in sorted(changed)}
 
 
 def adapter_delta(previous, current):
@@ -470,6 +483,151 @@ def rebind(run_id, bundle, catalogs):
     return status(run_id)
 
 
+def renew(run_id, bundle, catalogs, review):
+    """Bind actual bounded renewal on the same cohort; never launch or retry.
+
+    Expired authority can be replaced only after real operator/owner renewal,
+    fresh activation, same-snapshot protocol proofs and model-denied catalogs.
+    Unknown cash remains unknown until the ordinary resume path reconciles it.
+    """
+    from . import commission
+
+    with driver.locked(BASE):
+        folder, previous, ledger = owned(run_id)
+        original = driver.read(folder / "commission.json")
+        remaining = [r["id"] for r in ledger["attempts"] if r["state"] == "scheduled"]
+        if not remaining or ledger.get("authority_renewals"):
+            raise FocusedError("ONE_UNFINISHED_AUTHORITY_RENEWAL_REQUIRED")
+        if review != {
+            "kind": "actual chat-user continuation after quota pause",
+            "approved_by": "chat-user",
+            "plan_sha256": previous["sha256"],
+            "remaining_attempt_ids": remaining,
+            "additional_USD_cap": "0.00",
+            "retries_authorized": False,
+        }:
+            raise FocusedError("EXACT_ORIGINAL_CONTINUATION_REVIEW_REQUIRED")
+        changed = renewal_delta(previous["source_hashes"], sources())
+        receipt = bundle.get("authority_renewal", {})
+        mutable = {
+            "source_sha256",
+            "activation",
+            "activation_hashes",
+            "expires_at",
+            "clients",
+            "authority_renewal",
+            "stage",
+            "protocols_verified",
+        }
+        if (
+            {k: v for k, v in original.items() if k not in mutable}
+            != {k: v for k, v in bundle.items() if k not in mutable}
+            or receipt.get("name") != AUTHORITY_RENEWAL
+            or receipt.get("previous_commission_sha256") != driver.digest(original)
+            or receipt.get("changed_sources") != changed
+            or receipt.get("actual_operator_and_owner_renewal") is not True
+            or receipt.get("renewed_expires_at") != bundle.get("expires_at")
+            or not datetime.now(UTC)
+            < datetime.fromisoformat(bundle["expires_at"])
+            <= datetime.fromisoformat(receipt["verified_at"]) + timedelta(hours=4)
+            or datetime.fromisoformat(receipt["verified_at"]) > datetime.now(UTC)
+        ):
+            raise FocusedError("AUTHORITY_RENEWAL_SCOPE_OR_EXPIRY_WIDENED")
+        if (
+            set(original.get("clients", {})) != {"harbor", "parcel"}
+            or set(bundle.get("clients", {})) != {"harbor", "parcel"}
+            or any(
+                {k: v for k, v in old.items() if k not in {"key_id", "revision"}}
+                != {
+                    k: v
+                    for k, v in bundle["clients"][name].items()
+                    if k not in {"key_id", "revision"}
+                }
+                or old["key_id"] == bundle["clients"][name]["key_id"]
+                for name, old in original.get("clients", {}).items()
+            )
+        ):
+            raise FocusedError("SAME_CLIENTS_WITH_FRESH_REVOKABLE_KEYS_REQUIRED")
+        activation, hashes = commission.activation_evidence(bundle["activation"])
+        if str(activation) != bundle["activation"] or hashes != bundle["activation_hashes"]:
+            raise FocusedError("CURRENT_RENEWAL_ACTIVATION_REQUIRED")
+        approval = driver.read(folder / "approval.json")
+        current = make_plan(bundle, approval, catalogs)
+        fields = {"source_hashes", "commission_sha256", "sha256"}
+        if {k: v for k, v in previous.items() if k not in fields} != {
+            k: v for k, v in current.items() if k not in fields
+        }:
+            raise FocusedError("EXACT12_INPUTS_SETTINGS_AND_BOUNDS_MUST_STAY_FIXED")
+        verify_artifacts(bundle, catalogs)
+        for row in ledger["attempts"]:
+            if row["state"] in {"unknown", "launched"}:
+                result = driver.read(folder / row["id"] / "session.json")
+                if (
+                    not result.get("runtime_removed")
+                    or result.get("routing_mismatch")
+                    or any(
+                        not r["terminal"] or not r["http_status"]
+                        for r in result["numeric_receipts"]["requests"]
+                    )
+                ):
+                    raise FocusedError("UNSETTLED_TRANSPORT_RENEWAL_REFUSED")
+        registry = BASE / "authorization-bindings.json"
+        bindings = driver.read(registry)
+        key = driver.digest(approval)
+        authorization = driver.read(folder / "authorization.json")
+        if bindings.get(key) != {"run_id": run_id, "plan_sha256": previous["sha256"]} or (
+            authorization.get("plan_sha256") != previous["sha256"]
+            or authorization.get("approval_sha256") != key
+        ):
+            raise FocusedError("PILOT_AUTHORIZATION_REPLAY_REFUSED")
+        history = folder / "authority-renewals"
+        history.mkdir(mode=0o700)
+        target = history / AUTHORITY_RENEWAL
+        target.mkdir(mode=0o700)
+        for name in ("plan", "commission", "ledger", "authorization", "owner"):
+            atomic(target / (name + ".json"), driver.read(folder / (name + ".json")))
+        revision = {
+            "name": AUTHORITY_RENEWAL,
+            "previous_plan_sha256": previous["sha256"],
+            "plan_sha256": current["sha256"],
+            "changed_sources": changed,
+            "review": review,
+            "commission_receipt": receipt,
+            "original_started_rows_preserved": True,
+            "retries_authorized": False,
+        }
+        atomic(target / "revision.json", revision)
+        ledger.update(plan_sha256=current["sha256"], authority_renewals=[revision])
+        authorization.update(
+            version=3,
+            plan_sha256=current["sha256"],
+            source_sha256=driver.digest(sources()),
+            expires_at=bundle["expires_at"],
+            authority_renewal=AUTHORITY_RENEWAL,
+            previous_plan_sha256=previous["sha256"],
+        )
+        for name, value in (
+            ("plan", current),
+            ("commission", bundle),
+            ("ledger", ledger),
+            ("authorization", authorization),
+        ):
+            atomic(folder / (name + ".json"), value)
+        bindings[key] = {"run_id": run_id, "plan_sha256": current["sha256"]}
+        atomic(registry, bindings)
+        atomic(
+            folder / "owner.json",
+            {
+                "uid": os.getuid(),
+                "path": str(folder),
+                "run_id": run_id,
+                "plan_sha256": current["sha256"],
+            },
+        )
+        check_current(folder, current)
+    return status(run_id)
+
+
 def run(run_id):
     from . import commission
 
@@ -577,6 +735,7 @@ def finalize(folder, plan, ledger):
             "primary216_authorized": False,
             "source_sha256": driver.digest(plan["source_hashes"]),
             "source_revisions": ledger.get("source_revisions", []),
+            "authority_renewals": ledger.get("authority_renewals", []),
             "row_plan_sha256_at_launch": [r.get("plan_sha256_at_launch") for r in rows],
             "invalidated_earlier_adapter_rows": [
                 r["id"] for r in rows if r.get("adapter_revision_invalidated")
@@ -689,14 +848,16 @@ def main():
     plan.add_argument("--commission", type=Path, required=True)
     plan.add_argument("--approval", type=Path, required=True)
     plan.add_argument("--catalogs", type=Path, required=True)
-    for name in ("run", "status", "resume", "owned-cleanup", "rebind"):
+    for name in ("run", "status", "resume", "owned-cleanup", "rebind", "renew"):
         item = commands.add_parser(name)
         item.add_argument("--run-id", required=True)
         if name == "resume":
             item.add_argument("--reconciliation", type=Path, required=True)
-        if name == "rebind":
+        if name in {"rebind", "renew"}:
             item.add_argument("--commission", type=Path, required=True)
             item.add_argument("--catalogs", type=Path, required=True)
+        if name == "renew":
+            item.add_argument("--review", type=Path, required=True)
     args = parser.parse_args()
     os.umask(0o077)
 
@@ -717,6 +878,13 @@ def main():
             result = resume(args.run_id, driver.read(args.reconciliation))
         elif args.command == "rebind":
             result = rebind(args.run_id, driver.read(args.commission), driver.read(args.catalogs))
+        elif args.command == "renew":
+            result = renew(
+                args.run_id,
+                driver.read(args.commission),
+                driver.read(args.catalogs),
+                driver.read(args.review),
+            )
         else:
             result = cleanup(args.run_id)
         print(json.dumps(result, indent=2))
