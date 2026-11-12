@@ -1,5 +1,34 @@
 # Agent-value experiment controls — model-free Phase 2
 
+An additional, separate `pilot.py` controller implements an explicitly approved
+**descriptive Plus development pilot**. It never relaxes the original driver's
+`codex-plan` refusal. The selected pilot is exactly four named development tasks,
+three arms, one attempt each, gpt-6.1-sol/high/default, one worker and USD0 added
+cash. It accepts incomplete token/quota/billing measurements only under a recorded
+prospective accounting amendment; it makes no efficiency or primary-study claim.
+
+The pilot keeps `plan`, `run`, `status`, `resume` and `owned-cleanup` as separate
+commands (`python -m benchmarks.agent-value-runner.pilot --help`). Its plan needs
+actual current commissioning, equal authorized M/C exports, three model-free
+native catalog captures and an explicit approval receipt. Planning starts nothing.
+`session.py` rechecks actual Plus zero-credit state before/after each bounded
+native turn, keeps credentials outside task grants, filters protocol text into
+safe metrics and retains unknown liability. Missing/nonzero/unlimited purchased
+credit state refuses execution. Denying purchase/API routes does not create an
+account-wide spending lock against external account changes.
+
+`commission.py` uses the distributed empty-store evaluator and supported real
+enrollment/approval/issuance APIs. Policy variant
+`development-pilot-three-projects-v1` explicitly separates the protocol probe,
+Harbor and Parcel projects. Commissioning authority expires within four hours;
+the two final machine credentials have only four read/discovery tuples for their
+respective single task projects, with no memory or write grants. Generic protocol
+helpers from the maintained integration source run outside pytest; actual pilot
+attempts always run through the separate controller. Current genuine ordered
+activation is required before commissioning. Provider credentials never enter
+the focused runner. New `v8-p04-pilot` selects five synthetic control cases;
+synthetic schema-shaped values are never live platform evidence.
+
 This is a small separate driver around the selected installed Codex CLI0.166.0,
 not a replacement agent runtime. It prepares a literal Codex invocation and a
 sealed three-arm schedule without starting processes, services, models or paid

@@ -265,6 +265,21 @@
       "timeout": 120,
       "expected_count": 4,
       "requires": []
+    },
+    "v8-p04-pilot": {
+      "reason": "Synthetic exact12 zero-cash plan, interrupted liability, native redaction/cleanup and versioned pilot policy; no provider",
+      "kind": "pytest",
+      "selectors": [
+        "tests/unit/test_agent_value_pilot.py::test_plus_pilot_plan_is_exact_zero_cash_source_bound_and_model_free",
+        "tests/unit/test_agent_value_pilot.py::test_plus_pilot_unknown_attempt_is_never_retried_or_zero_filled",
+        "tests/unit/test_agent_value_pilot.py::test_native_session_redacts_tools_and_refuses_foreign_cleanup",
+        "tests/unit/test_agent_value_pilot.py::test_pilot_policy_variant_is_explicit_and_credentials_have_only_one_project",
+        "tests/unit/test_agent_value_commission.py::test_handoff_intent_is_exact_bounded_and_recipient_delivery_is_once_only"
+      ],
+      "fixture": "none",
+      "timeout": 180,
+      "expected_count": 5,
+      "requires": []
     }
   },
   "profiles": {
@@ -321,6 +336,9 @@
     ],
     "v8-p04-native": [
       "v8-p04-native"
+    ],
+    "v8-p04-pilot": [
+      "v8-p04-pilot"
     ]
   }
 }

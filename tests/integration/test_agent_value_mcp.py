@@ -53,7 +53,7 @@ def parent_policy(owner, base, owner_id):
     )
 
 
-def approve_pair(evaluation, owner, *, revision, extended):
+def approve_pair(evaluation, owner, *, revision, extended, pilot=False):
     org = "eval-" + evaluation.instance
     base = "/api/v6/organizations/" + org
     owner_id = evaluation.data["members"]["owner"]["user_id"]
@@ -66,7 +66,7 @@ def approve_pair(evaluation, owner, *, revision, extended):
         + [grant(a, "project", PROJECT) for a in ("context:read", "context:write", "search:read")]
         + [grant("agent:self", "organization_knowledge", org)]
     )
-    bounds = domain(org) if extended else initial
+    bounds = domain(org, pilot=pilot) if extended else initial
     owner.request(
         "POST",
         base + "/assignments",
@@ -90,7 +90,9 @@ def approve_pair(evaluation, owner, *, revision, extended):
                 "parent_id": parent["_id"],
                 "expected_parent_generation": parent["generation"],
                 "expected_revision": revision,
-                "tuples": domain(org, client, writer=index == 0) if extended else initial,
+                "tuples": domain(org, client, writer=index == 0, pilot=pilot)
+                if extended
+                else initial,
                 "expires_at": parent["expires_at"],
             },
         )

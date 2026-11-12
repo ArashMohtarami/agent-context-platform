@@ -38,13 +38,22 @@ def agent_value_policy(intent, state, review, policy):
         "approval_reference",
         "policy_sha256",
     }
+    pilot = review.get("version") == 2
+    if pilot:
+        fields.add("policy_variant")
     if (
         set(review) != fields
         or type(review["version"]) is not int
-        or review["version"] != 1
+        or review["version"] not in {1, 2}
+        or (pilot and review.get("policy_variant") != "development-pilot-three-projects-v1")
         or state["schema"] != 42
         or review["org_id"] != intent["org_id"]
-        or review["projects"] != ["evaluation-notes", "evaluation-agent-value-other"]
+        or review["projects"]
+        != (
+            ["evaluation-notes", "evaluation-agent-value-other", "evaluation-agent-value-parcel"]
+            if pilot
+            else ["evaluation-notes", "evaluation-agent-value-other"]
+        )
         or review["clients"] != ["evaluation-handoff-a", "evaluation-handoff-b"]
         or not isinstance(review["approval_reference"], str)
         or not review["approval_reference"].startswith("fictional-v8-agent-value-")
@@ -64,7 +73,7 @@ def agent_value_policy(intent, state, review, policy):
         ("projects:read", "project_directory"): set(review["projects"]),
         ("context:read", "project"): set(review["projects"]),
         ("search:read", "project"): set(review["projects"]),
-        ("context:write", "project"): {"evaluation-notes"},
+        ("context:write", "project"): set(review["projects"]) if pilot else {"evaluation-notes"},
         ("agent:self", "organization_knowledge"): {review["org_id"]},
         **{(a, "project"): {"evaluation-notes"} for a in ("memory:read", "memory:write")},
         **{(a, "client_memory"): set(review["clients"]) for a in ("memory:read", "memory:write")},
@@ -112,7 +121,10 @@ def agent_value_policy(intent, state, review, policy):
     if (
         not datetime.now(UTC)
         < command.expires_at
-        <= min(datetime.fromisoformat(intent["expires_at"]), datetime.now(UTC) + timedelta(hours=2))
+        <= min(
+            datetime.fromisoformat(intent["expires_at"]),
+            datetime.now(UTC) + timedelta(hours=4 if pilot else 2),
+        )
     ):
         raise ValueError("bounded operator expiry required")
     return command

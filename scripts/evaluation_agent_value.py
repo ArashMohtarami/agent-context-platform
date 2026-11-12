@@ -18,6 +18,7 @@ from scripts.focused_process import FocusedError
 
 PROJECT = "evaluation-notes"
 OTHER = "evaluation-agent-value-other"
+PILOT_OTHER = "evaluation-agent-value-parcel"
 CLIENTS = ("evaluation-handoff-a", "evaluation-handoff-b")
 
 
@@ -37,9 +38,10 @@ def canonical(value):
     return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
 
 
-def domain(org, client=None, *, writer=True):
+def domain(org, client=None, *, writer=True, pilot=False):
+    projects = [PROJECT, OTHER, PILOT_OTHER] if pilot else [PROJECT, OTHER]
     shared = [
-        {"action": a, "resource_kind": k, "selector": "include", "ids": [PROJECT, OTHER]}
+        {"action": a, "resource_kind": k, "selector": "include", "ids": projects}
         for a, k in (
             ("projects:read", "project_directory"),
             ("context:read", "project"),
@@ -47,7 +49,14 @@ def domain(org, client=None, *, writer=True):
         )
     ] + [grant("agent:self", "organization_knowledge", org)]
     if writer:
-        shared += [grant("context:write", "project", PROJECT)]
+        shared += [
+            {
+                "action": "context:write",
+                "resource_kind": "project",
+                "selector": "include",
+                "ids": projects if pilot else [PROJECT],
+            }
+        ]
     return (
         shared
         + [grant(a, "project", PROJECT) for a in ("memory:read", "memory:write")]
@@ -70,7 +79,7 @@ def own(worker):
     ]
 
 
-def root_review(evaluation, root, reference):
+def root_review(evaluation, root, reference, *, pilot=False):
     from app.identity.models import MANAGEMENT_ACTIONS
 
     evaluation.load(resume=True)
@@ -79,24 +88,26 @@ def root_review(evaluation, root, reference):
     worker = evaluation.data["members"]["worker"]["user_id"]
     policy = {
         "tuples": [r for r in root["tuples"] if r["action"] in MANAGEMENT_ACTIONS],
-        "ceiling": domain(org) + own(worker),
+        "ceiling": domain(org, pilot=pilot) + own(worker),
         "targets": {"mode": "include", "ids": [worker]},
         "allowed_roles": ["contributor"],
         "expires_at": min(
             datetime.fromisoformat(evaluation.data["expires_at"]),
-            datetime.now(UTC) + timedelta(hours=2),
+            datetime.now(UTC) + timedelta(hours=4 if pilot else 2),
         ).isoformat(),
     }
     review = {
-        "version": 1,
+        "version": 2 if pilot else 1,
         "org_id": org,
         "owner_id": owner,
         "worker_id": worker,
-        "projects": [PROJECT, OTHER],
+        "projects": [PROJECT, OTHER, PILOT_OTHER] if pilot else [PROJECT, OTHER],
         "clients": list(CLIENTS),
         "approval_reference": reference,
         "policy_sha256": hashlib.sha256(canonical(policy)).hexdigest(),
     }
+    if pilot:
+        review["policy_variant"] = "development-pilot-three-projects-v1"
     agent_value_policy(
         {"org_id": org, "expires_at": evaluation.data["expires_at"]},
         {"schema": 42, "members": evaluation.data["members"]},
@@ -160,7 +171,7 @@ def enable_local_model(evaluation, cache):
     return evaluation.data["embedding_model"]
 
 
-def issue_client(evaluation, browser, destination, client_id):
+def issue_client(evaluation, browser, destination, client_id, *, pilot=False):
     if client_id not in CLIENTS:
         raise FocusedError("exact separately approved handoff client required")
     destination = Path(destination).absolute()
@@ -178,7 +189,7 @@ def issue_client(evaluation, browser, destination, client_id):
             "POST",
             root + "/credentials",
             {
-                "issuance_id": "v8-recipient-" + client_id,
+                "issuance_id": ("v8-pilot-recipient-" if pilot else "v8-recipient-") + client_id,
                 "expected_client_revision": client["revision"],
                 "tuples": client["tuples"],
                 "expires_at": client["expires_at"],

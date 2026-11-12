@@ -62,6 +62,8 @@ class Policy:
         model_requests=False,
         tools_sha256=None,
         persist=None,
+        capture_catalog=False,
+        descriptive=False,
     ):
         for value, maximum in ((requests, 32), (request_bytes, 262144), (response_bytes, 16777216)):
             if type(value) is not int or not 1 <= value <= maximum:
@@ -84,6 +86,13 @@ class Policy:
         self.persist = persist
         self.received = 0
         self.routes = 0
+        if type(capture_catalog) is not bool or type(descriptive) is not bool:
+            raise FocusedError("EXPLICIT_NATIVE_ROUTE_MODE_REQUIRED")
+        if capture_catalog and model_requests:
+            raise FocusedError("CATALOG_CAPTURE_MUST_DENY_PROVIDER")
+        self.capture_catalog = capture_catalog
+        self.catalog = None
+        self.descriptive = descriptive
 
     def received_bytes(self, size):
         with self.lock:
@@ -93,6 +102,13 @@ class Policy:
 
     def finish(self, number, status, completed):
         with self.lock:
+            # Identity/usage may be absent in the descriptive pilot. A known
+            # routing mismatch still refuses, even without a usable response ID.
+            if isinstance(completed, dict) and (
+                completed.get("model") not in (None, native.MODEL)
+                or completed.get("service_tier") not in (None, "default")
+            ):
+                self.receipts.flags.add("ACTUAL_ROUTING_CHANGED")
             self.receipts.finish(number, status, completed)
             if self.persist is not None:
                 self.persist(self.receipts.report())
@@ -123,7 +139,7 @@ class Policy:
                 raise FocusedError("NATIVE_ROUTE_COUNT_BOUND")
         if parsed.path != "/backend-api/codex/responses":
             return data, None
-        if not self.model_requests:
+        if not self.model_requests and not self.capture_catalog:
             raise FocusedError("MODEL_FREE_PREFLIGHT_ONLY")
         body = json.loads(data)
         if (
@@ -169,13 +185,69 @@ class Policy:
         if (
             len(tools) != 1
             or not isinstance(tools[0], list)
-            or digest(tools[0]) != self.tools_sha256
+            or (not self.capture_catalog and digest(tools[0]) != self.tools_sha256)
         ):
             raise FocusedError("NATIVE_TOOL_CATALOG_CHANGED")
+        if self.capture_catalog:
+            names = []
+
+            def inspect(items, namespace=""):
+                for item in items:
+                    if item.get("type") == "namespace":
+                        inspect(item.get("tools", []), item.get("name", ""))
+                    else:
+                        names.append(namespace + "." + str(item.get("name", "")))
+
+            inspect(tools[0])
+            ordinary = {
+                "exec",
+                "wait",
+                "exec_command",
+                "write_stdin",
+                "list_mcp_resources",
+                "list_mcp_resource_templates",
+                "read_mcp_resource",
+                "request_user_input",
+                "request_user_input_async",
+                "apply_patch",
+            }
+            allowed = all(
+                (n.startswith("functions.") and n.split(".", 1)[1] in ordinary)
+                or (
+                    n.startswith("mcp__agent_context_platform.")
+                    and n.rsplit(".", 1)[1] in native.TOOLS
+                )
+                or (
+                    n.startswith("functions.mcp__agent_context_platform__")
+                    and n.rsplit("__", 1)[1] in native.TOOLS
+                )
+                for n in names
+            )
+            self.catalog = {
+                "tools_sha256": digest(tools[0]),
+                "prompt_sha256": digest(prompt),
+                "tool_names": names,
+                "allowed": bool(names) and allowed,
+            }
+            raise FocusedError("MODEL_FREE_CATALOG_CAPTURED")
+        unsafe_flags = self.receipts.flags.copy()
+        if self.descriptive:
+            unsafe_flags -= {
+                "MISSING_PROVIDER_RESPONSE_ID",
+                "MODEL_RESOLUTION_CHANGED_OR_UNKNOWN",
+                "SERVICE_TIER_CHANGED_OR_UNKNOWN",
+                "RESPONSE_USAGE_UNKNOWN",
+            }
+            if any(
+                r["resolved_model"] not in {None, native.MODEL}
+                or r["resolved_tier"] not in {None, "default"}
+                for r in self.receipts.rows
+            ):
+                unsafe_flags.add("ACTUAL_ROUTING_CHANGED")
         with self.lock:
             if (
                 len(self.receipts.rows) >= self.maximum
-                or self.receipts.flags
+                or unsafe_flags
                 or any(not r["terminal"] for r in self.receipts.rows)
             ):
                 raise FocusedError("NATIVE_REQUEST_LIMIT_OR_UNRECONCILED_RECEIPT")

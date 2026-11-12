@@ -153,7 +153,14 @@ def configuration(binary: Path, workspace: Path, home: Path):
             str(home / "skills"): "read",
             **{
                 str(workspace / name): "read"
-                for name in ("README.md", "TASK.md", "test_visible.py", "visible.json", "knowledge")
+                for name in (
+                    "README.md",
+                    "TASK.md",
+                    "KNOWLEDGE.md",
+                    "test_visible.py",
+                    "visible.json",
+                    "knowledge",
+                )
             },
             ":workspace_roots": {".": "write"},
         },
@@ -221,6 +228,7 @@ class Control:
         self.pending = b""
         self.events = 0
         self.counter = 0
+        self.received = 0
         self.selector = selectors.DefaultSelector()
         self.selector.register(child.process.stdout, selectors.EVENT_READ)
 
@@ -237,7 +245,8 @@ class Control:
             if not chunk:
                 raise FocusedError("NATIVE_CONTROL_CHILD_FAILED")
             self.pending += chunk
-            if len(self.pending) > self.maximum:
+            self.received += len(chunk)
+            if len(self.pending) > self.maximum or self.received > 16777216:
                 raise FocusedError("NATIVE_CONTROL_STREAM_BOUND")
         line, self.pending = self.pending.split(b"\n", 1)
         self.events += 1

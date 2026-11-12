@@ -125,7 +125,7 @@ def main():
             + "enabled_tools = "
             + json.dumps(mcp["tools"])
             + "\n"
-            + "startup_timeout_sec = 10\ntool_timeout_sec = 30\n"
+            + "startup_timeout_sec = 10\ntool_timeout_sec = 30\nrequired = true\n"
             + "[mcp_servers.agent_context_platform.http_headers]\n"
             + "Authorization = "
             + json.dumps("Bearer " + token)

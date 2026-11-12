@@ -35,6 +35,7 @@ V8_PHASES = frozenset(
         "v8-p04-calibration",
         "v8-p04-regressions",
         "v8-p04-native",
+        "v8-p04-pilot",
     }
 )
 EVIDENCE = ROOT / ".private/v7-competitive-planning/phase-1/runs"
